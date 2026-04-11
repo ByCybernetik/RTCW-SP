@@ -1,0 +1,41 @@
+```
+# Build artifacts
+build/
+dist/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Dependencies
+venv/
+.venv/
+__pycache__/
+*.egg-info/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Coverage reports
+coverage/
+htmlcov/
+*.coverage
+
+# OS generated files
+.DS_Store
+Thumbs.db
+```
