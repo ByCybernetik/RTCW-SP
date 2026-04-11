@@ -1,0 +1,362 @@
+[  1%] Building C object CMakeFiles/rtcw_client.dir/src/qcommon/vm_x64.c.o
+[  2%] Building C object CMakeFiles/game.dir/src/game/bg_pmove.c.o
+/workspace/src/qcommon/vm_x64.c:57:39: error: ‘MAX_VM’ undeclared here (not in a function)
+   57 | static vmNativeData_t vmNativeModules[MAX_VM];
+      |                                       ^~~~~~
+/workspace/src/qcommon/vm_x64.c: In function ‘VM_Native_LoadModule’:
+/workspace/src/qcommon/vm_x64.c:102:9: warning: implicit declaration of function ‘Q_snprintf’; did you mean ‘vsnprintf’? [-Wimplicit-function-declaration]
+  102 |         Q_snprintf(libraryPath, sizeof(libraryPath), "./%s.so", name);
+      |         ^~~~~~~~~~
+      |         vsnprintf
+/workspace/src/qcommon/vm_x64.c: At top level:
+/workspace/src/qcommon/vm_x64.c:238:1: error: unknown type name ‘QINLINE’; did you mean ‘ID_INLINE’?
+  238 | QINLINE uintptr_t VM_PtrToUint(const void* ptr) {
+      | ^~~~~~~
+      | ID_INLINE
+/workspace/src/qcommon/vm_x64.c:238:19: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘VM_PtrToUint’
+  238 | QINLINE uintptr_t VM_PtrToUint(const void* ptr) {
+      |                   ^~~~~~~~~~~~
+/workspace/src/qcommon/vm_x64.c:242:1: error: unknown type name ‘QINLINE’; did you mean ‘ID_INLINE’?
+  242 | QINLINE intptr_t VM_PtrToInt(const void* ptr) {
+      | ^~~~~~~
+      | ID_INLINE
+/workspace/src/qcommon/vm_x64.c:242:18: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘VM_PtrToInt’
+  242 | QINLINE intptr_t VM_PtrToInt(const void* ptr) {
+      |                  ^~~~~~~~~~~
+/workspace/src/qcommon/vm_x64.c:246:8: error: expected ‘;’ before ‘void’
+  246 | QINLINE void* VM_UintToPtr(uintptr_t num) {
+      |        ^~~~~
+      |        ;
+/workspace/src/qcommon/vm_x64.c:250:8: error: expected ‘;’ before ‘void’
+  250 | QINLINE void* VM_IntToPtr(intptr_t num) {
+      |        ^~~~~
+      |        ;
+/workspace/src/qcommon/vm_x64.c: In function ‘VM_Native_Call’:
+/workspace/src/qcommon/vm_x64.c:169:1: warning: control reaches end of non-void function [-Wreturn-type]
+  169 | }
+      | ^
+/workspace/src/qcommon/vm_x64.c: In function ‘VM_Native_GetInfo’:
+/workspace/src/qcommon/vm_x64.c:206:1: warning: control reaches end of non-void function [-Wreturn-type]
+  206 | }
+      | ^
+At top level:
+cc1: note: unrecognized command-line option ‘-Wno-void-pointer-to-int-cast’ may have been intended to silence earlier diagnostics
+cc1: note: unrecognized command-line option ‘-Wno-int-to-void-pointer-cast’ may have been intended to silence earlier diagnostics
+/workspace/src/game/bg_pmove.c: In function ‘PM_WalkMove’:
+/workspace/src/game/bg_pmove.c:935:27: error: ‘else’ without a previous ‘if’
+  935 |                         } else {
+      |                           ^~~~
+make[2]: *** [CMakeFiles/rtcw_client.dir/build.make:272: CMakeFiles/rtcw_client.dir/src/qcommon/vm_x64.c.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:89: CMakeFiles/rtcw_client.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+/workspace/src/game/bg_pmove.c: In function ‘PM_Weapon’:
+/workspace/src/game/bg_pmove.c:2748:9: error: ‘else’ without a previous ‘if’
+ 2748 |         else {
+      |         ^~~~
+/workspace/src/game/bg_pmove.c:2733:18: warning: variable ‘gameReloading’ set but not used [-Wunused-but-set-variable]
+ 2733 |         qboolean gameReloading;
+      |                  ^~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:2732:18: warning: variable ‘akimboFire’ set but not used [-Wunused-but-set-variable]
+ 2732 |         qboolean akimboFire;
+      |                  ^~~~~~~~~~
+/workspace/src/game/bg_pmove.c:2729:18: warning: variable ‘delayedFire’ set but not used [-Wunused-but-set-variable]
+ 2729 |         qboolean delayedFire;       //----(SA)  true if the delay time has just expired and this is the frame to send the fire event
+      |                  ^~~~~~~~~~~
+/workspace/src/game/bg_pmove.c: At top level:
+/workspace/src/game/bg_pmove.c:2909:1: error: expected identifier or ‘(’ before ‘if’
+ 2909 | if ( pm->ps->weaponDelay > 0 ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:2930:1: error: expected identifier or ‘(’ before ‘if’
+ 2930 | if ( pm->ps->weaponstate == WEAPON_RELAXING ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:2936:1: error: expected identifier or ‘(’ before ‘if’
+ 2936 | if ( pm->ps->weaponTime > 0 ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3000:1: error: expected identifier or ‘(’ before ‘}’ token
+ 3000 | }
+      | ^
+/workspace/src/game/bg_pmove.c:3008:1: error: expected identifier or ‘(’ before ‘if’
+ 3008 | if ( pm->ps->weaponTime <= 0 || ( !weaponstateFiring && pm->ps->weaponDelay <= 0 ) ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3015:22: error: expected ‘)’ before ‘->’ token
+ 3015 | PM_CheckForReload( pm->ps->weapon );
+      |                      ^~
+      |                      )
+/workspace/src/game/bg_pmove.c:3017:1: error: expected identifier or ‘(’ before ‘if’
+ 3017 | if ( pm->ps->weaponTime > 0 || pm->ps->weaponDelay > 0 ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3021:1: error: expected identifier or ‘(’ before ‘if’
+ 3021 | if ( pm->ps->weaponstate == WEAPON_RELOADING ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3026:1: error: expected identifier or ‘(’ before ‘if’
+ 3026 | if ( pm->ps->weaponstate == WEAPON_DROPPING || pm->ps->weaponstate == WEAPON_DROPPING_TORELOAD ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3031:1: error: expected identifier or ‘(’ before ‘if’
+ 3031 | if ( pm->ps->weaponstate == WEAPON_RAISING ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3035:3: error: expected identifier or ‘(’ before ‘else’
+ 3035 | } else if ( pm->ps->weaponstate == WEAPON_RAISING_TORELOAD ) {
+      |   ^~~~
+/workspace/src/game/bg_pmove.c:3042:1: error: expected identifier or ‘(’ before ‘if’
+ 3042 | if ( pm->ps->weapon == WP_NONE ) {  // this is possible since the player starts with nothing
+      | ^~
+/workspace/src/game/bg_pmove.c:3080:1: error: expected identifier or ‘(’ before ‘if’
+ 3080 | if ( !( pm->cmd.buttons & ( BUTTON_ATTACK | WBUTTON_ATTACK2 ) ) && !delayedFire ) {     // if not on fire button and there's not a delayed shot this frame...
+      | ^~
+/workspace/src/game/bg_pmove.c:3093:1: error: expected identifier or ‘(’ before ‘if’
+ 3093 | if ( gameReloading ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3098:1: error: expected identifier or ‘(’ before ‘if’
+ 3098 | if ( pm->ps->eFlags & EF_ZOOMING ) {
+      | ^~
+[  2%] Building C object CMakeFiles/game.dir/src/game/q_shared.c.o
+/workspace/src/game/bg_pmove.c:3103:1: error: expected identifier or ‘(’ before ‘if’
+ 3103 | if ( pm->ps->leanf != 0 && pm->ps->weapon != WP_GRENADE_LAUNCHER && pm->ps->weapon != WP_GRENADE_PINEAPPLE && pm->ps->weapon != WP_DYNAMITE ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3108:1: error: expected identifier or ‘(’ before ‘if’
+ 3108 | if ( pm->waterlevel == 3 ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3119:1: error: expected identifier or ‘(’ before ‘switch’
+ 3119 | switch ( pm->ps->weapon )
+      | ^~~~~~
+/workspace/src/game/bg_pmove.c:3200:3: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘->’ token
+ 3200 | pm->ps->weaponstate = WEAPON_FIRING;
+      |   ^~
+/workspace/src/game/bg_pmove.c:3206:1: warning: data definition has no type or storage class
+ 3206 | ammoNeeded = ammoTable[pm->ps->weapon].uses;
+      | ^~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3206:1: warning: type defaults to ‘int’ in declaration of ‘ammoNeeded’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3206:14: error: initializer element is not constant
+ 3206 | ammoNeeded = ammoTable[pm->ps->weapon].uses;
+      |              ^~~~~~~~~
+/workspace/src/game/bg_pmove.c:3208:1: error: expected identifier or ‘(’ before ‘if’
+ 3208 | if ( pm->ps->weapon ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3263:1: error: expected identifier or ‘(’ before ‘if’
+ 3263 | if ( pm->ps->weaponDelay > 0 ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3272:1: error: expected identifier or ‘(’ before ‘if’
+ 3272 | if ( PM_WeaponAmmoAvailable( pm->ps->weapon ) != -1 ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3283:1: error: expected identifier or ‘(’ before ‘if’
+ 3283 | if ( ammoTable[pm->ps->weapon].maxHeat ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3291:1: error: expected identifier or ‘(’ before ‘if’
+ 3291 | if ( pm->ps->weapon == WP_AKIMBO ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3297:3: error: expected identifier or ‘(’ before ‘else’
+ 3297 | } else {
+      |   ^~~~
+/workspace/src/game/bg_pmove.c:3305:1: error: expected identifier or ‘(’ before ‘switch’
+ 3305 | switch ( pm->ps->weapon ) {
+      | ^~~~~~
+/workspace/src/game/bg_pmove.c:3329:1: error: expected identifier or ‘(’ before ‘if’
+ 3329 | if ( pm->ps->weapon == WP_AKIMBO ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3335:3: error: expected identifier or ‘(’ before ‘else’
+ 3335 | } else {
+      |   ^~~~
+/workspace/src/game/bg_pmove.c:3345:3: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘->’ token
+ 3345 | pm->ps->releasedFire = qfalse;
+      |   ^~
+/workspace/src/game/bg_pmove.c:3346:3: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘->’ token
+ 3346 | pm->ps->lastFireTime = pm->cmd.serverTime;
+      |   ^~
+/workspace/src/game/bg_pmove.c:3349:1: warning: data definition has no type or storage class
+ 3349 | aimSpreadScaleAdd = 0;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3349:1: warning: type defaults to ‘int’ in declaration of ‘aimSpreadScaleAdd’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3351:1: error: expected identifier or ‘(’ before ‘switch’
+ 3351 | switch ( pm->ps->weapon ) {
+      | ^~~~~~
+/workspace/src/game/bg_pmove.c:3410:3: error: expected identifier or ‘(’ before ‘else’
+ 3410 | } else {
+      |   ^~~~
+/workspace/src/game/bg_pmove.c:3414:1: error: expected identifier or ‘(’ before ‘break’
+ 3414 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3415:1: error: expected identifier or ‘(’ before ‘case’
+ 3415 | case WP_SNOOPERSCOPE:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3425:1: warning: data definition has no type or storage class
+ 3425 | aimSpreadScaleAdd = 50;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3425:1: warning: type defaults to ‘int’ in declaration of ‘aimSpreadScaleAdd’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3425:1: error: redefinition of ‘aimSpreadScaleAdd’
+/workspace/src/game/bg_pmove.c:3349:1: note: previous definition of ‘aimSpreadScaleAdd’ with type ‘int’
+ 3349 | aimSpreadScaleAdd = 0;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3427:1: error: expected identifier or ‘(’ before ‘}’ token
+ 3427 | } else {
+      | ^
+/workspace/src/game/bg_pmove.c:3427:3: error: expected identifier or ‘(’ before ‘else’
+ 3427 | } else {
+      |   ^~~~
+/workspace/src/game/bg_pmove.c:3431:1: error: expected identifier or ‘(’ before ‘break’
+ 3431 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3433:1: error: expected identifier or ‘(’ before ‘case’
+ 3433 | case WP_FG42SCOPE:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3435:1: warning: data definition has no type or storage class
+ 3435 | aimSpreadScaleAdd = 10;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3435:1: warning: type defaults to ‘int’ in declaration of ‘aimSpreadScaleAdd’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3435:1: error: redefinition of ‘aimSpreadScaleAdd’
+/workspace/src/game/bg_pmove.c:3349:1: note: previous definition of ‘aimSpreadScaleAdd’ with type ‘int’
+ 3349 | aimSpreadScaleAdd = 0;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3436:1: error: expected identifier or ‘(’ before ‘break’
+ 3436 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3438:1: error: expected identifier or ‘(’ before ‘case’
+ 3438 | case WP_FG42:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3442:1: warning: data definition has no type or storage class
+ 3442 | aimSpreadScaleAdd = 15 + rand() % 10;       // (SA) new values for DM
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3442:1: warning: type defaults to ‘int’ in declaration of ‘aimSpreadScaleAdd’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3442:1: error: redefinition of ‘aimSpreadScaleAdd’
+/workspace/src/game/bg_pmove.c:3349:1: note: previous definition of ‘aimSpreadScaleAdd’ with type ‘int’
+ 3349 | aimSpreadScaleAdd = 0;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3442:21: error: initializer element is not constant
+ 3442 | aimSpreadScaleAdd = 15 + rand() % 10;       // (SA) new values for DM
+      |                     ^~
+/workspace/src/game/bg_pmove.c:3443:1: error: expected identifier or ‘(’ before ‘break’
+ 3443 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3445:1: error: expected identifier or ‘(’ before ‘case’
+ 3445 | case WP_STEN:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3447:1: warning: data definition has no type or storage class
+ 3447 | aimSpreadScaleAdd = 15 + rand() % 10;       // (SA) new values for DM
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3447:1: warning: type defaults to ‘int’ in declaration of ‘aimSpreadScaleAdd’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3447:1: error: redefinition of ‘aimSpreadScaleAdd’
+/workspace/src/game/bg_pmove.c:3349:1: note: previous definition of ‘aimSpreadScaleAdd’ with type ‘int’
+ 3349 | aimSpreadScaleAdd = 0;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3447:21: error: initializer element is not constant
+ 3447 | aimSpreadScaleAdd = 15 + rand() % 10;       // (SA) new values for DM
+      |                     ^~
+/workspace/src/game/bg_pmove.c:3448:1: error: expected identifier or ‘(’ before ‘break’
+ 3448 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3450:1: error: expected identifier or ‘(’ before ‘case’
+ 3450 | case WP_SILENCER:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3452:1: warning: data definition has no type or storage class
+ 3452 | aimSpreadScaleAdd = 35;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3452:1: warning: type defaults to ‘int’ in declaration of ‘aimSpreadScaleAdd’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3452:1: error: redefinition of ‘aimSpreadScaleAdd’
+/workspace/src/game/bg_pmove.c:3349:1: note: previous definition of ‘aimSpreadScaleAdd’ with type ‘int’
+ 3349 | aimSpreadScaleAdd = 0;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3453:1: error: expected identifier or ‘(’ before ‘break’
+ 3453 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3455:1: error: expected identifier or ‘(’ before ‘case’
+ 3455 | case WP_VENOM:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3457:1: warning: data definition has no type or storage class
+ 3457 | aimSpreadScaleAdd = 10;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3457:1: warning: type defaults to ‘int’ in declaration of ‘aimSpreadScaleAdd’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3457:1: error: redefinition of ‘aimSpreadScaleAdd’
+/workspace/src/game/bg_pmove.c:3349:1: note: previous definition of ‘aimSpreadScaleAdd’ with type ‘int’
+ 3349 | aimSpreadScaleAdd = 0;
+      | ^~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3458:1: error: expected identifier or ‘(’ before ‘break’
+ 3458 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3461:1: error: expected identifier or ‘(’ before ‘case’
+ 3461 | case WP_CLASS_SPECIAL:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3464:1: error: expected identifier or ‘(’ before ‘break’
+ 3464 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3466:1: error: expected identifier or ‘(’ before ‘case’
+ 3466 | case WP_MONSTER_ATTACK1:
+      | ^~~~
+/workspace/src/game/bg_pmove.c:3476:1: error: expected identifier or ‘(’ before ‘default’
+ 3476 | default:
+      | ^~~~~~~
+/workspace/src/game/bg_pmove.c:3487:1: error: expected identifier or ‘(’ before ‘break’
+ 3487 | break;
+      | ^~~~~
+/workspace/src/game/bg_pmove.c:3488:1: error: expected identifier or ‘(’ before ‘}’ token
+ 3488 | }
+      | ^
+/workspace/src/game/bg_pmove.c:3494:1: error: expected identifier or ‘(’ before ‘if’
+ 3494 | if ( ( pm->ps->aiChar != AICHAR_PROTOSOLDIER ) &&
+      | ^~
+/workspace/src/game/bg_pmove.c:3506:1: error: expected identifier or ‘(’ before ‘if’
+ 3506 | if ( pm->ps->powerups[PW_HASTE] ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3513:3: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘->’ token
+ 3513 | pm->ps->aimSpreadScaleFloat += 3.0 * aimSpreadScaleAdd;
+      |   ^~
+/workspace/src/game/bg_pmove.c:3514:1: error: expected identifier or ‘(’ before ‘if’
+ 3514 | if ( pm->ps->aimSpreadScaleFloat > 255 ) {
+      | ^~
+/workspace/src/game/bg_pmove.c:3517:3: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘->’ token
+ 3517 | pm->ps->aimSpreadScale = (int)( pm->ps->aimSpreadScaleFloat );
+      |   ^~
+/workspace/src/game/bg_pmove.c:3519:3: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘->’ token
+ 3519 | pm->ps->weaponTime += addTime;
+      |   ^~
+/workspace/src/game/bg_pmove.c:3521:1: warning: data definition has no type or storage class
+ 3521 | PM_SwitchIfEmpty();
+      | ^~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3521:1: warning: type defaults to ‘int’ in declaration of ‘PM_SwitchIfEmpty’ [-Wimplicit-int]
+/workspace/src/game/bg_pmove.c:3521:1: error: conflicting types for ‘PM_SwitchIfEmpty’; have ‘int()’
+/workspace/src/game/bg_pmove.c:2399:13: note: previous definition of ‘PM_SwitchIfEmpty’ with type ‘void(void)’
+ 2399 | static void PM_SwitchIfEmpty( void ) {
+      |             ^~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:3522:1: error: expected identifier or ‘(’ before ‘}’ token
+ 3522 | }
+      | ^
+/workspace/src/game/bg_pmove.c: In function ‘PM_UpdateLean’:
+/workspace/src/game/bg_pmove.c:3607:16: warning: variable ‘viewangles’ set but not used [-Wunused-but-set-variable]
+ 3607 |         vec3_t viewangles;
+      |                ^~~~~~~~~~
+/workspace/src/game/bg_pmove.c: In function ‘Com_GetFlamethrowerRange’:
+/workspace/src/game/bg_pmove.c:66:1: warning: control reaches end of non-void function [-Wreturn-type]
+   66 | }
+      | ^
+/workspace/src/game/bg_pmove.c: In function ‘PM_BeginWeaponChange’:
+/workspace/src/game/bg_pmove.c:2107:41: warning: this statement may fall through [-Wimplicit-fallthrough=]
+ 2107 |                 pm->ps->grenadeTimeLeft = 0;        // initialize the timer on the potato you're switching to
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~^~~
+/workspace/src/game/bg_pmove.c:2109:9: note: here
+ 2109 |         default:
+      |         ^~~~~~~
+/workspace/src/game/bg_pmove.c: At top level:
+/workspace/src/game/bg_pmove.c:2399:13: warning: ‘PM_SwitchIfEmpty’ defined but not used [-Wunused-function]
+ 2399 | static void PM_SwitchIfEmpty( void ) {
+      |             ^~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:2285:13: warning: ‘PM_FinishWeaponReload’ defined but not used [-Wunused-function]
+ 2285 | static void PM_FinishWeaponReload( void ) {
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/workspace/src/game/bg_pmove.c:2170:13: warning: ‘PM_FinishWeaponChange’ defined but not used [-Wunused-function]
+ 2170 | static void PM_FinishWeaponChange( void ) {
+      |             ^~~~~~~~~~~~~~~~~~~~~
+cc1: note: unrecognized command-line option ‘-Wno-void-pointer-to-int-cast’ may have been intended to silence earlier diagnostics
+cc1: note: unrecognized command-line option ‘-Wno-int-to-void-pointer-cast’ may have been intended to silence earlier diagnostics
+make[2]: *** [CMakeFiles/game.dir/build.make:650: CMakeFiles/game.dir/src/game/bg_pmove.c.o] Error 1
+make[2]: *** Waiting for unfinished jobs....
+/workspace/src/game/q_shared.c: In function ‘COM_Compress’:
+/workspace/src/game/q_shared.c:434:16: warning: variable ‘pc’ set but not used [-Wunused-but-set-variable]
+  434 |         int c, pc, size;
+      |                ^~
+/workspace/src/game/q_shared.c: In function ‘Com_sprintf’:
+/workspace/src/game/q_shared.c:939:18: warning: comparison of integer expressions of different signedness: ‘int’ and ‘long unsigned int’ [-Wsign-compare]
+  939 |         if ( len >= sizeof( bigbuffer ) ) {
+      |                  ^~
+At top level:
+cc1: note: unrecognized command-line option ‘-Wno-void-pointer-to-int-cast’ may have been intended to silence earlier diagnostics
+cc1: note: unrecognized command-line option ‘-Wno-int-to-void-pointer-cast’ may have been intended to silence earlier diagnostics
+make[1]: *** [CMakeFiles/Makefile2:115: CMakeFiles/game.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2

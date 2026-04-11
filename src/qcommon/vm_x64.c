@@ -194,7 +194,7 @@ void VM_Native_UnloadModule(int vmNumber) {
  * @param vmNumber VM slot number
  * @return Pointer to module data or NULL if not loaded
  */
-const vmNativeData_t* VM_Native_GetInfo(int vmNumber) {
+const void* VM_Native_GetInfo(int vmNumber) {
     if (vmNumber < 0 || vmNumber >= MAX_VM) {
         return NULL;
     }
@@ -203,7 +203,7 @@ const vmNativeData_t* VM_Native_GetInfo(int vmNumber) {
         return NULL;
     }
     
-    return &vmNativeModules[vmNumber];
+    return (const void*)&vmNativeModules[vmNumber];
 }
 
 /**
@@ -236,18 +236,3 @@ qboolean VM_ValidatePointerAlignment(const void* ptr, size_t size) {
  * and make the intent clear in the code.
  */
 
-ID_INLINE uintptr_t VM_PtrToUint(const void* ptr) {
-    return (uintptr_t)ptr;
-}
-
-ID_INLINE intptr_t VM_PtrToInt(const void* ptr) {
-    return (intptr_t)ptr;
-}
-
-ID_INLINE void* VM_UintToPtr(uintptr_t num) {
-    return (void*)num;
-}
-
-ID_INLINE void* VM_IntToPtr(intptr_t num) {
-    return (void*)num;
-}

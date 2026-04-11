@@ -1,0 +1,1 @@
+/usr/bin/cc -fPIC -O3 -DNDEBUG -shared -Wl,-soname,libui.so -o libui.so CMakeFiles/ui.dir/src/ui/ui_main.c.o CMakeFiles/ui.dir/src/ui/ui_atoms.c.o CMakeFiles/ui.dir/src/ui/ui_shared.c.o CMakeFiles/ui.dir/src/ui/ui_gameinfo.c.o CMakeFiles/ui.dir/src/ui/ui_players.c.o CMakeFiles/ui.dir/src/ui/ui_syscalls.c.o CMakeFiles/ui.dir/src/ui/ui_util.c.o 

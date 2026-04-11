@@ -29,7 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  * types (uintptr_t/intptr_t) to avoid truncation on x64 platforms.
  */
 
-#include "../qcommon/q_shared.h"
+// #include "../qcommon/q_shared.h"
+#include "q_shared.h"
 #include "../qcommon/qcommon.h"
 #include <stdint.h>
 #include <string.h>
@@ -37,6 +38,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/syscall.h>
 
 // Architecture check
 #if defined(__x86_64__) || defined(_M_X64) || defined(__amd64__)
@@ -53,7 +56,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  * 
  * @return Current time in milliseconds since epoch
  */
-int64_t Sys_Milliseconds(void) {
+int Sys_Milliseconds(void) {
     struct timespec ts;
     
     #ifdef CLOCK_MONOTONIC
@@ -247,7 +250,7 @@ qboolean Sys_AtomicCAS64(volatile int64_t* ptr, int64_t expected, int64_t desire
  * @param ptr Pointer to convert
  * @return Integer representation of pointer
  */
-QINLINE uintptr_t Sys_PtrToUint(const void* ptr) {
+ID_INLINE uintptr_t Sys_PtrToUint(const void* ptr) {
     return (uintptr_t)ptr;
 }
 
@@ -259,7 +262,7 @@ QINLINE uintptr_t Sys_PtrToUint(const void* ptr) {
  * @param num Integer to convert
  * @return Pointer representation
  */
-QINLINE void* Sys_UintToPtr(uintptr_t num) {
+ID_INLINE void* Sys_UintToPtr(uintptr_t num) {
     return (void*)num;
 }
 
