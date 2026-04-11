@@ -3153,30 +3153,6 @@ src/sdl2/sdl_main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtcw_client.dir/build.make CMakeFiles/rtcw_client.dir/src/sdl2/sdl_main.c.s
 .PHONY : src/sdl2/sdl_main.c.s
 
-src/sdl2/sdl_shared.o: src/sdl2/sdl_shared.c.o
-.PHONY : src/sdl2/sdl_shared.o
-
-# target to build an object file
-src/sdl2/sdl_shared.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtcw_client.dir/build.make CMakeFiles/rtcw_client.dir/src/sdl2/sdl_shared.c.o
-.PHONY : src/sdl2/sdl_shared.c.o
-
-src/sdl2/sdl_shared.i: src/sdl2/sdl_shared.c.i
-.PHONY : src/sdl2/sdl_shared.i
-
-# target to preprocess a source file
-src/sdl2/sdl_shared.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtcw_client.dir/build.make CMakeFiles/rtcw_client.dir/src/sdl2/sdl_shared.c.i
-.PHONY : src/sdl2/sdl_shared.c.i
-
-src/sdl2/sdl_shared.s: src/sdl2/sdl_shared.c.s
-.PHONY : src/sdl2/sdl_shared.s
-
-# target to generate assembly for a file
-src/sdl2/sdl_shared.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtcw_client.dir/build.make CMakeFiles/rtcw_client.dir/src/sdl2/sdl_shared.c.s
-.PHONY : src/sdl2/sdl_shared.c.s
-
 src/sdl2/sdl_snd.o: src/sdl2/sdl_snd.c.o
 .PHONY : src/sdl2/sdl_snd.o
 
@@ -3751,9 +3727,6 @@ help:
 	@echo "... src/sdl2/sdl_main.o"
 	@echo "... src/sdl2/sdl_main.i"
 	@echo "... src/sdl2/sdl_main.s"
-	@echo "... src/sdl2/sdl_shared.o"
-	@echo "... src/sdl2/sdl_shared.i"
-	@echo "... src/sdl2/sdl_shared.s"
 	@echo "... src/sdl2/sdl_snd.o"
 	@echo "... src/sdl2/sdl_snd.i"
 	@echo "... src/sdl2/sdl_snd.s"

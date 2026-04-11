@@ -103,8 +103,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_input.c.o.d"
   "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_main.c.o"
   "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_main.c.o.d"
-  "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_shared.c.o"
-  "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_shared.c.o.d"
   "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_snd.c.o"
   "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_snd.c.o.d"
   "rtcw_client"

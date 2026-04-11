@@ -60,7 +60,6 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/workspace/src/sdl2/sdl_glimp.c" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_glimp.c.o" "gcc" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_glimp.c.o.d"
   "/workspace/src/sdl2/sdl_input.c" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_input.c.o" "gcc" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_input.c.o.d"
   "/workspace/src/sdl2/sdl_main.c" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_main.c.o" "gcc" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_main.c.o.d"
-  "/workspace/src/sdl2/sdl_shared.c" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_shared.c.o" "gcc" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_shared.c.o.d"
   "/workspace/src/sdl2/sdl_snd.c" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_snd.c.o" "gcc" "CMakeFiles/rtcw_client.dir/src/sdl2/sdl_snd.c.o.d"
   )
 

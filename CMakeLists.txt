@@ -135,7 +135,6 @@ set(SDL_PLATFORM_SOURCES
     ${SDL_DIR}/sdl_input.c      # Ввод (клавиатура, мышь) через SDL2
     ${SDL_DIR}/sdl_snd.c        # Звук через SDL2
     ${SDL_DIR}/sdl_main.c       # Точка входа и основной цикл
-    ${SDL_DIR}/sdl_shared.c     # Общие функции платформы
 )
 
 # Объединяем все исходники клиента

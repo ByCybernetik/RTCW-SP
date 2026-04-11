@@ -1,150 +1,30 @@
 ```
-# CMake build artifacts
+# Build artifacts
 build/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-
-# Compiled object files
 *.o
 *.obj
 *.a
-*.lib
 *.so
-*.dylib
 *.dll
+*.exe
+*.out
 
-# Debug and release builds
-Debug/
-Release/
-RelWithDebInfo/
-MinSizeRel/
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Logs
+*.log
 
 # Temporary files
 *.tmp
-*.log
 *.swp
 *.swo
 
-# System files
-.DS_Store
-Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# IDE files
-.vscode/
-.idea/
-
-# Environment files
+# Environment
 .env
 .env.local
 *.env.*
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# MyPy cache
-.mypy_cache/
-
-# Pytest cache
-.pytest_cache/
-
-# Gradle
-.gradle/
-build/
-
-# Maven
-target/
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Julia
-julia-*/
-
-# Zig
-zig-cache/
-zig-out/
-
-# Rust
-Cargo.lock
-target/
-
-# Go
-*.exe
-*.dll
-*.so
-*.dylib
-
-# Java
-*.class
-*.jar
-*.war
-*.ear
-*.nar
-*.hprof
-
-# C#
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-*.userprefs
-*.pidb
-*.metadata
-*.builds
-*.csproj.user
-
-# Visual Studio
-*.VC.db
-*.VC.VC.opendb
-
-# XCode
-*.xcodeproj/
-*.xcworkspace/
-*.pbxuser
-*.mode1v3
-*.perspectivev3
-*.xcuserstate
-*.xccheckout
-
-# Android
-*.apk
-*.aar
-*.aab
-app/build/
-
-# Qt
-*.pro.user
-*.pro.user.*
-*.qm
-
-# Autotools
-autom4te.cache/
-.libs/
-.deps/
-
-# Meson
-meson-private/
-meson-log.txt
-
-# Bazel
-bazel-*
-
-# Temporary backup files
-*~
-*.bak
-*.backup
-*.old
 ```
