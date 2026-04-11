@@ -68,6 +68,9 @@ set(QCOMMON_SOURCES
     ${COMMON_DIR}/cm_load.c
     ${COMMON_DIR}/cm_test.c
     ${COMMON_DIR}/cm_trace.c
+    ${COMMON_DIR}/cm_patch.c
+    ${COMMON_DIR}/cm_polylib.c
+    ${COMMON_DIR}/cmd.c
     ${COMMON_DIR}/msg.c
     ${COMMON_DIR}/files.c
     ${COMMON_DIR}/cvar.c
@@ -75,8 +78,15 @@ set(QCOMMON_SOURCES
     ${COMMON_DIR}/huffman.c
     ${COMMON_DIR}/md4.c
     ${COMMON_DIR}/vm.c
-    ${COMMON_DIR}/vm_interpreted.c
+    # Native x64 VM implementation (replaces vm_x86.c and vm_interpreted.c)
+    ${COMMON_DIR}/vm_x64.c
+    ${COMMON_DIR}/sys_x64.c
 )
+
+# Assembly files for x64 VM helpers
+if(ARCH_X64)
+    set(QCOMMON_SOURCES ${QCOMMON_SOURCES} ${COMMON_DIR}/vm_x64_asm.S)
+endif()
 
 # Исходники рендерера
 set(RENDERER_SOURCES
@@ -107,13 +117,16 @@ set(CLIENT_SOURCES
     ${CLIENT_DIR}/cl_parse.c
     ${CLIENT_DIR}/cl_scrn.c
     ${CLIENT_DIR}/cl_cin.c
-    ${CLIENT_DIR}/cl_ents.c
     ${CLIENT_DIR}/cl_keys.c
     ${CLIENT_DIR}/cl_console.c
-    ${CLIENT_DIR}/snd_main.c
+    ${CLIENT_DIR}/cl_cgame.c
+    ${CLIENT_DIR}/cl_ui.c
+    ${CLIENT_DIR}/cl_net_chan.c
+    ${CLIENT_DIR}/snd_dma.c
     ${CLIENT_DIR}/snd_mem.c
     ${CLIENT_DIR}/snd_mix.c
     ${CLIENT_DIR}/snd_wavelet.c
+    ${CLIENT_DIR}/snd_adpcm.c
 )
 
 # Исходники SDL2 платформы
@@ -170,13 +183,41 @@ set(GAME_SOURCES
     ${GAME_DIR}/g_cmds.c
     ${GAME_DIR}/g_svcmds.c
     ${GAME_DIR}/g_team.c
-    ${GAME_DIR}/g_ai.c
+    ${GAME_DIR}/g_active.c
+    ${GAME_DIR}/g_alarm.c
+    ${GAME_DIR}/g_bot.c
+    ${GAME_DIR}/g_client.c
+    ${GAME_DIR}/g_items.c
+    ${GAME_DIR}/g_mem.c
+    ${GAME_DIR}/g_missile.c
+    ${GAME_DIR}/g_mover.c
+    ${GAME_DIR}/g_props.c
+    ${GAME_DIR}/g_save.c
+    ${GAME_DIR}/g_script.c
+    ${GAME_DIR}/g_script_actions.c
+    ${GAME_DIR}/g_session.c
+    ${GAME_DIR}/g_syscalls.c
+    ${GAME_DIR}/g_target.c
+    ${GAME_DIR}/g_trigger.c
+    ${GAME_DIR}/g_tramcar.c
     ${GAME_DIR}/ai_cast.c
+    ${GAME_DIR}/ai_cast_characters.c
+    ${GAME_DIR}/ai_cast_debug.c
+    ${GAME_DIR}/ai_cast_events.c
+    ${GAME_DIR}/ai_cast_fight.c
+    ${GAME_DIR}/ai_cast_func_attack.c
+    ${GAME_DIR}/ai_cast_func_boss1.c
     ${GAME_DIR}/ai_cast_funcs.c
+    ${GAME_DIR}/ai_cast_script.c
+    ${GAME_DIR}/ai_cast_script_actions.c
+    ${GAME_DIR}/ai_cast_script_ents.c
+    ${GAME_DIR}/ai_cast_sight.c
     ${GAME_DIR}/ai_cast_think.c
+    ${GAME_DIR}/bg_animation.c
     ${GAME_DIR}/bg_misc.c
     ${GAME_DIR}/bg_pmove.c
     ${GAME_DIR}/bg_slidemove.c
+    ${GAME_DIR}/bg_lib.c
     ${GAME_DIR}/q_math.c
     ${GAME_DIR}/q_shared.c
 )
@@ -201,7 +242,7 @@ set(CGAME_SOURCES
     ${CGAME_DIR}/cg_players.c
     ${CGAME_DIR}/cg_playerstate.c
     ${CGAME_DIR}/cg_predict.c
-    ${CGAME_DIR}/cg_entities.c
+    ${CGAME_DIR}/cg_ents.c
     ${CGAME_DIR}/cg_effects.c
     ${CGAME_DIR}/cg_localents.c
     ${CGAME_DIR}/cg_marks.c
@@ -209,10 +250,20 @@ set(CGAME_SOURCES
     ${CGAME_DIR}/cg_view.c
     ${CGAME_DIR}/cg_servercmds.c
     ${CGAME_DIR}/cg_info.c
-    ${CGAME_DIR}/bg_misc.c
-    ${CGAME_DIR}/bg_pmove.c
-    ${CGAME_DIR}/bg_slidemove.c
-    ${CGAME_DIR}/q_math.c
+    ${CGAME_DIR}/cg_consolecmds.c
+    ${CGAME_DIR}/cg_drawtools.c
+    ${CGAME_DIR}/cg_event.c
+    ${CGAME_DIR}/cg_flamethrower.c
+    ${CGAME_DIR}/cg_newDraw.c
+    ${CGAME_DIR}/cg_scoreboard.c
+    ${CGAME_DIR}/cg_snapshot.c
+    ${CGAME_DIR}/cg_sound.c
+    ${CGAME_DIR}/cg_syscalls.c
+    ${CGAME_DIR}/cg_trails.c
+    ${GAME_DIR}/bg_misc.c
+    ${GAME_DIR}/bg_pmove.c
+    ${GAME_DIR}/bg_slidemove.c
+    ${GAME_DIR}/q_math.c
 )
 
 add_library(cgame SHARED ${CGAME_SOURCES})
@@ -231,10 +282,12 @@ target_compile_definitions(cgame PRIVATE
 # UI библиотека
 set(UI_SOURCES
     ${UI_DIR}/ui_main.c
-    ${UI_DIR}/ui_menu.c
     ${UI_DIR}/ui_atoms.c
     ${UI_DIR}/ui_shared.c
-    ${UI_DIR}/ui_connect.c
+    ${UI_DIR}/ui_gameinfo.c
+    ${UI_DIR}/ui_players.c
+    ${UI_DIR}/ui_syscalls.c
+    ${UI_DIR}/ui_util.c
 )
 
 add_library(ui SHARED ${UI_SOURCES})
