@@ -161,7 +161,6 @@ target_link_libraries(rtcw_client
 # Добавляем определения для клиента
 target_compile_definitions(rtcw_client PRIVATE
     CLIENT
-    Q3_VM
     USE_SDL2
     ARCH_${CMAKE_SIZEOF_VOID_P}
 )
@@ -231,7 +230,6 @@ target_include_directories(game PRIVATE
 
 target_compile_definitions(game PRIVATE
     GAME
-    Q3_VM
 )
 
 # CGAME библиотека
@@ -276,7 +274,6 @@ target_include_directories(cgame PRIVATE
 
 target_compile_definitions(cgame PRIVATE
     CGAME
-    Q3_VM
 )
 
 # UI библиотека
@@ -300,7 +297,6 @@ target_include_directories(ui PRIVATE
 
 target_compile_definitions(ui PRIVATE
     UI
-    Q3_VM
 )
 
 # Правила установки
