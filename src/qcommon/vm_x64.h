@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __VM_X64_H__
 #define __VM_X64_H__
 
-#include "../qcommon/q_shared.h"
+#include "../game/q_shared.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -123,19 +123,19 @@ qboolean VM_ValidatePointerAlignment(const void* ptr, size_t size);
  * and integers without compiler warnings or data loss.
  */
 
-QINLINE uintptr_t VM_PtrToUint(const void* ptr) {
+static ID_INLINE uintptr_t VM_PtrToUint(const void* ptr) {
     return (uintptr_t)ptr;
 }
 
-QINLINE intptr_t VM_PtrToInt(const void* ptr) {
+static ID_INLINE intptr_t VM_PtrToInt(const void* ptr) {
     return (intptr_t)ptr;
 }
 
-QINLINE void* VM_UintToPtr(uintptr_t num) {
+static ID_INLINE void* VM_UintToPtr(uintptr_t num) {
     return (void*)num;
 }
 
-QINLINE void* VM_IntToPtr(intptr_t num) {
+static ID_INLINE void* VM_IntToPtr(intptr_t num) {
     return (void*)num;
 }
 

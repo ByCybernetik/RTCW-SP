@@ -30,9 +30,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  * pointer truncation issues.
  */
 
-#include "../qcommon/q_shared.h"
-#include "../qcommon/qcommon.h"
+#include "../game/q_shared.h"
+#include "qcommon.h"
 #include "vm_local.h"
+#include "vm_x64.h"
 #include <stdint.h>
 #include <string.h>
 #include <dlfcn.h>
@@ -99,11 +100,11 @@ qboolean VM_Native_LoadModule(int vmNumber, const char* name) {
     
     // Construct library path based on platform
     #ifdef __linux__
-        Q_snprintf(libraryPath, sizeof(libraryPath), "./%s.so", name);
+        snprintf(libraryPath, sizeof(libraryPath), "./%s.so", name);
     #elif defined(_WIN32)
-        Q_snprintf(libraryPath, sizeof(libraryPath), "%s.dll", name);
+        snprintf(libraryPath, sizeof(libraryPath), "%s.dll", name);
     #elif defined(__APPLE__)
-        Q_snprintf(libraryPath, sizeof(libraryPath), "./%s.dylib", name);
+        snprintf(libraryPath, sizeof(libraryPath), "./%s.dylib", name);
     #else
         #error "Unsupported platform for native modules"
     #endif
@@ -122,7 +123,7 @@ qboolean VM_Native_LoadModule(int vmNumber, const char* name) {
     }
     
     // Get entry point symbol - using proper 64-bit function pointer type
-    Q_snprintf(entryName, sizeof(entryName), "vmMain");
+    snprintf(entryName, sizeof(entryName), "vmMain");
     entryPoint = (intptr_t (*)(intptr_t, intptr_t*))dlsym(handle, entryName);
     
     if (!entryPoint) {
@@ -235,18 +236,18 @@ qboolean VM_ValidatePointerAlignment(const void* ptr, size_t size) {
  * and make the intent clear in the code.
  */
 
-QINLINE uintptr_t VM_PtrToUint(const void* ptr) {
+ID_INLINE uintptr_t VM_PtrToUint(const void* ptr) {
     return (uintptr_t)ptr;
 }
 
-QINLINE intptr_t VM_PtrToInt(const void* ptr) {
+ID_INLINE intptr_t VM_PtrToInt(const void* ptr) {
     return (intptr_t)ptr;
 }
 
-QINLINE void* VM_UintToPtr(uintptr_t num) {
+ID_INLINE void* VM_UintToPtr(uintptr_t num) {
     return (void*)num;
 }
 
-QINLINE void* VM_IntToPtr(intptr_t num) {
+ID_INLINE void* VM_IntToPtr(intptr_t num) {
     return (void*)num;
 }
