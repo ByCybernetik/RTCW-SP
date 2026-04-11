@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <unistd.h>
 #include <errno.h>
 #include <sys/syscall.h>
+#include <sched.h>
 
 // Architecture check
 #if defined(__x86_64__) || defined(_M_X64) || defined(__amd64__)

@@ -2704,7 +2704,11 @@ CMakeFiles/rtcw_client.dir/src/qcommon/sys_x64.c.o: /workspace/src/qcommon/sys_x
   /usr/include/x86_64-linux-gnu/sys/syscall.h \
   /usr/include/x86_64-linux-gnu/asm/unistd.h \
   /usr/include/x86_64-linux-gnu/asm/unistd_64.h \
-  /usr/include/x86_64-linux-gnu/bits/syscall.h
+  /usr/include/x86_64-linux-gnu/bits/syscall.h \
+  /usr/include/sched.h \
+  /usr/include/x86_64-linux-gnu/bits/sched.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h \
+  /usr/include/x86_64-linux-gnu/bits/cpu-set.h
 
 CMakeFiles/rtcw_client.dir/src/qcommon/vm.c.o: /workspace/src/qcommon/vm.c \
   /usr/include/stdc-predef.h \
@@ -4965,6 +4969,14 @@ CMakeFiles/rtcw_client.dir/src/renderer/tr_world.c.o: /workspace/src/renderer/tr
 /workspace/src/qcommon/vm_x64.c:
 
 /workspace/src/qcommon/vm_local.h:
+
+/usr/include/x86_64-linux-gnu/bits/cpu-set.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
+
+/usr/include/x86_64-linux-gnu/bits/sched.h:
+
+/usr/include/sched.h:
 
 /usr/include/x86_64-linux-gnu/bits/syscall.h:
 
