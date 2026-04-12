@@ -28,10 +28,10 @@ If you have questions concerning this license or the applicable additional terms
 
 // sys_sdl_main.c - SDL2-based system layer for RTCW SP
 
-#include "../qcommon/q_shared.h"
-#include "../qcommon/qcommon.h"
-#include "../client/client.h"
-#include "../renderer/tr_public.h"
+#include "q_shared.h"
+#include "qcommon.h"
+#include "client.h"
+#include "tr_public.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>

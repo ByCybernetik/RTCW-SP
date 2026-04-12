@@ -1105,11 +1105,8 @@ void RB_CalcRotateTexCoords( float degsPerSecond, float *st ) {
 
 
 
-
 // x64 compatible version - standard C implementation
-long myftol( float f ) {
-	return (long)f;
-}
+// Note: Function removed - now using inline version in tr_local.h
 
 /*
 ** RB_CalcSpecularAlpha

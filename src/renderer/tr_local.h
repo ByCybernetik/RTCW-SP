@@ -44,7 +44,10 @@ typedef unsigned int glIndex_t;
 #if id386 && !( ( defined __linux__ || defined __FreeBSD__ ) && ( defined __i386__ ) ) // rb010123
 long myftol( float f );
 #else
-#define myftol( x ) ( (int)( x ) )
+// x64 and other platforms - use standard C function
+static inline long myftol( float f ) {
+    return (long)f;
+}
 #endif
 
 

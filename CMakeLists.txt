@@ -124,7 +124,6 @@ set(RENDERER_SRC
 # Библиотеки
 set(LIBJPEG_SRC
     src/jpeg-6/jcapimin.c
-    src/jpeg-6/jcapistd.c
     src/jpeg-6/jccoefct.c
     src/jpeg-6/jccolor.c
     src/jpeg-6/jcdctmgr.c
@@ -151,29 +150,19 @@ set(LIBJPEG_SRC
     src/jpeg-6/jdmainct.c
     src/jpeg-6/jdmarker.c
     src/jpeg-6/jdmaster.c
-    src/jpeg-6/jdmerge.c
-    src/jpeg-6/jdphuff.c
     src/jpeg-6/jdpostct.c
     src/jpeg-6/jdsample.c
     src/jpeg-6/jdtrans.c
     src/jpeg-6/jerror.c
     src/jpeg-6/jfdctflt.c
-    src/jpeg-6/jfdctfst.c
-    src/jpeg-6/jfdctint.c
     src/jpeg-6/jidctflt.c
-    src/jpeg-6/jidctfst.c
-    src/jpeg-6/jidctint.c
-    src/jpeg-6/jidctred.c
-    src/jpeg-6/jquant1.c
-    src/jpeg-6/jquant2.c
-    src/jpeg-6/jutils.c
     src/jpeg-6/jmemmgr.c
     src/jpeg-6/jmemnobs.c
+    src/jpeg-6/jutils.c
 )
 
 # idLib
 set(IDLIB_SRC
-    src/idLib/idAudio.cpp
     src/idLib/idQ3Asnd.cpp
     src/idLib/idSound.cpp
     src/idLib/idSpeaker.cpp
@@ -181,9 +170,14 @@ set(IDLIB_SRC
 
 # Splines
 set(SPLINES_SRC
-    src/splines/lexer.cpp
-    src/splines/math.cpp
+    src/splines/math_angles.cpp
+    src/splines/math_matrix.cpp
+    src/splines/math_quaternion.cpp
+    src/splines/math_vector.cpp
+    src/splines/q_parse.cpp
+    src/splines/q_shared.cpp
     src/splines/splines.cpp
+    src/splines/util_str.cpp
 )
 
 # Bot AI
@@ -198,27 +192,35 @@ set(BOTAI_SRC
 
 # BotLib
 set(BOTLIB_SRC
-    src/botlib/be_aas_bsp.c
     src/botlib/be_aas_bspq3.c
     src/botlib/be_aas_cluster.c
     src/botlib/be_aas_debug.c
     src/botlib/be_aas_entity.c
     src/botlib/be_aas_file.c
+    src/botlib/be_aas_main.c
     src/botlib/be_aas_move.c
     src/botlib/be_aas_optimize.c
     src/botlib/be_aas_reach.c
     src/botlib/be_aas_route.c
     src/botlib/be_aas_routealt.c
+    src/botlib/be_aas_routetable.c
     src/botlib/be_aas_sample.c
     src/botlib/be_ai_char.c
     src/botlib/be_ai_chat.c
+    src/botlib/be_ai_gen.c
     src/botlib/be_ai_goal.c
-    src/botlib/be_ai_inventory.c
     src/botlib/be_ai_move.c
     src/botlib/be_ai_weap.c
     src/botlib/be_ai_weight.c
     src/botlib/be_ea.c
     src/botlib/be_interface.c
+    src/botlib/l_crc.c
+    src/botlib/l_libvar.c
+    src/botlib/l_log.c
+    src/botlib/l_memory.c
+    src/botlib/l_precomp.c
+    src/botlib/l_script.c
+    src/botlib/l_struct.c
 )
 
 # Общие заголовки
