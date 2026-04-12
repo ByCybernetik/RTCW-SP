@@ -1,6 +1,6 @@
 CMakeFiles/rtcw_client.dir/src/qcommon/sys_x64.c.o: \
  /workspace/src/qcommon/sys_x64.c /usr/include/stdc-predef.h \
- /workspace/src/game/q_shared.h /usr/include/assert.h \
+ /workspace/src/qcommon/q_shared.h /usr/include/assert.h \
  /usr/include/features.h /usr/include/features-time64.h \
  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
  /usr/include/x86_64-linux-gnu/bits/timesize.h \

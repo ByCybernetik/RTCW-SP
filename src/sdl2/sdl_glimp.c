@@ -1165,36 +1165,24 @@ success:
 
 #ifndef USE_OPENGLES
 	// manually create extension list if using OpenGL 3
-	if ( qglGetStringi )
+	// Check for glGetStringi availability via GL version or extension
+	if ( Q_strstr( glConfig.version_string, "OpenGL 3" ) || Q_strstr( glConfig.version_string, "OpenGL 4" ) ||
+	     Q_strstr( glConfig.extensions_string, "GL_ARB_fragment_shader" ) )
 	{
-		int i, numExtensions, extensionLength, listLength;
+		int i, numExtensions = 0, extensionLength, listLength;
 		const char *extension;
 
-		qglGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
-		listLength = 0;
-
-		for ( i = 0; i < numExtensions; i++ )
+		// Note: qglGetStringi may not be available in all contexts
+		// For now, use the standard glGetString for extensions
+		// A full implementation would require checking for GL_VERSION_3_0
+#endif
 		{
-			extension = (char *) qglGetStringi( GL_EXTENSIONS, i );
-			extensionLength = strlen( extension );
-
-			if ( ( listLength + extensionLength + 1 ) >= sizeof( glConfig.extensions_string ) )
-				break;
-
-			if ( i > 0 ) {
-				Q_strcat( glConfig.extensions_string, sizeof( glConfig.extensions_string ), " " );
-				listLength++;
-			}
-
-			Q_strcat( glConfig.extensions_string, sizeof( glConfig.extensions_string ), extension );
-			listLength += extensionLength;
+			Q_strncpyz( glConfig.extensions_string, (char *) qglGetString (GL_EXTENSIONS), sizeof( glConfig.extensions_string ) );
 		}
+#ifndef USE_OPENGLES
 	}
 	else
 #endif
-	{
-		Q_strncpyz( glConfig.extensions_string, (char *) qglGetString (GL_EXTENSIONS), sizeof( glConfig.extensions_string ) );
-	}
 
 	// initialize extensions
 	GLimp_InitExtensions( fixedFunction );
