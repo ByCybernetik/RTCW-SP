@@ -18,20 +18,25 @@ find_package(OpenAL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FREETYPE2 REQUIRED freetype2)
 
-# Платформенно-зависимые настройки
+# Платформенно-зависимые настройки (SDL2-based)
 if(WIN32)
     add_definitions(-DWIN32 -D_WIN32)
     set(PLATFORM_SRC 
-        src/win32/win_main.c
-        src/win32/win_snd.c
-        src/win32/win_input.c
+        src/unix/sys_sdl_main.c
+        src/unix/sys_sdl_input.c
+        src/unix/sys_sdl_sound.c
+        src/unix/sys_sdl_dll.c
+        src/unix/sys_sdl_gl.c
     )
-    set(PLATFORM_LIBS ws2_32 winmm dinput8 dxguid)
+    set(PLATFORM_LIBS ws2_32 opengl32)
 elseif(APPLE)
     add_definitions(-DMACOS_X)
     set(PLATFORM_SRC 
-        src/macosx/mac_main.m
-        src/macosx/mac_snd.m
+        src/unix/sys_sdl_main.c
+        src/unix/sys_sdl_input.c
+        src/unix/sys_sdl_sound.c
+        src/unix/sys_sdl_dll.c
+        src/unix/sys_sdl_gl.c
     )
     set(PLATFORM_LIBS 
         "-framework Cocoa"
@@ -42,13 +47,11 @@ elseif(APPLE)
 else()
     add_definitions(-DLINUX -D__linux__)
     set(PLATFORM_SRC 
-        src/unix/linux_common.c
-        src/unix/linux_qgl.c
-        src/unix/linux_snd.c
-        src/unix/linux_joystick.c
-        src/unix/unix_main.c
-        src/unix/unix_net.c
-        src/unix/unix_shared.c
+        src/unix/sys_sdl_main.c
+        src/unix/sys_sdl_input.c
+        src/unix/sys_sdl_sound.c
+        src/unix/sys_sdl_dll.c
+        src/unix/sys_sdl_gl.c
     )
     set(PLATFORM_LIBS dl m pthread)
 endif()
@@ -244,11 +247,20 @@ add_definitions(
     -DCOMPILER_SUPPORTS_SSE
     -DUSE_OPENAL
     -DUSE_SDL
+    -DNO_VM_COMPILED
     -Wall
     -Wno-unused-variable
     -Wno-unused-function
     -Wno-misleading-indentation
+    -Wno-pointer-sign
+    -Wno-format
 )
+
+# Настройки для 64-битной сборки
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_definitions(-DARCH_X86_64)
+    message(STATUS "Building for x64 architecture")
+endif()
 
 # Основная библиотека движка (без VM - только нативные DLL)
 add_library(engine STATIC
@@ -261,8 +273,44 @@ add_library(engine STATIC
     ${SPLINES_SRC}
     ${BOTLIB_SRC}
     ${BOTAI_SRC}
-    src/unix/sys_sdl_main.c
-    src/unix/sys_sdl_dll.c
+    src/ft2/ftinit.c
+    src/ft2/ftsystem.c
+    src/ft2/ftdebug.c
+    src/ft2/ftcalc.c
+    src/ft2/ftextend.c
+    src/ft2/ftglyph.c
+    src/ft2/ftgrays.c
+    src/ft2/ftlist.c
+    src/ft2/ftmm.c
+    src/ft2/ftnames.c
+    src/ft2/ftobjs.c
+    src/ft2/ftoutln.c
+    src/ft2/ftraster.c
+    src/ft2/ftrend1.c
+    src/ft2/ftsmooth.c
+    src/ft2/ftstream.c
+    src/ft2/sfdriver.c
+    src/ft2/sfobjs.c
+    src/ft2/ttcmap.c
+    src/ft2/ttdriver.c
+    src/ft2/ttgload.c
+    src/ft2/ttinterp.c
+    src/ft2/ttload.c
+    src/ft2/ttobjs.c
+    src/ft2/ttpload.c
+    src/ft2/ttpost.c
+    src/ft2/ttsbit.c
+    src/ft2/ahangles.c
+    src/ft2/ahglobal.c
+    src/ft2/ahglyph.c
+    src/ft2/ahhint.c
+    src/ft2/ahmodule.c
+    src/ft2/ahoptim.c
+)
+
+target_compile_definitions(engine PRIVATE
+    -DFT2_BUILD_LIBRARY
+    -DFT_CONFIG_OPTION_SYSTEM_ZLIB
 )
 
 target_link_libraries(engine
@@ -271,6 +319,7 @@ target_link_libraries(engine
     ${FREETYPE2_LIBRARIES}
     ${PLATFORM_LIBS}
     GL
+    z
 )
 
 # Game DLL
@@ -323,7 +372,16 @@ add_library(game SHARED
     src/game/q_shared.c
 )
 
+target_compile_definitions(game PRIVATE
+    -DGAME_DLL
+    -DARCH_X86_64
+)
+
 target_link_libraries(game engine)
+set_target_properties(game PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "gamex86_64"
+)
 
 # CGame DLL
 add_library(cgame SHARED
@@ -353,7 +411,16 @@ add_library(cgame SHARED
     src/cgame/cg_weapons.c
 )
 
+target_compile_definitions(cgame PRIVATE
+    -DCGAME_DLL
+    -DARCH_X86_64
+)
+
 target_link_libraries(cgame engine)
+set_target_properties(cgame PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "cgamex86_64"
+)
 
 # UI DLL
 add_library(ui SHARED
@@ -366,12 +433,21 @@ add_library(ui SHARED
     src/ui/ui_util.c
 )
 
+target_compile_definitions(ui PRIVATE
+    -DUI_DLL
+    -DARCH_X86_64
+)
+
 target_link_libraries(ui engine)
+set_target_properties(ui PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "uix86_64"
+)
 
 # Клиентский исполняемый файл
 if(BUILD_CLIENT)
-    add_executable(wolfsp WIN32
-        src/client/cl_main.c
+    add_executable(wolfsp
+        src/unix/sys_sdl_main.c
     )
     
     target_link_libraries(wolfsp engine game cgame ui)
@@ -390,3 +466,10 @@ install(TARGETS wolfsp game cgame ui
 )
 
 install(DIRECTORY main/ DESTINATION share/wolfsp)
+
+# Создаем скрипт для запуска игры
+configure_file(
+    "${CMAKE_SOURCE_DIR}/wolfsp.in"
+    "${CMAKE_BINARY_DIR}/wolfsp"
+    @ONLY
+)
