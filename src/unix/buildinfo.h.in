@@ -1,0 +1,16 @@
+/*
+===========================================================================
+Build information for RTCW x64
+===========================================================================
+*/
+
+#ifndef BUILDINFO_H
+#define BUILDINFO_H
+
+#define RTCW_VERSION "1.51"
+#define RTCW_PLATFORM "Linux x64"
+#define RTCW_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+#define RTCW_COMPILER "@CMAKE_C_COMPILER_ID@"
+#define RTCW_BUILD_DATE "__DATE__"
+
+#endif /* BUILDINFO_H */

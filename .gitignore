@@ -1,0 +1,36 @@
+```
+# CMake build artifacts
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiled objects and binaries
+*.o
+*.obj
+*.bin
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Build info
+buildinfo.h
+
+# Temporary and log files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# IDE specific
+.vscode/
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+```
