@@ -1,0 +1,11 @@
+#!/bin/bash
+# RTCW SP Launcher Script
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GAME_DIR="${SCRIPT_DIR}"
+
+# Set library path for DLLs
+export LD_LIBRARY_PATH="${GAME_DIR}:${LD_LIBRARY_PATH}"
+
+# Execute the game
+exec "${GAME_DIR}/wolfsp.bin" "$@"
