@@ -31,7 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "q_shared.h"
 #include "qcommon.h"
 #include "client.h"
-#include "tr_public.h"
+#include "tr_local.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
@@ -88,7 +88,7 @@ void QDECL Sys_Error( const char *error, ... ) {
 	char text[1024];
 	
 	va_start( argptr, error );
-	Q_vsnprintf( text, sizeof( text ), error, argptr );
+	vsnprintf( text, sizeof( text ), error, argptr );
 	va_end( argptr );
 	
 	SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "Error", text, sdl_window );

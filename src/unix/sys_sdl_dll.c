@@ -28,7 +28,7 @@ If you have questions concerning this license or the applicable additional terms
 
 // sys_sdl_dll.c - SDL2-based DLL loading for cross-platform support
 
-#include "../qcommon/q_shared.h"
+#include "q_shared.h"
 #include "../qcommon/qcommon.h"
 #include <SDL2/SDL_loadso.h>
 

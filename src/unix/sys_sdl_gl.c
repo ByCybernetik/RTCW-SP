@@ -28,9 +28,9 @@ If you have questions concerning this license or the applicable additional terms
 
 // sys_sdl_gl.c - SDL2 OpenGL context management for RTCW SP
 
-#include "../qcommon/q_shared.h"
+#include "q_shared.h"
 #include "../qcommon/qcommon.h"
-#include "../renderer/tr_public.h"
+#include "tr_public.h"
 #include "../renderer/qgl.h"
 
 #include <SDL2/SDL.h>
@@ -309,7 +309,7 @@ qboolean GLimp_LoadOpenGL( const char *name ) {
 	
 	// Load core functions using SDL_GL_GetProcAddress
 	#define LOAD_GL_FUNC(name) \
-		qgl##name = (void (APIENTRY *)())SDL_GL_GetProcAddress(#name); \
+		qgl##name = (void *)SDL_GL_GetProcAddress(#name); \
 		if ( !qgl##name ) { \
 			Com_DPrintf( S_COLOR_YELLOW "WARNING: Could not load %s\n", #name ); \
 		}

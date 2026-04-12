@@ -28,10 +28,11 @@ If you have questions concerning this license or the applicable additional terms
 
 // sys_sdl_input.c - SDL2-based input system for RTCW SP
 
-#include "../qcommon/q_shared.h"
+#include "q_shared.h"
 #include "../qcommon/qcommon.h"
-#include "../client/client.h"
-#include "../renderer/tr_public.h"
+#include "../ui/keycodes.h"
+#include "client.h"
+#include "tr_public.h"
 
 #include <SDL2/SDL.h>
 
@@ -55,50 +56,50 @@ IN_InitKeymap
 static void IN_InitKeymap( void ) {
 	int i;
 	
-	// Initialize all keys to KEY_NONE
+	// Initialize all keys to 0 (unused)
 	for ( i = 0; i < SDL_NUM_SCANCODES; i++ ) {
-		sdl_keymap[i] = K_NONE;
+		sdl_keymap[i] = 0;
 	}
 	
-	// Alpha keys
-	sdl_keymap[SDL_SCANCODE_A] = K_A;
-	sdl_keymap[SDL_SCANCODE_B] = K_B;
-	sdl_keymap[SDL_SCANCODE_C] = K_C;
-	sdl_keymap[SDL_SCANCODE_D] = K_D;
-	sdl_keymap[SDL_SCANCODE_E] = K_E;
-	sdl_keymap[SDL_SCANCODE_F] = K_F;
-	sdl_keymap[SDL_SCANCODE_G] = K_G;
-	sdl_keymap[SDL_SCANCODE_H] = K_H;
-	sdl_keymap[SDL_SCANCODE_I] = K_I;
-	sdl_keymap[SDL_SCANCODE_J] = K_J;
-	sdl_keymap[SDL_SCANCODE_K] = K_K;
-	sdl_keymap[SDL_SCANCODE_L] = K_L;
-	sdl_keymap[SDL_SCANCODE_M] = K_M;
-	sdl_keymap[SDL_SCANCODE_N] = K_N;
-	sdl_keymap[SDL_SCANCODE_O] = K_O;
-	sdl_keymap[SDL_SCANCODE_P] = K_P;
-	sdl_keymap[SDL_SCANCODE_Q] = K_Q;
-	sdl_keymap[SDL_SCANCODE_R] = K_R;
-	sdl_keymap[SDL_SCANCODE_S] = K_S;
-	sdl_keymap[SDL_SCANCODE_T] = K_T;
-	sdl_keymap[SDL_SCANCODE_U] = K_U;
-	sdl_keymap[SDL_SCANCODE_V] = K_V;
-	sdl_keymap[SDL_SCANCODE_W] = K_W;
-	sdl_keymap[SDL_SCANCODE_X] = K_X;
-	sdl_keymap[SDL_SCANCODE_Y] = K_Y;
-	sdl_keymap[SDL_SCANCODE_Z] = K_Z;
+	// Alpha keys (use ASCII values for lowercase letters)
+	sdl_keymap[SDL_SCANCODE_A] = 'a';
+	sdl_keymap[SDL_SCANCODE_B] = 'b';
+	sdl_keymap[SDL_SCANCODE_C] = 'c';
+	sdl_keymap[SDL_SCANCODE_D] = 'd';
+	sdl_keymap[SDL_SCANCODE_E] = 'e';
+	sdl_keymap[SDL_SCANCODE_F] = 'f';
+	sdl_keymap[SDL_SCANCODE_G] = 'g';
+	sdl_keymap[SDL_SCANCODE_H] = 'h';
+	sdl_keymap[SDL_SCANCODE_I] = 'i';
+	sdl_keymap[SDL_SCANCODE_J] = 'j';
+	sdl_keymap[SDL_SCANCODE_K] = 'k';
+	sdl_keymap[SDL_SCANCODE_L] = 'l';
+	sdl_keymap[SDL_SCANCODE_M] = 'm';
+	sdl_keymap[SDL_SCANCODE_N] = 'n';
+	sdl_keymap[SDL_SCANCODE_O] = 'o';
+	sdl_keymap[SDL_SCANCODE_P] = 'p';
+	sdl_keymap[SDL_SCANCODE_Q] = 'q';
+	sdl_keymap[SDL_SCANCODE_R] = 'r';
+	sdl_keymap[SDL_SCANCODE_S] = 's';
+	sdl_keymap[SDL_SCANCODE_T] = 't';
+	sdl_keymap[SDL_SCANCODE_U] = 'u';
+	sdl_keymap[SDL_SCANCODE_V] = 'v';
+	sdl_keymap[SDL_SCANCODE_W] = 'w';
+	sdl_keymap[SDL_SCANCODE_X] = 'x';
+	sdl_keymap[SDL_SCANCODE_Y] = 'y';
+	sdl_keymap[SDL_SCANCODE_Z] = 'z';
 	
-	// Number keys
-	sdl_keymap[SDL_SCANCODE_0] = K_0;
-	sdl_keymap[SDL_SCANCODE_1] = K_1;
-	sdl_keymap[SDL_SCANCODE_2] = K_2;
-	sdl_keymap[SDL_SCANCODE_3] = K_3;
-	sdl_keymap[SDL_SCANCODE_4] = K_4;
-	sdl_keymap[SDL_SCANCODE_5] = K_5;
-	sdl_keymap[SDL_SCANCODE_6] = K_6;
-	sdl_keymap[SDL_SCANCODE_7] = K_7;
-	sdl_keymap[SDL_SCANCODE_8] = K_8;
-	sdl_keymap[SDL_SCANCODE_9] = K_9;
+	// Number keys (use ASCII values)
+	sdl_keymap[SDL_SCANCODE_0] = '0';
+	sdl_keymap[SDL_SCANCODE_1] = '1';
+	sdl_keymap[SDL_SCANCODE_2] = '2';
+	sdl_keymap[SDL_SCANCODE_3] = '3';
+	sdl_keymap[SDL_SCANCODE_4] = '4';
+	sdl_keymap[SDL_SCANCODE_5] = '5';
+	sdl_keymap[SDL_SCANCODE_6] = '6';
+	sdl_keymap[SDL_SCANCODE_7] = '7';
+	sdl_keymap[SDL_SCANCODE_8] = '8';
+	sdl_keymap[SDL_SCANCODE_9] = '9';
 	
 	// Function keys
 	sdl_keymap[SDL_SCANCODE_F1] = K_F1;
@@ -125,12 +126,12 @@ static void IN_InitKeymap( void ) {
 	sdl_keymap[SDL_SCANCODE_SPACE] = K_SPACE;
 	sdl_keymap[SDL_SCANCODE_CAPSLOCK] = K_CAPSLOCK;
 	
-	sdl_keymap[SDL_SCANCODE_LEFTCTRL] = K_LCTRL;
-	sdl_keymap[SDL_SCANCODE_RIGHTCTRL] = K_RCTRL;
-	sdl_keymap[SDL_SCANCODE_LEFTSHIFT] = K_LSHIFT;
-	sdl_keymap[SDL_SCANCODE_RIGHTSHIFT] = K_RSHIFT;
-	sdl_keymap[SDL_SCANCODE_LALT] = K_LALT;
-	sdl_keymap[SDL_SCANCODE_RALT] = K_RALT;
+	sdl_keymap[SDL_SCANCODE_LCTRL] = K_CTRL;
+	sdl_keymap[SDL_SCANCODE_RCTRL] = K_CTRL;
+	sdl_keymap[SDL_SCANCODE_LSHIFT] = K_SHIFT;
+	sdl_keymap[SDL_SCANCODE_RSHIFT] = K_SHIFT;
+	sdl_keymap[SDL_SCANCODE_LALT] = K_ALT;
+	sdl_keymap[SDL_SCANCODE_RALT] = K_ALT;
 	
 	sdl_keymap[SDL_SCANCODE_UP] = K_UPARROW;
 	sdl_keymap[SDL_SCANCODE_DOWN] = K_DOWNARROW;
@@ -144,39 +145,42 @@ static void IN_InitKeymap( void ) {
 	sdl_keymap[SDL_SCANCODE_PAGEUP] = K_PGUP;
 	sdl_keymap[SDL_SCANCODE_PAGEDOWN] = K_PGDN;
 	
-	sdl_keymap[SDL_SCANCODE_MINUS] = K_MINUS;
-	sdl_keymap[SDL_SCANCODE_EQUALS] = K_EQUALS;
-	sdl_keymap[SDL_SCANCODE_LEFTBRACKET] = K_LEFTBRACKET;
-	sdl_keymap[SDL_SCANCODE_RIGHTBRACKET] = K_RIGHTBRACKET;
-	sdl_keymap[SDL_SCANCODE_BACKSLASH] = K_BACKSLASH;
-	sdl_keymap[SDL_SCANCODE_SEMICOLON] = K_SEMICOLON;
-	sdl_keymap[SDL_SCANCODE_APOSTROPHE] = K_APOSTROPHE;
-	sdl_keymap[SDL_SCANCODE_COMMA] = K_COMMA;
-	sdl_keymap[SDL_SCANCODE_PERIOD] = K_PERIOD;
-	sdl_keymap[SDL_SCANCODE_SLASH] = K_SLASH;
-	sdl_keymap[SDL_SCANCODE_GRAVE] = K_GRAVE;
+	// Punctuation - use ASCII values
+	sdl_keymap[SDL_SCANCODE_MINUS] = '-';
+	sdl_keymap[SDL_SCANCODE_EQUALS] = '=';
+	sdl_keymap[SDL_SCANCODE_LEFTBRACKET] = '[';
+	sdl_keymap[SDL_SCANCODE_RIGHTBRACKET] = ']';
+	sdl_keymap[SDL_SCANCODE_BACKSLASH] = '\\';
+	sdl_keymap[SDL_SCANCODE_SEMICOLON] = ';';
+	sdl_keymap[SDL_SCANCODE_APOSTROPHE] = '\'';
+	sdl_keymap[SDL_SCANCODE_COMMA] = ',';
+	sdl_keymap[SDL_SCANCODE_PERIOD] = '.';
+	sdl_keymap[SDL_SCANCODE_SLASH] = '/';
+	sdl_keymap[SDL_SCANCODE_GRAVE] = '`';
 	
-	sdl_keymap[SDL_SCANCODE_KP_0] = K_KP_0;
-	sdl_keymap[SDL_SCANCODE_KP_1] = K_KP_1;
-	sdl_keymap[SDL_SCANCODE_KP_2] = K_KP_2;
-	sdl_keymap[SDL_SCANCODE_KP_3] = K_KP_3;
-	sdl_keymap[SDL_SCANCODE_KP_4] = K_KP_4;
-	sdl_keymap[SDL_SCANCODE_KP_5] = K_KP_5;
-	sdl_keymap[SDL_SCANCODE_KP_6] = K_KP_6;
-	sdl_keymap[SDL_SCANCODE_KP_7] = K_KP_7;
-	sdl_keymap[SDL_SCANCODE_KP_8] = K_KP_8;
-	sdl_keymap[SDL_SCANCODE_KP_9] = K_KP_9;
-	sdl_keymap[SDL_SCANCODE_KP_PERIOD] = K_KP_PERIOD;
-	sdl_keymap[SDL_SCANCODE_KP_DIVIDE] = K_KP_DIVIDE;
-	sdl_keymap[SDL_SCANCODE_KP_MULTIPLY] = K_KP_MULTIPLY;
-	sdl_keymap[SDL_SCANCODE_KP_MINUS] = K_KP_MINUS;
-	sdl_keymap[SDL_SCANCODE_KP_PLUS] = K_KP_PLUS;
-	sdl_keymap[SDL_SCANCODE_KP_ENTER] = K_KP_ENTER;
-	sdl_keymap[SDL_SCANCODE_KP_EQUALS] = K_KP_EQUALS;
+	// Keypad - use ASCII values for numbers, special codes for others
+	sdl_keymap[SDL_SCANCODE_KP_0] = '0';
+	sdl_keymap[SDL_SCANCODE_KP_1] = '1';
+	sdl_keymap[SDL_SCANCODE_KP_2] = '2';
+	sdl_keymap[SDL_SCANCODE_KP_3] = '3';
+	sdl_keymap[SDL_SCANCODE_KP_4] = '4';
+	sdl_keymap[SDL_SCANCODE_KP_5] = '5';
+	sdl_keymap[SDL_SCANCODE_KP_6] = '6';
+	sdl_keymap[SDL_SCANCODE_KP_7] = '7';
+	sdl_keymap[SDL_SCANCODE_KP_8] = '8';
+	sdl_keymap[SDL_SCANCODE_KP_9] = '9';
+	sdl_keymap[SDL_SCANCODE_KP_PERIOD] = '.';
+	sdl_keymap[SDL_SCANCODE_KP_DIVIDE] = '/';
+	sdl_keymap[SDL_SCANCODE_KP_MULTIPLY] = '*';
+	sdl_keymap[SDL_SCANCODE_KP_MINUS] = '-';
+	sdl_keymap[SDL_SCANCODE_KP_PLUS] = '+';
+	sdl_keymap[SDL_SCANCODE_KP_ENTER] = K_ENTER;
+	sdl_keymap[SDL_SCANCODE_KP_EQUALS] = '=';
 	
-	sdl_keymap[SDL_SCANCODE_HELP] = K_HELP;
-	sdl_keymap[SDL_SCANCODE_PRINTSCREEN] = K_PRINT_SCREEN;
-	sdl_keymap[SDL_SCANCODE_SCROLLLOCK] = K_SCROLLOCK;
+	// Special keys not in keycodes.h - skip or map to 0
+	// sdl_keymap[SDL_SCANCODE_HELP] = 0;
+	// sdl_keymap[SDL_SCANCODE_PRINTSCREEN] = 0;
+	// sdl_keymap[SDL_SCANCODE_SCROLLLOCK] = 0;
 	sdl_keymap[SDL_SCANCODE_PAUSE] = K_PAUSE;
 }
 

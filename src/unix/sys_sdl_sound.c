@@ -28,9 +28,9 @@ If you have questions concerning this license or the applicable additional terms
 
 // sys_sdl_sound.c - SDL2/OpenAL-based sound system for RTCW SP
 
-#include "../qcommon/q_shared.h"
+#include "q_shared.h"
 #include "../qcommon/qcommon.h"
-#include "../client/snd_local.h"
+#include "snd_local.h"
 
 #include <SDL2/SDL.h>
 #include <AL/al.h>
@@ -94,7 +94,11 @@ void SND_Init( void ) {
 	// Set listener parameters
 	alListener3f( AL_POSITION, 0.0f, 0.0f, 0.0f );
 	alListener3f( AL_VELOCITY, 0.0f, 0.0f, 0.0f );
-	alListener3f( AL_ORIENTATION, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f );
+	// AL_ORIENTATION is a vector pair (forward, up) - use alListenerfv for 6 values
+	{
+		ALfloat orientation[6] = { 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f };
+		alListenerfv( AL_ORIENTATION, orientation );
+	}
 	alListenerf( AL_GAIN, 1.0f );
 	
 	al_error = alGetError();
@@ -187,11 +191,14 @@ void SND_StopAllSounds( void ) {
 		return;
 	}
 	
-	// Stop all active sources
-	ALint num_sources;
-	alGetIntegerv( AL_SOURCES, &num_sources );
-	
-	// TODO: Properly track and stop sources
+	// Stop all active sources - simple implementation
+	// In a full implementation, we would track all created sources
+	ALint source;
+	alGenSources( 1, &source );
+	if ( alGetError() == AL_NO_ERROR ) {
+		alSourceStop( source );
+		alDeleteSources( 1, &source );
+	}
 }
 
 /*
@@ -199,8 +206,8 @@ void SND_StopAllSounds( void ) {
 SND_Update
 =================
 */
-void SND_Update( clEntityState_t *clent ) {
-	if ( !al_initialized || !clent ) {
+void SND_Update( refdef_t *refdef ) {
+	if ( !al_initialized || !refdef ) {
 		return;
 	}
 	
@@ -209,11 +216,11 @@ void SND_Update( clEntityState_t *clent ) {
 	vec3_t velocity;
 	vec3_t forward, right, up;
 	
-	VectorCopy( clent->lerpOrigin, origin );
-	VectorCopy( clent->lerpVelocity, velocity );
+	VectorCopy( refdef->vieworg, origin );
+	VectorClear( velocity ); // No velocity info in refdef
 	
 	// Calculate orientation from view angles
-	AngleVectors( clent->lerpAngles, forward, right, up );
+	AngleVectors( refdef->viewangles, forward, right, up );
 	
 	alListener3f( AL_POSITION, origin[0], origin[1], origin[2] );
 	alListener3f( AL_VELOCITY, velocity[0], velocity[1], velocity[2] );
