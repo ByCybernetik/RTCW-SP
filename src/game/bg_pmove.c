@@ -923,15 +923,15 @@ static void PM_WalkMove( void ) {
 			PM_AirMove();
 // JPW NERVE
 #if defined ( CGAMEDLL )
-			if ( cg_gameType.integer != GT_SINGLE_PLAYER )
+			if ( cg_gameType.integer != GT_SINGLE_PLAYER ) {
 #elif defined ( GAMEDLL )
-			if ( g_gametype.integer != GT_SINGLE_PLAYER )
+			if ( g_gametype.integer != GT_SINGLE_PLAYER ) {
 #endif
-			{
 				pm->ps->sprintTime -= 2500;
 				if ( pm->ps->sprintTime < 0 ) {
 					pm->ps->sprintTime = 0;
 				}
+#if defined ( CGAMEDLL ) || defined ( GAMEDLL )
 			} else {
 				pm->ps->jumpTime = pm->cmd.serverTime;
 
@@ -958,6 +958,7 @@ static void PM_WalkMove( void ) {
 					}
 				}
 			}
+#endif
 // jpw
 		}
 		return;
@@ -2738,16 +2739,17 @@ static void PM_Weapon( void ) {
 	}
 
 	// game is reloading (mission fail/success)
+	gameReloading = qfalse;
 #ifdef CGAMEDLL
-	if ( cg_reloading.integer )
+	if ( cg_reloading.integer ) {
+		gameReloading = qtrue;
+	}
 #endif
 #ifdef GAMEDLL
-	if ( g_reloading.integer )
-#endif
-	gameReloading = qtrue;
-	else {
-		gameReloading = qfalse;
+	if ( g_reloading.integer ) {
+		gameReloading = qtrue;
 	}
+#endif
 
 	// ignore if spectator
 	if ( pm->ps->persistant[PERS_TEAM] == TEAM_SPECTATOR ) {
@@ -2904,30 +2906,29 @@ static void PM_Weapon( void ) {
 			return;
 		}
 	}
-}
+	
+	if ( pm->ps->weaponDelay > 0 ) {
+		pm->ps->weaponDelay -= pml.msec;
+		if ( pm->ps->weaponDelay <= 0 ) {
+			pm->ps->weaponDelay = 0;
+			delayedFire = qtrue;            // weapon delay has expired.  Fire this frame
 
-if ( pm->ps->weaponDelay > 0 ) {
-	pm->ps->weaponDelay -= pml.msec;
-	if ( pm->ps->weaponDelay <= 0 ) {
-		pm->ps->weaponDelay = 0;
-		delayedFire = qtrue;            // weapon delay has expired.  Fire this frame
-
-		// double check the player is still holding the fire button down for these weapons
-		// so you don't get a delayed "non-fire" (fire hit and released, then shot fires)
-		switch ( pm->ps->weapon ) {
-		case WP_VENOM:
-			if ( pm->ps->weaponstate == WEAPON_FIRING ) {
-				delayedFire = qfalse;
+			// double check the player is still holding the fire button down for these weapons
+			// so you don't get a delayed "non-fire" (fire hit and released, then shot fires)
+			switch ( pm->ps->weapon ) {
+			case WP_VENOM:
+				if ( pm->ps->weaponstate == WEAPON_FIRING ) {
+					delayedFire = qfalse;
+				}
+				break;
+			default:
+				break;
 			}
-			break;
-		default:
-			break;
 		}
 	}
-}
 
 
-if ( pm->ps->weaponstate == WEAPON_RELAXING ) {
+	if ( pm->ps->weaponstate == WEAPON_RELAXING ) {
 	pm->ps->weaponstate = WEAPON_READY;
 	return;
 }
