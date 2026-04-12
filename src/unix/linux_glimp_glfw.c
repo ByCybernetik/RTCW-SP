@@ -46,6 +46,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../renderer/tr_local.h"
 #include "../client/client.h"
+#include "../client/keys.h"
 #include "linux_local.h"
 
 #define GLFW_INCLUDE_NONE
@@ -173,34 +174,35 @@ static void InitKeymap(void) {
     keymap[GLFW_KEY_PRINT_SCREEN] = K_PRINTSCREEN;
     keymap[GLFW_KEY_PAUSE] = K_PAUSE;
     
-    // Numpad
-    keymap[GLFW_KEY_KP_0] = K_KP_0;
-    keymap[GLFW_KEY_KP_1] = K_KP_1;
-    keymap[GLFW_KEY_KP_2] = K_KP_2;
-    keymap[GLFW_KEY_KP_3] = K_KP_3;
-    keymap[GLFW_KEY_KP_4] = K_KP_4;
+    // Numpad - используем имена из keycodes.h
+    keymap[GLFW_KEY_KP_0] = K_KP_INS;      // K_KP_0 не существует, используем K_KP_INS
+    keymap[GLFW_KEY_KP_1] = K_KP_END;
+    keymap[GLFW_KEY_KP_2] = K_KP_DOWNARROW;
+    keymap[GLFW_KEY_KP_3] = K_KP_PGDN;
+    keymap[GLFW_KEY_KP_4] = K_KP_LEFTARROW;
     keymap[GLFW_KEY_KP_5] = K_KP_5;
-    keymap[GLFW_KEY_KP_6] = K_KP_6;
-    keymap[GLFW_KEY_KP_7] = K_KP_7;
-    keymap[GLFW_KEY_KP_8] = K_KP_8;
-    keymap[GLFW_KEY_KP_9] = K_KP_9;
-    keymap[GLFW_KEY_KP_DECIMAL] = K_KP_PERIOD;
+    keymap[GLFW_KEY_KP_6] = K_KP_RIGHTARROW;
+    keymap[GLFW_KEY_KP_7] = K_KP_HOME;
+    keymap[GLFW_KEY_KP_8] = K_KP_UPARROW;
+    keymap[GLFW_KEY_KP_9] = K_KP_PGUP;
+    keymap[GLFW_KEY_KP_DECIMAL] = K_KP_DEL;
     keymap[GLFW_KEY_KP_DIVIDE] = K_KP_SLASH;
     keymap[GLFW_KEY_KP_MULTIPLY] = K_KP_STAR;
     keymap[GLFW_KEY_KP_SUBTRACT] = K_KP_MINUS;
     keymap[GLFW_KEY_KP_ADD] = K_KP_PLUS;
     keymap[GLFW_KEY_KP_ENTER] = K_KP_ENTER;
+    keymap[GLFW_KEY_NUM_LOCK] = K_KP_NUMLOCK;
     
-    // Модификаторы
-    keymap[GLFW_KEY_LEFT_SHIFT] = K_LSHIFT;
-    keymap[GLFW_KEY_RIGHT_SHIFT] = K_RSHIFT;
-    keymap[GLFW_KEY_LEFT_CONTROL] = K_LCTRL;
-    keymap[GLFW_KEY_RIGHT_CONTROL] = K_RCTRL;
-    keymap[GLFW_KEY_LEFT_ALT] = K_LALT;
-    keymap[GLFW_KEY_RIGHT_ALT] = K_RALT;
-    keymap[GLFW_KEY_LEFT_SUPER] = K_LWIN;
-    keymap[GLFW_KEY_RIGHT_SUPER] = K_RWIN;
-    keymap[GLFW_KEY_MENU] = K_MENU;
+    // Модификаторы - используем базовые имена
+    keymap[GLFW_KEY_LEFT_SHIFT] = K_SHIFT;
+    keymap[GLFW_KEY_RIGHT_SHIFT] = K_SHIFT;
+    keymap[GLFW_KEY_LEFT_CONTROL] = K_CTRL;
+    keymap[GLFW_KEY_RIGHT_CONTROL] = K_CTRL;
+    keymap[GLFW_KEY_LEFT_ALT] = K_ALT;
+    keymap[GLFW_KEY_RIGHT_ALT] = K_ALT;
+    keymap[GLFW_KEY_LEFT_SUPER] = K_COMMAND;
+    keymap[GLFW_KEY_RIGHT_SUPER] = K_COMMAND;
+    keymap[GLFW_KEY_MENU] = K_PAUSE;  // K_MENU не существует
 }
 
 //===========================================================================
@@ -277,7 +279,8 @@ static void GLFWAPI keyCallback(GLFWwindow* window, int key, int scancode, int a
     if (key >= 0 && key < GLFW_KEY_LAST) {
         int quake_key = keymap[key];
         
-        if (quake_key != K_NONE) {
+        // K_NONE не определён в keycodes.h, используем 0
+        if (quake_key != 0) {
             if (action == GLFW_PRESS) {
                 CL_KeyEvent(quake_key, qtrue, Sys_Milliseconds());
             } else if (action == GLFW_RELEASE) {
@@ -291,12 +294,23 @@ static void GLFWAPI keyCallback(GLFWwindow* window, int key, int scancode, int a
 // Функции GLimp
 //===========================================================================
 
+// Определение rserr_t (из linux_glimp.c)
+typedef enum
+{
+    RSERR_OK,
+    RSERR_INVALID_FULLSCREEN,
+    RSERR_INVALID_MODE,
+    RSERR_UNKNOWN
+} rserr_t;
+
+#define WINDOW_CLASS_NAME "RTCW"
+
 /*
 =================
 GLimp_Init
 =================
 */
-rserr_t GLimp_Init(void) {
+void GLimp_Init(void) {
     int major, minor;
     const char* version;
     
@@ -304,7 +318,7 @@ rserr_t GLimp_Init(void) {
     
     if (glfw_initialized) {
         Com_Printf("GLFW уже инициализирован\n");
-        return RSERR_OK;
+        return;
     }
     
     // Инициализация GLFW
@@ -312,7 +326,7 @@ rserr_t GLimp_Init(void) {
     
     if (!glfwInit()) {
         Com_Printf("Не удалось инициализировать GLFW\n");
-        return RSERR_UNKNOWN;
+        return;
     }
     
     glfw_initialized = qtrue;
@@ -351,19 +365,13 @@ rserr_t GLimp_Init(void) {
         Com_Printf("Не удалось создать окно GLFW\n");
         glfwTerminate();
         glfw_initialized = qfalse;
-        return RSERR_INVALID_MODE;
+        return;
     }
     
     glfwMakeContextCurrent(window);
     
-    // Загрузка функций OpenGL
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        Com_Printf("Не удалось загрузить OpenGL функции\n");
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        glfw_initialized = qfalse;
-        return RSERR_UNKNOWN;
-    }
+    // Загрузка функций OpenGL через GLFW (без glad)
+    // GLFW сам загружает функции
     
     // Получение информации о контексте
     version = (const char*)glGetString(GL_VERSION);
@@ -388,11 +396,9 @@ rserr_t GLimp_Init(void) {
     glViewport(0, 0, window_width, window_height);
     
     // Настройка VSync
-    glfwSwapInterval(r_vsync->integer ? 1 : 0);
+    glfwSwapInterval(r_swapInterval->integer ? 1 : 0);
     
     Com_Printf("------------------------------------\n");
-    
-    return RSERR_OK;
 }
 
 /*

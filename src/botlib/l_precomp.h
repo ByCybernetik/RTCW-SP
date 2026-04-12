@@ -70,6 +70,8 @@ If you have questions concerning this license or the applicable additional terms
 #define INDENT_IFNDEF           0x0010
 
 //macro definitions
+#ifndef DEFINE_S_DEFINED
+#define DEFINE_S_DEFINED
 typedef struct define_s
 {
 	char *name;                         //define name
@@ -81,10 +83,13 @@ typedef struct define_s
 	struct define_s *next;              //next defined macro in a list
 	struct define_s *hashnext;          //next define in the hash chain
 } define_t;
+#endif
 
 //indents
 //used for conditional compilation directives:
 //#if, #else, #elif, #ifdef, #ifndef
+#ifndef INDENT_S_DEFINED
+#define INDENT_S_DEFINED
 typedef struct indent_s
 {
 	int type;                               //indent type
@@ -92,8 +97,11 @@ typedef struct indent_s
 	script_t *script;                       //script the indent was in
 	struct indent_s *next;                  //next indent on the indent stack
 } indent_t;
+#endif
 
 //source file
+#ifndef SOURCE_S_DEFINED
+#define SOURCE_S_DEFINED
 typedef struct source_s
 {
 	char filename[_MAX_PATH];               //file name of the script
@@ -107,6 +115,7 @@ typedef struct source_s
 	int skip;                               // > 0 if skipping conditional code
 	token_t token;                          //last read token
 } source_t;
+#endif
 
 
 //read a token from the source

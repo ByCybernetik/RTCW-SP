@@ -3478,16 +3478,6 @@ case WP_GAUNTLET:
 switch ( pm->ps->aiChar )
 {
 case AICHAR_LOPER:              // delay 'til next attack
-	addTime = 1000;
-	break;
-default:
-	addTime = 250;
-	break;
-}
-break;
-}
-
-
 // check for overheat
 
 // the weapon can overheat, and it's hot

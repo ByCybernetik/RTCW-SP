@@ -157,6 +157,14 @@ typedef enum {
 	K_AUX15,
 	K_AUX16,
 
+	// ASCII keys - numbers and symbols
+	K_0, K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9,
+	K_MINUS, K_EQUALS, K_LEFTBRACKET, K_RIGHTBRACKET, K_BACKSLASH,
+	K_SEMICOLON, K_APOSTROPHE, K_COMMA, K_PERIOD, K_SLASH, K_TILDE,
+	
+	K_SCROLLLOCK,
+	K_PRINTSCREEN,
+
 	K_LAST_KEY      // this had better be <256!
 } keyNum_t;
 

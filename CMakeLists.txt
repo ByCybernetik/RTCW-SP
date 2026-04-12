@@ -89,15 +89,11 @@ include_directories(
 )
 
 # ============================================================
-# БИБЛИОТЕКА idLib
+# БИБЛИОТЕКА idLib (пустая, только для совместимости)
 # ============================================================
-set(IDLIB_SOURCES
-    ${IDLIB_DIR}/idQ3Asnd.cpp
-    ${IDLIB_DIR}/idSound.cpp
-    ${IDLIB_DIR}/idSpeaker.cpp
-)
-
-add_library(idlib STATIC ${IDLIB_SOURCES})
+# Файлы idLib используют DirectSound и windows.h, которые не нужны на Linux
+# Звук обрабатывается через linux_snd_pulse.c напрямую
+add_library(idlib INTERFACE)
 
 # ============================================================
 # БИБЛИОТЕКА qcommon (общий код)
@@ -141,6 +137,7 @@ add_library(splines STATIC ${SPLINES_SOURCES})
 # ============================================================
 file(GLOB BOTLIB_SOURCES ${BOTLIB_DIR}/*.c)
 add_library(botlib STATIC ${BOTLIB_SOURCES})
+target_compile_definitions(botlib PRIVATE BOTLIB)
 
 # ============================================================
 # БИБЛИОТЕКА renderer

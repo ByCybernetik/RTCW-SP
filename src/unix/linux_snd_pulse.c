@@ -58,6 +58,7 @@ cvar_t *sndbits;
 cvar_t *sndspeed;
 cvar_t *sndchannels;
 cvar_t *snddevice;
+extern int snd_inited;
 
 /*
 =================
