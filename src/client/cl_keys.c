@@ -4,7 +4,7 @@
 Return to Castle Wolfenstein single player GPL Source Code
 Copyright (C) 1999-2010 id Software LLC, a ZeniMax Media company. 
 
-This file is part of the Return to Castle Wolfenstein single player GPL Source Code (¬ìRTCW SP Source Code¬î).  
+This file is part of the Return to Castle Wolfenstein single player GPL Source Code ("RTCW SP Source Code").  
 
 RTCW SP Source Code is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -194,7 +194,7 @@ keyname_t keynames_d[] =    //deutsch
 	{"EINGABETASTE", K_ENTER},
 	{"ESC", K_ESCAPE},
 	{"LEERTASTE", K_SPACE},
-	{"R‹CKTASTE", K_BACKSPACE},
+	{"R√úCKTASTE", K_BACKSPACE},
 	{"PFEILT.AUF", K_UPARROW},
 	{"PFEILT.UNTEN", K_DOWNARROW},
 	{"PFEILT.LINKS", K_LEFTARROW},
@@ -447,9 +447,9 @@ keyname_t keynames_s[] =  //Spanish - Updated 11/5
 
 	{"ALT", K_ALT},
 	{"CTRL", K_CTRL},
-	{"MAY⁄S", K_SHIFT},
+	{"MAY√öS", K_SHIFT},
 
-	{"BLOQ_MAY⁄S", K_CAPSLOCK},
+	{"BLOQ_MAY√öS", K_CAPSLOCK},
 
 	{"F1", K_F1},
 	{"F2", K_F2},
@@ -466,16 +466,16 @@ keyname_t keynames_s[] =  //Spanish - Updated 11/5
 
 	{"INSERT", K_INS},
 	{"SUPR", K_DEL},
-	{"AV_P¡G", K_PGDN},
-	{"RE_P¡G", K_PGUP},
+	{"AV_P√ÅG", K_PGDN},
+	{"RE_P√ÅG", K_PGUP},
 	{"INICIO", K_HOME},
 	{"FIN", K_END},
 
-	{"RAT”N1", K_MOUSE1},
-	{"RAT”N2", K_MOUSE2},
-	{"RAT”N3", K_MOUSE3},
-	{"RAT”N4", K_MOUSE4},
-	{"RAT”N5", K_MOUSE5},
+	{"RAT√ìN1", K_MOUSE1},
+	{"RAT√ìN2", K_MOUSE2},
+	{"RAT√ìN3", K_MOUSE3},
+	{"RAT√ìN4", K_MOUSE4},
+	{"RAT√ìN5", K_MOUSE5},
 
 	{"RUEDA_HACIA_ARRIBA",   K_MWHEELUP },
 	{"RUEDA_HACIA_ABAJO",    K_MWHEELDOWN },
@@ -532,13 +532,13 @@ keyname_t keynames_s[] =  //Spanish - Updated 11/5
 
 	{"INICIO(NUM)",          K_KP_HOME },
 	{"ARRIBA(NUM)",      K_KP_UPARROW },
-	{"RE_P¡G(NUM)",          K_KP_PGUP },
+	{"RE_P√ÅG(NUM)",          K_KP_PGUP },
 	{"IZQUIERDA(NUM)",   K_KP_LEFTARROW },
 	{"5(NUM)",           K_KP_5 },
 	{"DERECHA(NUM)", K_KP_RIGHTARROW },
 	{"FIN(NUM)",         K_KP_END },
 	{"ABAJO(NUM)",   K_KP_DOWNARROW },
-	{"AV_P¡G(NUM)",          K_KP_PGDN },
+	{"AV_P√ÅG(NUM)",          K_KP_PGDN },
 	{"INTRO(NUM)",       K_KP_ENTER },
 	{"INS(NUM)",         K_KP_INS },
 	{"SUPR(NUM)",            K_KP_DEL },
@@ -567,7 +567,7 @@ keyname_t keynames_i[] =  //Italian
 	{"SPAZIO", K_SPACE},
 	{"BACKSPACE", K_BACKSPACE},
 	{"FRECCIASU", K_UPARROW},
-	{"FRECCIAGIŸ", K_DOWNARROW},
+	{"FRECCIAGI√ô", K_DOWNARROW},
 	{"FRECCIASX", K_LEFTARROW},
 	{"FRECCIADX", K_RIGHTARROW},
 
@@ -592,7 +592,7 @@ keyname_t keynames_i[] =  //Italian
 
 	{"INS", K_INS},
 	{"CANC", K_DEL},
-	{"PAGGIŸ", K_PGDN},
+	{"PAGGI√ô", K_PGDN},
 	{"PAGGSU", K_PGUP},
 	{"HOME", K_HOME},
 	{"FINE", K_END},
@@ -604,7 +604,7 @@ keyname_t keynames_i[] =  //Italian
 	{"MOUSE5", K_MOUSE5},
 
 	{"ROTELLASU",    K_MWHEELUP },
-	{"ROTELLAGIŸ",   K_MWHEELDOWN },
+	{"ROTELLAGI√ô",   K_MWHEELDOWN },
 
 	{"JOY1", K_JOY1},
 	{"JOY2", K_JOY2},
@@ -663,8 +663,8 @@ keyname_t keynames_i[] =  //Italian
 	{"TN_5",         K_KP_5 },
 	{"TN_FRECCIA_DX",    K_KP_RIGHTARROW },
 	{"TN_FINE",          K_KP_END },
-	{"TN_FRECCIAGIŸ",    K_KP_DOWNARROW },
-	{"TN_PAGGIŸ",            K_KP_PGDN },
+	{"TN_FRECCIAGI√ô",    K_KP_DOWNARROW },
+	{"TN_PAGGI√ô",            K_KP_PGDN },
 	{"TN_INVIO",     K_KP_ENTER },
 	{"TN_INS",           K_KP_INS },
 	{"TN_CANC",          K_KP_DEL },
@@ -677,7 +677,7 @@ keyname_t keynames_i[] =  //Italian
 
 	{"PAUSA", K_PAUSE},
 
-	{"Ú", ';'},   // because a raw semicolon seperates commands
+	{"√≤", ';'},   // because a raw semicolon seperates commands
 
 	{"COMMAND", K_COMMAND},  //mac
 

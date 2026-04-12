@@ -55,7 +55,7 @@ set(JPEG_DIR ${SRC_DIR}/jpeg-6)
 
 # Общие определения
 add_definitions(
-    -DQ3_VERSION=\"Wolf 1.41\"
+    -DQ3_VERSION=Wolf141
     -DLINUX
     -D__linux__
     -DARCH_X86_64
@@ -92,10 +92,9 @@ include_directories(
 # БИБЛИОТЕКА idLib
 # ============================================================
 set(IDLIB_SOURCES
-    ${IDLIB_DIR}/idLib.cpp
-    ${IDLIB_DIR}/idAudio.cpp
+    ${IDLIB_DIR}/idQ3Asnd.cpp
     ${IDLIB_DIR}/idSound.cpp
-    ${IDLIB_DIR}/idAudioHardware.cpp
+    ${IDLIB_DIR}/idSpeaker.cpp
 )
 
 add_library(idlib STATIC ${IDLIB_SOURCES})
@@ -130,9 +129,9 @@ set(SPLINES_SOURCES
     ${SPLINES_DIR}/math_quaternion.cpp
     ${SPLINES_DIR}/math_vector.cpp
     ${SPLINES_DIR}/util_str.cpp
-    ${SPLINES_DIR}/util_math.cpp
-    ${SPLINES_DIR}/util_heap.cpp
-    ${SPLINES_DIR}/parser.cpp
+    ${SPLINES_DIR}/q_parse.cpp
+    ${SPLINES_DIR}/q_shared.cpp
+    ${SPLINES_DIR}/splines.cpp
 )
 
 add_library(splines STATIC ${SPLINES_SOURCES})

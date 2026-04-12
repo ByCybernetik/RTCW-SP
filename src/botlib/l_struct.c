@@ -4,7 +4,7 @@
 Return to Castle Wolfenstein single player GPL Source Code
 Copyright (C) 1999-2010 id Software LLC, a ZeniMax Media company. 
 
-This file is part of the Return to Castle Wolfenstein single player GPL Source Code (RTCW SP Source Code).  
+This file is part of the Return to Castle Wolfenstein single player GPL Source Code ("RTCW SP Source Code").  
 
 RTCW SP Source Code is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -48,6 +48,24 @@ If you have questions concerning this license or the applicable additional terms
 #ifdef BSPC
 //include files for usage in the BSP Converter
 #include "../bspc/qbsp.h"
+#include "qbsp.h"
+#include "l_log.h"
+#include "l_poly.h"
+#include "l_math.h"
+#endif //BSPC
+
+#ifndef BOTLIB
+#ifndef BSPC
+#include <stdio.h>
+#include <stdlib.h>
+#include "../game/q_shared.h"
+#include "../game/botlib.h"
+#include "l_script.h"
+#include "l_precomp.h"
+#include "l_struct.h"
+#include "l_utils.h"
+#endif
+#endif
 #include "../bspc/l_log.h"
 #include "../bspc/l_mem.h"
 #include "l_precomp.h"
