@@ -924,15 +924,30 @@ static void PM_WalkMove( void ) {
 // JPW NERVE
 #if defined ( CGAMEDLL )
 			if ( cg_gameType.integer != GT_SINGLE_PLAYER )
-#elif defined ( GAMEDLL )
-			if ( g_gametype.integer != GT_SINGLE_PLAYER )
-#endif
 			{
 				pm->ps->sprintTime -= 2500;
 				if ( pm->ps->sprintTime < 0 ) {
 					pm->ps->sprintTime = 0;
 				}
-			} else {
+			}
+#elif defined ( GAMEDLL )
+			if ( g_gametype.integer != GT_SINGLE_PLAYER )
+			{
+				pm->ps->sprintTime -= 2500;
+				if ( pm->ps->sprintTime < 0 ) {
+					pm->ps->sprintTime = 0;
+				}
+			}
+#else
+			// Default case when neither CGAMEDLL nor GAMEDLL is defined
+			{
+				pm->ps->sprintTime -= 2500;
+				if ( pm->ps->sprintTime < 0 ) {
+					pm->ps->sprintTime = 0;
+				}
+			}
+#endif
+			{
 				pm->ps->jumpTime = pm->cmd.serverTime;
 
 				stamtake = 2000;    // amount to take for jump
@@ -2738,16 +2753,15 @@ static void PM_Weapon( void ) {
 	}
 
 	// game is reloading (mission fail/success)
+	gameReloading = qfalse;
 #ifdef CGAMEDLL
 	if ( cg_reloading.integer )
+		gameReloading = qtrue;
 #endif
 #ifdef GAMEDLL
 	if ( g_reloading.integer )
+		gameReloading = qtrue;
 #endif
-	gameReloading = qtrue;
-	else {
-		gameReloading = qfalse;
-	}
 
 	// ignore if spectator
 	if ( pm->ps->persistant[PERS_TEAM] == TEAM_SPECTATOR ) {
@@ -2861,14 +2875,15 @@ static void PM_Weapon( void ) {
 // JPW NERVE -- in multiplayer, dynamite becomes strategic, so start timer @ 30 seconds
 #ifdef CGAMEDLL
 				if ( cg_gameType.integer != GT_SINGLE_PLAYER ) {
-#endif
-#ifdef GAMEDLL
+#elif defined(GAMEDLL)
 				if ( g_gametype.integer != GT_SINGLE_PLAYER ) {
+#else
+				{
 #endif
-				if ( pm->ps->grenadeTimeLeft < 5000 ) {
-					pm->ps->grenadeTimeLeft = 5000;
+					if ( pm->ps->grenadeTimeLeft < 5000 ) {
+						pm->ps->grenadeTimeLeft = 5000;
+					}
 				}
-			}
 // jpw
 
 			if ( pm->ps->grenadeTimeLeft > 8000 ) {
@@ -2897,17 +2912,16 @@ static void PM_Weapon( void ) {
 
 		if ( !( pm->cmd.buttons & BUTTON_ATTACK ) ) { //----(SA)	modified
 			if ( pm->ps->weaponDelay == ammoTable[pm->ps->weapon].fireDelayTime ) {
-				// released fire button.  Fire!!!
+							// released fire button.  Fire!!!
 				BG_AnimScriptEvent( pm->ps, ANIM_ET_FIREWEAPON, qfalse, qtrue );
 			}
 		} else {
 			return;
 		}
 	}
-}
 
-if ( pm->ps->weaponDelay > 0 ) {
-	pm->ps->weaponDelay -= pml.msec;
+	if ( pm->ps->weaponDelay > 0 ) {
+		pm->ps->weaponDelay -= pml.msec;
 	if ( pm->ps->weaponDelay <= 0 ) {
 		pm->ps->weaponDelay = 0;
 		delayedFire = qtrue;            // weapon delay has expired.  Fire this frame
@@ -2973,28 +2987,29 @@ if ( pm->ps->weaponTime > 0 ) {
 // JPW NERVE -- added back for multiplayer pistol balancing
 #ifdef CGAMEDLL
 	if ( cg_gameType.integer != GT_SINGLE_PLAYER ) {
-#endif
-#ifdef GAMEDLL
+#elif defined(GAMEDLL)
 	if ( g_gametype.integer != GT_SINGLE_PLAYER ) {
+#else
+	{
 #endif
-	if ( pm->ps->weapon == WP_LUGER ) {
-		if ( pm->ps->releasedFire ) {
-			if ( pm->ps->weaponTime <= 150 && ( pm->cmd.buttons & BUTTON_ATTACK ) ) {
-				pm->ps->weaponTime = 0;
+		if ( pm->ps->weapon == WP_LUGER ) {
+			if ( pm->ps->releasedFire ) {
+				if ( pm->ps->weaponTime <= 150 && ( pm->cmd.buttons & BUTTON_ATTACK ) ) {
+					pm->ps->weaponTime = 0;
+				}
+			} else if ( !( pm->cmd.buttons & BUTTON_ATTACK ) && ( pm->ps->weaponTime >= 50 ) ) {
+				pm->ps->releasedFire = qtrue;
 			}
-		} else if ( !( pm->cmd.buttons & BUTTON_ATTACK ) && ( pm->ps->weaponTime >= 50 ) ) {
-			pm->ps->releasedFire = qtrue;
-		}
-	} else if ( pm->ps->weapon == WP_COLT ) {
-		if ( pm->ps->releasedFire ) {
-			if ( pm->ps->weaponTime <= 150 && ( pm->cmd.buttons & BUTTON_ATTACK ) ) {
-				pm->ps->weaponTime = 0;
+		} else if ( pm->ps->weapon == WP_COLT ) {
+			if ( pm->ps->releasedFire ) {
+				if ( pm->ps->weaponTime <= 150 && ( pm->cmd.buttons & BUTTON_ATTACK ) ) {
+					pm->ps->weaponTime = 0;
+				}
+			} else if ( !( pm->cmd.buttons & BUTTON_ATTACK ) && ( pm->ps->weaponTime >= 100 ) ) {
+				pm->ps->releasedFire = qtrue;
 			}
-		} else if ( !( pm->cmd.buttons & BUTTON_ATTACK ) && ( pm->ps->weaponTime >= 100 ) ) {
-			pm->ps->releasedFire = qtrue;
 		}
 	}
-}
 // jpw
 
 }
@@ -3401,33 +3416,39 @@ case WP_SNIPERRIFLE:        // (SA) not so much added per shot.  these weapons m
 // JPW NERVE crippling the rifle a bit in multiplayer; it's way too strong so make it go completely out every time you fire
 #ifdef CGAMEDLL
 	if ( cg_gameType.integer != GT_SINGLE_PLAYER ) {
-#endif
-#ifdef GAMEDLL
+		aimSpreadScaleAdd = 100;
+	} else {
+		aimSpreadScaleAdd = 20;
+	}
+#elif defined(GAMEDLL)
 	if ( g_gametype.integer != GT_SINGLE_PLAYER ) {
-#endif
-//			addTime *= 2; // pulled this and reduced rifle damage
+		aimSpreadScaleAdd = 100;
+	} else {
+		aimSpreadScaleAdd = 20;
+	}
+#else
 	aimSpreadScaleAdd = 100;
-} else {
-// jpw
-	aimSpreadScaleAdd = 20;
-}
-break;
+#endif
+	break;
 case WP_SNOOPERSCOPE:
 // JPW NERVE crippling the rifle a bit in multiplayer; it's way too strong so make it go completely out every time you fire
 // snooper doesn't do one-shot body kills, so give it a little less bounce
 addTime = ammoTable[pm->ps->weapon].nextShotTime;
 #ifdef CGAMEDLL
 if ( cg_gameType.integer != GT_SINGLE_PLAYER ) {
-#endif
-#ifdef GAMEDLL
-if ( g_gametype.integer != GT_SINGLE_PLAYER ) {
-#endif
-aimSpreadScaleAdd = 50;
-//			addTime *= 2;
+	aimSpreadScaleAdd = 50;
 } else {
-// jpw
 	aimSpreadScaleAdd = 10;
 }
+#elif defined(GAMEDLL)
+if ( g_gametype.integer != GT_SINGLE_PLAYER ) {
+	aimSpreadScaleAdd = 50;
+} else {
+	aimSpreadScaleAdd = 10;
+}
+#else
+aimSpreadScaleAdd = 50;
+#endif
 break;
 
 case WP_FG42SCOPE:

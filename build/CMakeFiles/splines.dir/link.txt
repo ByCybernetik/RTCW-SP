@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsplines.a CMakeFiles/splines.dir/src/splines/math_angles.cpp.o CMakeFiles/splines.dir/src/splines/math_matrix.cpp.o CMakeFiles/splines.dir/src/splines/math_quaternion.cpp.o CMakeFiles/splines.dir/src/splines/math_vector.cpp.o CMakeFiles/splines.dir/src/splines/util_str.cpp.o CMakeFiles/splines.dir/src/splines/q_parse.cpp.o CMakeFiles/splines.dir/src/splines/q_shared.cpp.o CMakeFiles/splines.dir/src/splines/splines.cpp.o
+/usr/bin/ranlib libsplines.a
