@@ -214,11 +214,15 @@ qboolean Sys_AnsicolorSupported(void) {
 Sys_OpenURL
 =================
 */
-void Sys_OpenURL(const char* url) {
+void Sys_OpenURL(char* url, qboolean doexit) {
     char cmd[1024];
     
     snprintf(cmd, sizeof(cmd), "xdg-open '%s' &", url);
     system(cmd);
+    
+    if (doexit) {
+        exit(0);
+    }
 }
 
 /*
@@ -236,7 +240,7 @@ qboolean Sys_LowPhysicalMemory(void) {
 Sys_ProcessorCount
 =================
 */
-int Sys_ProcessorCount(void) {
+unsigned int Sys_ProcessorCount(void) {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
 

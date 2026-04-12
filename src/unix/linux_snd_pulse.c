@@ -76,11 +76,11 @@ qboolean SNDDMA_Init(void) {
         return qtrue;
     }
     
-    // Чтение параметров из cvar
-    sndbits = Cvar_Get("sndbits", "16", CVAR_SOUND);
-    sndspeed = Cvar_Get("sndspeed", "22050", CVAR_SOUND);
-    sndchannels = Cvar_Get("sndchannels", "2", CVAR_SOUND);
-    snddevice = Cvar_Get("snddevice", "", CVAR_SOUND);
+    // Чтение параметров из cvar (используем CVAR_USER_CREATED вместо несуществующего CVAR_SOUND)
+    sndbits = Cvar_Get("sndbits", "16", CVAR_USER_CREATED);
+    sndspeed = Cvar_Get("sndspeed", "22050", CVAR_USER_CREATED);
+    sndchannels = Cvar_Get("sndchannels", "2", CVAR_USER_CREATED);
+    snddevice = Cvar_Get("snddevice", "", CVAR_USER_CREATED);
     
     // Настройка формата сэмплов
     bits = sndbits->integer;
@@ -123,9 +123,6 @@ qboolean SNDDMA_Init(void) {
     }
     
     // Настройка dma buffer
-    dma.buffer = dma.samples = 0;
-    
-    // Выделение буфера (2 секунды звука)
     dma.samples = sample_rate * channels * 2 / (bits / 8);
     dma.buffer = Z_Malloc(dma.samples * (bits / 8));
     

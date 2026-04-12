@@ -3493,8 +3493,8 @@ case AICHAR_ZOMBIE:
 default:
 	break;
 }
+break;
 
-default:
 case WP_GAUNTLET:
 switch ( pm->ps->aiChar )
 {
@@ -3530,6 +3530,12 @@ pm->ps->aimSpreadScale = (int)( pm->ps->aimSpreadScaleFloat );
 pm->ps->weaponTime += addTime;
 
 PM_SwitchIfEmpty();
+break;
+
+default:
+break;
+}
+
 }
 
 

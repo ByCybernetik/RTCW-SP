@@ -26,6 +26,9 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+#ifndef __KEYS_H__
+#define __KEYS_H__
+
 #include "../ui/keycodes.h"
 
 #define MAX_KEYS        256
@@ -38,6 +41,8 @@ typedef struct {
 
 extern qboolean key_overstrikeMode;
 extern qkey_t keys[MAX_KEYS];
+
+#endif // __KEYS_H__
 
 // NOTE TTimo the declaration of field_t and Field_Clear is now in qcommon/qcommon.h
 

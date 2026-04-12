@@ -162,8 +162,14 @@ typedef enum {
 	K_MINUS, K_EQUALS, K_LEFTBRACKET, K_RIGHTBRACKET, K_BACKSLASH,
 	K_SEMICOLON, K_APOSTROPHE, K_COMMA, K_PERIOD, K_SLASH, K_TILDE,
 	
+	// Letter keys (A-Z) - needed for GLFW mapping
+	K_A, K_B, K_C, K_D, K_E, K_F, K_G, K_H, K_I, K_J, K_K, K_L, K_M,
+	K_N, K_O, K_P, K_Q, K_R, K_S, K_T, K_U, K_V, K_W, K_X, K_Y, K_Z,
+	
 	K_SCROLLLOCK,
 	K_PRINTSCREEN,
+	
+	K_NONE = 0,           // Special code for no key
 
 	K_LAST_KEY      // this had better be <256!
 } keyNum_t;
