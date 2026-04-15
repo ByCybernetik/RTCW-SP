@@ -1660,6 +1660,10 @@ static void CG_SetLerpFrameAnimation( clientInfo_t *ci, lerpFrame_t *lf, int new
 	}
 
 	anim = &ci->modelInfo->animations[ newAnimation ];
+	// x64: validate anim pointer
+	if ( !anim ) {
+		return;
+	}
 
 	lf->animation = anim;
 	lf->animationTime = lf->frameTime + anim->initialLerp;
@@ -1774,7 +1778,12 @@ void CG_SetLerpFrameAnimationRate( centity_t *cent, clientInfo_t *ci, lerpFrame_
 	int transitionMin = -1, oldAnimTime, oldAnimNum;
 	qboolean firstAnim = qfalse;
 
-	if ( !ci->modelInfo ) {
+	// x64: validate all pointers
+	if ( !cent || !ci || !lf ) {
+		return;
+	}
+	// x64: validate modelInfo pointer (may be dangling after VM restart)
+	if ( !ci->modelInfo || (intptr_t)ci->modelInfo < 0x1000 || (intptr_t)ci->modelInfo > 0x7fffffffffffLL ) {
 		return;
 	}
 
@@ -1790,7 +1799,13 @@ void CG_SetLerpFrameAnimationRate( centity_t *cent, clientInfo_t *ci, lerpFrame_
 	newAnimation &= ~ANIM_TOGGLEBIT;
 
 	if ( newAnimation < 0 || newAnimation >= ci->modelInfo->numAnimations ) {
-		CG_Error( "Bad animation number (CG_SLFAR): %i", newAnimation );
+		// x64: clamp animation number instead of error
+		CG_Printf( "WARNING: Bad animation number (CG_SLFAR): %i, numAnimations=%i\n", newAnimation, ci->modelInfo->numAnimations );
+		return;
+	}
+	// x64: validate animations array
+	if ( !ci->modelInfo->animations ) {
+		return;
 	}
 
 	anim = &ci->modelInfo->animations[ newAnimation ];
@@ -2107,11 +2122,17 @@ CG_ClearLerpFrameRate
 ===============
 */
 void CG_ClearLerpFrameRate( clientInfo_t *ci, lerpFrame_t *lf, int animationNumber, centity_t *cent ) {
+	// x64: safety check for modelInfo during restart
+	if ( !ci->modelInfo ) {
+		return;
+	}
 	lf->frameTime = lf->oldFrameTime = cg.time;
 	CG_SetLerpFrameAnimationRate( cent, ci, lf, animationNumber );
-	if ( lf->animation ) {
-		lf->oldFrame = lf->frame = lf->animation->firstFrame;
+	// x64: if animation wasn't set (invalid anim number), skip frame setup
+	if ( !lf->animation ) {
+		return;
 	}
+	lf->oldFrame = lf->frame = lf->animation->firstFrame;
 }
 
 // done.

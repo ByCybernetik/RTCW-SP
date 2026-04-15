@@ -705,6 +705,12 @@ static void CG_MapRestart( void ) {
 
 	// RF, clear out animScriptData so we recalc everything and get new pointers from server
 	memset( cgs.animScriptData.modelInfo, 0, sizeof( cgs.animScriptData.modelInfo ) );
+	// x64: reset modelInfo pointers in clientinfo to prevent dangling pointers after restart
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		cgs.clientinfo[i].modelInfo = NULL;
+	}
+	// x64: reset all cg_entities to prevent access to dangling pointers from old VM
+	memset( cg_entities, 0, sizeof( cg_entities ) );
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		if ( cgs.clientinfo[i].infoValid ) {
 			CG_LoadClientInfo( &cgs.clientinfo[i] );    // re-register the valid clients
