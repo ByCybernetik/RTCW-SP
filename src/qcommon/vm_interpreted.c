@@ -317,7 +317,7 @@ locals from sp
 
 #define DEBUGSTR va( "%s%i", VM_Indent( vm ), opStack - stack )
 
-int VM_CallInterpreted( vm_t *vm, int *args ) {
+int VM_CallInterpreted( vm_t *vm, intptr_t *args ) {
 	int stack[MAX_STACK];
 	int     *opStack;
 	int programCounter;
@@ -525,7 +525,7 @@ nextInstruction2:
 				*(int *)&image[ programStack + 4 ] = -1 - programCounter;
 
 //VM_LogSyscalls( (int *)&image[ programStack + 4 ] );
-				r = vm->systemCall( (int *)&image[ programStack + 4 ] );
+				r = vm->systemCall( (intptr_t *)&image[ programStack + 4 ] );
 
 #ifdef DEBUG_VM
 				// this is just our stack frame pointer, only needed
