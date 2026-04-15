@@ -151,6 +151,27 @@ set(SERVER_SOURCES
     src/server/sv_world.c
 )
 
+# Renderer library - OpenGL renderer as separate shared library
+set(RENDERER_LIB_SOURCES
+    ${RENDERER_SOURCES}
+    src/unix/sdl2_qgl.c
+)
+
+add_library(renderer SHARED ${RENDERER_LIB_SOURCES})
+target_compile_definitions(renderer PRIVATE -DSDL2_QGL)
+target_compile_options(renderer PRIVATE -fPIC -O0)
+target_link_libraries(renderer
+    ${OPENGL_LIBRARIES}
+    ${SDL2_LIBRARIES}
+    m
+    dl
+)
+set_target_properties(renderer PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "renderer${ARCH}"
+    SUFFIX ".so"
+)
+
 # Common sources
 set(COMMON_SOURCES
     src/qcommon/cm_load.c
@@ -457,8 +478,13 @@ add_custom_command(TARGET ui POST_BUILD
     COMMENT "Copying ui.so to main/"
 )
 
+add_custom_command(TARGET renderer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:renderer> ${MAIN_DIR}/
+    COMMENT "Copying renderer.so to main/"
+)
+
 # Installation
-install(TARGETS wolfsp.${ARCH} qagame cgame ui
+install(TARGETS wolfsp.${ARCH} qagame cgame ui renderer
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
 )
