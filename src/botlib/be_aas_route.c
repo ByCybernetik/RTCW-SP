@@ -126,7 +126,7 @@ void AAS_RoutingInfo( void ) {
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-__inline int AAS_ClusterAreaNum( int cluster, int areanum ) {
+static inline int AAS_ClusterAreaNum( int cluster, int areanum ) {
 	int side, areacluster;
 
 	areacluster = ( *aasworld ).areasettings[areanum].cluster;
@@ -197,7 +197,7 @@ int AAS_TravelFlagForType( int traveltype ) {
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-__inline float AAS_RoutingTime( void ) {
+static inline float AAS_RoutingTime( void ) {
 	return AAS_Time();
 } //end of the function AAS_RoutingTime
 //===========================================================================
@@ -1004,7 +1004,19 @@ aas_routingcache_t *AAS_ReadCache( fileHandle_t fp ) {
 
 	botimport.FS_Read( &size, sizeof( size ), fp );
 	size = LittleLong( size );
+	
+	// x64: Validate size to prevent crashes with corrupted/mismatched cache files
+	if ( size < (int)sizeof( aas_routingcache_t ) || size > 1024 * 1024 ) {
+		botimport.Print( PRT_ERROR, "AAS_ReadCache: invalid cache size %d\n", size );
+		return NULL;
+	}
+	
 	cache = (aas_routingcache_t *) AAS_RoutingGetMemory( size );
+	if ( !cache ) {
+		botimport.Print( PRT_ERROR, "AAS_ReadCache: failed to allocate memory for cache\n" );
+		return NULL;
+	}
+	
 	cache->size = size;
 	botimport.FS_Read( (unsigned char *)cache + sizeof( size ), size - sizeof( size ), fp );
 
@@ -1043,6 +1055,11 @@ int AAS_ReadRouteCache( void ) {
 	char filename[MAX_QPATH];
 	routecacheheader_t routecacheheader;
 	aas_routingcache_t *cache;
+
+	// x64: Don't read route cache if AAS data isn't loaded
+	if ( !( *aasworld ).loaded ) {
+		return qfalse;
+	}
 
 	Com_sprintf( filename, MAX_QPATH, "maps/%s.rcd", ( *aasworld ).mapname );
 	botimport.FS_FOpenFile( filename, &fp, FS_READ );
@@ -1108,6 +1125,13 @@ int AAS_ReadRouteCache( void ) {
 	for ( i = 0; i < routecacheheader.numportalcache; i++ )
 	{
 		cache = AAS_ReadCache( fp );
+		// x64: Validate cache and areanum to prevent crashes
+		if ( !cache || cache->areanum < 0 || cache->areanum >= ( *aasworld ).numareas ) {
+			botimport.FS_FCloseFile( fp );
+			botimport.Print( PRT_ERROR, "AAS_ReadRouteCache: invalid portal cache %d (areanum=%d, numareas=%d)\n", 
+				i, cache ? cache->areanum : -1, ( *aasworld ).numareas );
+			return qfalse;
+		}
 		cache->next = ( *aasworld ).portalcache[cache->areanum];
 		cache->prev = NULL;
 		if ( ( *aasworld ).portalcache[cache->areanum] ) {
@@ -1119,6 +1143,14 @@ int AAS_ReadRouteCache( void ) {
 	for ( i = 0; i < routecacheheader.numareacache; i++ )
 	{
 		cache = AAS_ReadCache( fp );
+		// x64: Validate cache, cluster and areanum to prevent crashes
+		if ( !cache || cache->cluster < 0 || cache->cluster >= ( *aasworld ).numclusters ||
+		     cache->areanum < 0 || cache->areanum >= ( *aasworld ).numareas ) {
+			botimport.FS_FCloseFile( fp );
+			botimport.Print( PRT_ERROR, "AAS_ReadRouteCache: invalid area cache %d (cluster=%d, areanum=%d)\n", 
+				i, cache ? cache->cluster : -1, cache ? cache->areanum : -1 );
+			return qfalse;
+		}
 		clusterareanum = AAS_ClusterAreaNum( cache->cluster, cache->areanum );
 		cache->next = ( *aasworld ).clusterareacache[cache->cluster][clusterareanum];
 		cache->prev = NULL;
@@ -1161,6 +1193,10 @@ int AAS_ReadRouteCache( void ) {
 //===========================================================================
 void AAS_CreateVisibility( void );
 void AAS_InitRouting( void ) {
+	// x64: Skip routing initialization if AAS data isn't loaded
+	if ( !( *aasworld ).loaded ) {
+		return;
+	}
 	AAS_InitTravelFlagFromType();
 	//initialize the routing update fields
 	AAS_InitRoutingUpdate();
@@ -2030,7 +2066,7 @@ void AAS_DecompressVis( byte *in, int numareas, byte *decompressed ) {
 
 	//row = (numareas+7)>>3;
 	out = decompressed;
-	end = ( byte * )( (int)decompressed + numareas );
+	end = ( byte * )( (uintptr_t)decompressed + numareas );
 
 	do
 	{
