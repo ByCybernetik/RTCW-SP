@@ -186,7 +186,7 @@ qboolean _UI_IsFullscreen( void );
 #if defined( __MACOS__ )
 #pragma export on
 #endif
-int vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, int arg7, int arg8, int arg9, int arg10, int arg11  ) {
+intptr_t vmMain( intptr_t command, intptr_t arg0, intptr_t arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6, intptr_t arg7, intptr_t arg8, intptr_t arg9, intptr_t arg10, intptr_t arg11  ) {
 #if defined( __MACOS__ )
 #pragma export off
 #endif
@@ -693,6 +693,7 @@ int startTime;
 void _UI_Refresh( int realtime ) {
 	static int index;
 	static int previousTimes[UI_FPS_FRAMES];
+	static int refreshCount = 0;
 
 	//if ( !( trap_Key_GetCatcher() & KEYCATCH_UI ) ) {
 	//	return;
@@ -715,8 +716,6 @@ void _UI_Refresh( int realtime ) {
 		}
 		uiInfo.uiDC.FPS = 1000 * UI_FPS_FRAMES / total;
 	}
-
-
 
 	UI_UpdateCvars();
 
@@ -1726,6 +1725,7 @@ static void UI_DrawPlayerModel( rectDef_t *rect ) {
 	char head[256];
 	vec3_t viewangles;
 	static vec3_t moveangles = { 0, 0, 0 };
+	static int drawCount = 0;
 
 	if ( trap_Cvar_VariableValue( "ui_Q3Model" ) ) {
 		//	  strcpy(model, UI_Cvar_VariableString("model"));
@@ -1745,7 +1745,7 @@ static void UI_DrawPlayerModel( rectDef_t *rect ) {
 			updateModel = qtrue;
 		}
 	}
-
+	
 	moveangles[YAW] += 1;       // NERVE - SMF - TEMPORARY
 
 	// compare new cvars to old cvars and see if we need to update
@@ -6540,10 +6540,25 @@ void _UI_Init( qboolean inGameLoad ) {
 	const char *menuSet;
 	int start;
 
+	trap_Print("_UI_Init called\n");
+
 	//uiInfo.inGameLoad = inGameLoad;
 
 	UI_RegisterCvars();
 	UI_InitMemory();
+
+	// Set default player model cvars if not set
+	{
+		char buf[MAX_QPATH];
+		trap_Cvar_VariableStringBuffer("team_model", buf, sizeof(buf));
+		if (!buf[0]) {
+			trap_Cvar_Set("team_model", "bj2");
+		}
+		trap_Cvar_VariableStringBuffer("team_headmodel", buf, sizeof(buf));
+		if (!buf[0]) {
+			trap_Cvar_Set("team_headmodel", "*bj2");
+		}
+	}
 
 	// cache redundant calulations
 	trap_GetGlconfig( &uiInfo.uiDC.glconfig );

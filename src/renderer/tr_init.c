@@ -207,6 +207,8 @@ int max_polys;
 cvar_t  *r_maxpolyverts;
 int max_polyverts;
 
+// When using SDL2 OpenGL loader, these are defined in sdl2_qgl.c
+#ifndef SDL2_QGL
 void ( APIENTRY * qglMultiTexCoord2fARB )( GLenum texture, GLfloat s, GLfloat t );
 void ( APIENTRY * qglActiveTextureARB )( GLenum texture );
 void ( APIENTRY * qglClientActiveTextureARB )( GLenum texture );
@@ -217,6 +219,7 @@ void ( APIENTRY * qglUnlockArraysEXT )( void );
 //----(SA)	added
 void ( APIENTRY * qglPNTrianglesiATI )( GLenum pname, GLint param );
 void ( APIENTRY * qglPNTrianglesfATI )( GLenum pname, GLfloat param );
+#endif
 /*
 The tessellation level and normal generation mode are specified with:
 

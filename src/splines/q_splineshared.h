@@ -85,8 +85,13 @@ If you have questions concerning this license or the applicable additional terms
 // this is the define for determining if we have an asm version of a C function
 #if ( defined _M_IX86 || defined __i386__ ) && !defined __sun__  && !defined __LCC__
 #define id386   1
+#define idx64   0
+#elif defined _M_X64 || defined __x86_64__
+#define id386   0
+#define idx64   1
 #else
 #define id386   0
+#define idx64   0
 #endif
 
 // for windows fastcall option
@@ -106,12 +111,16 @@ If you have questions concerning this license or the applicable additional terms
 #ifdef NDEBUG
 #ifdef _M_IX86
 #define CPUSTRING   "win-x86"
+#elif defined _M_X64
+#define CPUSTRING   "win-x64"
 #elif defined _M_ALPHA
 #define CPUSTRING   "win-AXP"
 #endif
 #else
 #ifdef _M_IX86
 #define CPUSTRING   "win-x86-debug"
+#elif defined _M_X64
+#define CPUSTRING   "win-x64-debug"
 #elif defined _M_ALPHA
 #define CPUSTRING   "win-AXP-debug"
 #endif
@@ -202,6 +211,8 @@ void Sys_PumpEvents( void );
 
 #ifdef __i386__
 #define CPUSTRING   "linux-i386"
+#elif defined __x86_64__
+#define CPUSTRING   "linux-x86_64"
 #elif defined __axp__
 #define CPUSTRING   "linux-alpha"
 #else

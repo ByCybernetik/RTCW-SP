@@ -84,7 +84,7 @@ static qboolean Menu_OverActiveItem( menuDef_t *menu, float x, float y );
 #ifdef CGAME
 #define MEM_POOL_SIZE  128 * 1024
 #else
-#define MEM_POOL_SIZE  1024 * 1024
+#define MEM_POOL_SIZE  (2 * 1024 * 1024)  // 2 MB for x64
 #endif
 
 static char memoryPool[MEM_POOL_SIZE];
@@ -176,7 +176,7 @@ void *UI_Alloc( int size ) {
 	if ( allocPoint + size > MEM_POOL_SIZE ) {
 		outOfMemory = qtrue;
 		if ( DC->Print ) {
-			DC->Print( "UI_Alloc: Failure. Out of memory!\n" );
+			DC->Print( "UI_Alloc: Failure. Out of memory! (need %d, have %d, pool %d)\n", size, MEM_POOL_SIZE - allocPoint, MEM_POOL_SIZE );
 		}
 		//DC->trap_Print(S_COLOR_YELLOW"WARNING: UI Out of Memory!\n");
 		return NULL;
