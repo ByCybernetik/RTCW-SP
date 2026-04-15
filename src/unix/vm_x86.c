@@ -26,11 +26,26 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-
 #include "../qcommon/vm_local.h"
 
+// x64 uses interpreter only - these are just stubs
+#if idx64
+
+void VM_Compile( vm_t *vm, vmHeader_t *header ) {
+	// x64 does not support JIT compilation
+}
+
+int VM_CallCompiled( vm_t *vm, intptr_t *args ) {
+	Com_Error( ERR_DROP, "VM_CallCompiled: not available on x64" );
+	return 0;
+}
+
+#else // x86
+
 void VM_Compile( vm_t *vm, vmHeader_t *header ) {}
-int VM_CallCompiled( vm_t *vm, int *args ) {}
+int VM_CallCompiled( vm_t *vm, intptr_t *args ) { return 0; }
+
+#endif
 
 
 

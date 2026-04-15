@@ -1,6 +1,6 @@
 # ui
 
-Import qw( BASE_CFLAGS CONFIG_DIR BUILD_DIR BASEGAME CC CXX LINK );
+Import qw( BASE_CFLAGS CONFIG_DIR BUILD_DIR BASEGAME CC CXX LINK cpu );
 
 $env = new cons(
 	CC => $CC,
@@ -24,7 +24,13 @@ $env = new cons(
   );
 $FILESREF = \@FILES;
   
-# FIXME CPU string  
-Program $env 'uii386.so', @$FILESREF;
-Install $env '#' . $CONFIG_DIR . '/out/' . $BASEGAME, 'uii386.so';
+# Target name based on architecture
+if ($cpu eq 'x86') {
+  $TARGET_NAME = 'uii386.so';
+} else {
+  $TARGET_NAME = 'ui' . $cpu . '.so';
+}
+
+Program $env $TARGET_NAME, @$FILESREF;
+Install $env '#' . $CONFIG_DIR . '/out/' . $BASEGAME, $TARGET_NAME;
 
