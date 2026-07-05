@@ -29,14 +29,15 @@ If you have questions concerning this license or the applicable additional terms
 // cg_syscalls.c -- this file is only included when building a dll
 // cg_syscalls.asm is included instead when building a qvm
 #include "cg_local.h"
+#include <string.h>
 
-static int ( QDECL * syscall )( int arg, ... ) = ( int ( QDECL * )( int, ... ) ) - 1;
+static intptr_t ( QDECL * syscall )( intptr_t arg, ... ) = ( intptr_t ( QDECL * )( intptr_t, ... ) ) - 1;
 
 // TTimo: guarding
 #if defined( __MACOS__ )
 #pragma export on
 #endif
-void dllEntry( int ( QDECL  *syscallptr )( int arg,... ) ) {
+void dllEntry( intptr_t ( QDECL  *syscallptr )( intptr_t arg,... ) ) {
 #if defined( __MACOS__ )
 #pragma export off
 #endif
@@ -44,10 +45,11 @@ void dllEntry( int ( QDECL  *syscallptr )( int arg,... ) ) {
 }
 
 
-int PASSFLOAT( float x ) {
-	float floatTemp;
-	floatTemp = x;
-	return *(int *)&floatTemp;
+// x64: pass float bits as intptr_t
+intptr_t PASSFLOAT( float x ) {
+	int32_t bits;
+	memcpy(&bits, &x, sizeof(bits));
+	return (intptr_t)bits;
 }
 
 void    trap_Print( const char *fmt ) {

@@ -412,10 +412,17 @@ int AAS_LoadAASFile( char *filename ) {
 	} //end if
 	  //
 	( *aasworld ).bspchecksum = atoi( LibVarGetString( "sv_mapChecksum" ) );
-	if ( LittleLong( header.bspchecksum ) != ( *aasworld ).bspchecksum ) {
-		AAS_Error( "aas file %s is out of date\n", filename );
-		botimport.FS_FCloseFile( fp );
-		return BLERR_WRONGAASFILEVERSION;
+	int aasChecksum = LittleLong( header.bspchecksum );
+	if ( aasChecksum != ( *aasworld ).bspchecksum ) {
+		// RTCW x64: sp_pak4.pk3 contains updated maps but old AAS files from pak0.pk3
+		// This is a bug in the original game files. Load AAS anyway with a warning.
+		static qboolean warnedChecksum = qfalse;
+		if ( !warnedChecksum ) {
+			AAS_Error( "aas file %s has wrong checksum (bsp=%d, aas=%d). Loading anyway.\n", filename,
+				( *aasworld ).bspchecksum, aasChecksum );
+			warnedChecksum = qtrue;
+		}
+		// Continue loading despite checksum mismatch
 	} //end if
 	  //load the lumps:
 	  //bounding boxes

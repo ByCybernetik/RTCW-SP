@@ -50,12 +50,14 @@ void SV_SetConfigstring( int index, const char *val ) {
 		Com_Error( ERR_DROP, "SV_SetConfigstring: bad index %i\n", index );
 	}
 
+	// x64: validate pointer from VM
 	if ( !val ) {
+		Com_Printf( "WARNING: SV_SetConfigstring: NULL val pointer for index %d\n", index );
 		val = "";
 	}
-
-	// don't bother broadcasting an update if no change
-	if ( !strcmp( val, sv.configstrings[ index ] ) ) {
+	
+	// x64: during restart, skip configstring updates - val pointer may be from old VM
+	if ( sv.restarting ) {
 		return;
 	}
 
@@ -667,6 +669,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 				Cvar_Set( "bot_enable", "1" );
 			}
 		}
+
 	}
 	// done.
 

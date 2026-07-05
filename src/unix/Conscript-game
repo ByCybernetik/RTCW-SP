@@ -1,6 +1,6 @@
 # game
 
-Import qw( BASE_CFLAGS CONFIG_DIR BUILD_DIR BASEGAME CC CXX LINK );
+Import qw( BASE_CFLAGS CONFIG_DIR BUILD_DIR BASEGAME CC CXX LINK cpu );
 
 $env = new cons(
 	CC => $CC,
@@ -99,9 +99,13 @@ Depends $env ['../game/g_funcs.h', '../game/g_func_decs.h'], '#extractfuncs';
 # generation command
 Command $env ['../game/g_funcs.h', '../game/g_func_decs.h'], "[perl] &build_funcs()";
 
-# FIXME CPU string
-# FIXME wolfgamei386.so ?
-# TODO use an ldd -r after .so build to catch unresolved symbols? (PostBuild command)
-Program $env 'qagamei386.so', @$FILESREF;
+# Target name based on architecture
+if ($cpu eq 'x86') {
+  $TARGET_NAME = 'qagamei386.so';
+} else {
+  $TARGET_NAME = 'qagame' . $cpu . '.so';
+}
 
-Install $env '#' . $CONFIG_DIR . '/out/' . $BASEGAME, 'qagamei386.so';
+Program $env $TARGET_NAME, @$FILESREF;
+
+Install $env '#' . $CONFIG_DIR . '/out/' . $BASEGAME, $TARGET_NAME;

@@ -34,6 +34,10 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "tr_local.h"
+#ifdef VULKAN_BACKEND
+#include "../vulkan/vk_local.h"
+extern qboolean vk_active;
+#endif
 
 /*
  * Include file for users of JPEG library.
@@ -933,6 +937,32 @@ image_t *R_CreateImageExt( const char *name, const byte *pic, int width, int hei
 	} else {
 		image->TMU = 0;
 	}
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		int vkIdx = (int)( image->texnum - 1024 );
+
+		image->uploadWidth = width;
+		image->uploadHeight = height;
+		image->internalFormat = GL_RGBA8;
+
+		if ( vkIdx >= 0 && vkIdx < VK_MAX_TEXTURES ) {
+        if ( VK_CreateTextureFromPixels( (const uint8_t *)pic, width, height,
+			                                 &vk_state.textures[vkIdx], glWrapClampMode ) ) {
+				if ( vkIdx >= vk_state.textureCount ) {
+					vk_state.textureCount = vkIdx + 1;
+				}
+				VK_OnTextureUploaded( vkIdx );
+			}
+		}
+
+		hash = generateHashValue( name );
+		image->next = hashTable[hash];
+		hashTable[hash] = image;
+		image->hash = hash;
+		return image;
+	}
+#endif
 
 	if ( qglActiveTextureARB ) {
 		GL_SelectTexture( image->TMU );
@@ -2225,12 +2255,14 @@ static void R_CreateFogImage( void ) {
 	tr.fogImage = R_CreateImage( "*fog", (byte *)data, FOG_S, FOG_T, qfalse, qfalse, GL_CLAMP );
 	ri.Hunk_FreeTempMemory( data );
 
+#ifndef VULKAN_BACKEND
 	borderColor[0] = 1.0;
 	borderColor[1] = 1.0;
 	borderColor[2] = 1.0;
 	borderColor[3] = 1;
 
 	qglTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor );
+#endif
 }
 
 /*
@@ -2423,7 +2455,18 @@ void R_DeleteTextures( void ) {
 	int i;
 
 	for ( i = 0; i < tr.numImages ; i++ ) {
+#ifndef VULKAN_BACKEND
 		qglDeleteTextures( 1, &tr.images[i]->texnum );
+#else
+		if ( !vk_active ) {
+			qglDeleteTextures( 1, &tr.images[i]->texnum );
+		} else {
+			int vkIdx = (int)( tr.images[i]->texnum - 1024 );
+			if ( vkIdx >= 0 && vkIdx < VK_MAX_TEXTURES ) {
+				VK_DestroyTexture( &vk_state.textures[vkIdx] );
+			}
+		}
+#endif
 	}
 	memset( tr.images, 0, sizeof( tr.images ) );
 	// Ridah

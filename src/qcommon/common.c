@@ -31,6 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../game/q_shared.h"
 #include "qcommon.h"
 #include <setjmp.h>
+#include <stdint.h>
 
 #define MAXPRINTMSG 4096
 
@@ -341,6 +342,7 @@ do the apropriate things.
 =============
 */
 void Com_Quit_f( void ) {
+	Com_Printf("Com_Quit_f called\n");
 	// don't try to shutdown if we are in a recursive error
 	if ( !com_errorEntered ) {
 		SV_Shutdown( "Server quit\n" );
@@ -1095,7 +1097,7 @@ void Com_InitHunkMemory( void ) {
 		Com_Error( ERR_FATAL, "Hunk data failed to allocate %i megs", s_hunkTotal / ( 1024 * 1024 ) );
 	}
 	// cacheline align
-	s_hunkData = ( byte * )( ( (int)s_hunkData + 31 ) & ~31 );
+	s_hunkData = ( byte * )( ( (intptr_t)s_hunkData + 31 ) & ~31 );
 	Hunk_Clear();
 
 	Cmd_AddCommand( "meminfo", Com_Meminfo_f );
@@ -2448,7 +2450,17 @@ void Com_Shutdown( void ) {
 
 }
 
-#if !( defined __linux__ || defined __FreeBSD__ )  // r010123 - include FreeBSD
+#if idx64
+// x64 uses C versions
+void Com_Memcpy( void* dest, const void* src, const size_t count ) {
+	memcpy( dest, src, count );
+}
+
+void Com_Memset( void* dest, const int val, const size_t count ) {
+	memset( dest, val, count );
+}
+
+#elif !( defined __linux__ || defined __FreeBSD__ )  // r010123 - include FreeBSD
 #if ( ( !id386 ) && ( !defined __i386__ ) ) // rcg010212 - for PPC
 
 void Com_Memcpy( void* dest, const void* src, const size_t count ) {
@@ -2459,6 +2471,7 @@ void Com_Memset( void* dest, const int val, const size_t count ) {
 	memset( dest, val, count );
 }
 
+#endif
 #else
 
 typedef enum
@@ -2754,7 +2767,6 @@ skip:
 	}
 }
 
-#endif
 #endif // bk001208 - memset/memcpy assembly, Q_acos needed (RC4)
 //------------------------------------------------------------------------
 

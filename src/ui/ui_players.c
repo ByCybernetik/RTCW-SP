@@ -1413,6 +1413,7 @@ qboolean UI_RegisterClientModelname( playerInfo_t *pi, const char *modelSkinName
 	char        *slash;
 	const char* backpack = NULL;
 	const char* helmet = NULL;
+	static int modelCount = 0;
 
 	pi->torsoModel = 0;
 	pi->headModel = 0;
@@ -1420,7 +1421,7 @@ qboolean UI_RegisterClientModelname( playerInfo_t *pi, const char *modelSkinName
 	if ( !modelSkinName[0] ) {
 		return qfalse;
 	}
-
+	
 	Q_strncpyz( modelName, modelSkinName, sizeof( modelName ) );
 
 	slash = strchr( modelName, '/' );

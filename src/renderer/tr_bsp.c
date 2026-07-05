@@ -2144,6 +2144,7 @@ RE_LoadWorldMap
 Called directly from cgame
 =================
 */
+
 void RE_LoadWorldMap( const char *name ) {
 	int i;
 	dheader_t   *header;

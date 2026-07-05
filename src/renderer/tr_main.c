@@ -1310,7 +1310,7 @@ qboolean R_MirrorViewBySurface( drawSurf_t *drawSurf, int entityNum ) {
 	// OPTIMIZE: restrict the viewport on the mirrored view
 
 	// render the mirror view
-	R_RenderView( &newParms );
+	RB_RenderView( &newParms );
 
 	tr.viewParms = oldParms;
 
@@ -1364,7 +1364,14 @@ qsort replacement
 
 =================
 */
-#define SWAP_DRAW_SURF( a,b ) temp = ( (int *)a )[0]; ( (int *)a )[0] = ( (int *)b )[0]; ( (int *)b )[0] = temp; temp = ( (int *)a )[1]; ( (int *)a )[1] = ( (int *)b )[1]; ( (int *)b )[1] = temp;
+// x64-safe swap using memcpy
+static inline void SWAP_DRAW_SURF_FUNC( void *a, void *b ) {
+	drawSurf_t temp;
+	memcpy( &temp, a, sizeof( drawSurf_t ) );
+	memcpy( a, b, sizeof( drawSurf_t ) );
+	memcpy( b, &temp, sizeof( drawSurf_t ) );
+}
+#define SWAP_DRAW_SURF( a,b ) SWAP_DRAW_SURF_FUNC( a, b )
 
 /* this parameter defines the cutoff between using quick sort and
    insertion sort for arrays; arrays with lengths shorter or equal to the
@@ -1374,7 +1381,6 @@ qsort replacement
 
 static void shortsort( drawSurf_t *lo, drawSurf_t *hi ) {
 	drawSurf_t  *p, *max;
-	int temp;
 
 	while ( hi > lo ) {
 		max = lo;
@@ -1406,9 +1412,8 @@ void qsortFast(
 	int stkptr;                 /* stack for saving sub-array to be processed */
 	int temp;
 
-	if ( sizeof( drawSurf_t ) != 8 ) {
-		ri.Error( ERR_DROP, "change SWAP_DRAW_SURF macro" );
-	}
+	// x64: drawSurf_t is 16 bytes (unsigned: 4 + pointer: 8 + padding: 4)
+	// SWAP_DRAW_SURF now uses memcpy for portability
 
 	/* Note: the number of stack entries required is no more than
 	   1 + log2(size), so 30 is sufficient for any array */
@@ -1824,13 +1829,15 @@ void R_DebugGraphics( void ) {
 }
 
 
+void (*RB_RenderView)( viewParms_t * ) = R_RenderView;
+
 /*
-================
+============
 R_RenderView
 
 A view may be either the actual camera view,
 or a mirror / remote location
-================
+============
 */
 void R_RenderView( viewParms_t *parms ) {
 	int firstDrawSurf;

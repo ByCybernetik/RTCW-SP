@@ -207,6 +207,8 @@ int max_polys;
 cvar_t  *r_maxpolyverts;
 int max_polyverts;
 
+// When using SDL2 OpenGL loader, these are defined in sdl2_qgl.c
+#ifndef SDL2_QGL
 void ( APIENTRY * qglMultiTexCoord2fARB )( GLenum texture, GLfloat s, GLfloat t );
 void ( APIENTRY * qglActiveTextureARB )( GLenum texture );
 void ( APIENTRY * qglClientActiveTextureARB )( GLenum texture );
@@ -217,6 +219,7 @@ void ( APIENTRY * qglUnlockArraysEXT )( void );
 //----(SA)	added
 void ( APIENTRY * qglPNTrianglesiATI )( GLenum pname, GLint param );
 void ( APIENTRY * qglPNTrianglesfATI )( GLenum pname, GLfloat param );
+#endif
 /*
 The tessellation level and normal generation mode are specified with:
 
@@ -297,6 +300,12 @@ static void InitOpenGL( void ) {
 	//
 
 	if ( glConfig.vidWidth == 0 ) {
+#ifdef VULKAN_BACKEND
+		if ( !VKimp_Init() ) {
+			ri.Error( ERR_FATAL, "InitOpenGL: VKimp_Init() failed" );
+		}
+		glConfig.maxTextureSize = 2048;
+#else
 		GLint temp;
 
 		GLimp_Init();
@@ -310,8 +319,9 @@ static void InitOpenGL( void ) {
 
 		// stubbed or broken drivers may have reported 0...
 		if ( glConfig.maxTextureSize <= 0 ) {
-			glConfig.maxTextureSize = 0;
+			glConfig.maxTextureSize = 2048;
 		}
+#endif
 	}
 
 	// init command buffers and SMP
@@ -321,7 +331,9 @@ static void InitOpenGL( void ) {
 	GfxInfo_f();
 
 	// set default state
+#ifndef VULKAN_BACKEND
 	GL_SetDefaultState();
+#endif
 }
 
 /*
@@ -1236,8 +1248,6 @@ void R_Init( void ) {
 
 	R_InitImages();
 
-
-
 	R_InitShaders();
 
 	R_InitSkins();
@@ -1248,10 +1258,12 @@ void R_Init( void ) {
 
 	RB_ZombieFXInit();
 
+#ifndef VULKAN_BACKEND
 	err = qglGetError();
 	if ( err != GL_NO_ERROR ) {
 		ri.Printf( PRINT_ALL, "glGetError() = 0x%x\n", err );
 	}
+#endif
 
 	ri.Printf( PRINT_ALL, "----- finished R_Init -----\n" );
 }
@@ -1313,7 +1325,11 @@ void RE_Shutdown( qboolean destroyWindow ) {
 
 	// shut down platform specific OpenGL stuff
 	if ( destroyWindow ) {
+#ifdef VULKAN_BACKEND
+		VKimp_Shutdown();
+#else
 		GLimp_Shutdown();
+#endif
 
 		// Ridah, release the virtual memory
 		R_Hunk_End();

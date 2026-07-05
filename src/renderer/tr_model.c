@@ -1314,7 +1314,9 @@ void RE_BeginRegistration( glconfig_t *glconfigOut ) {
 	// NOTE: this sucks, for some reason the first stretch pic is never drawn
 	// without this we'd see a white flash on a level load because the very
 	// first time the level shot would not be drawn
+#ifndef VULKAN_BACKEND
 	RE_StretchPic( 0, 0, 0, 0, 0, 0, 1, 1, 0 );
+#endif
 }
 
 /*

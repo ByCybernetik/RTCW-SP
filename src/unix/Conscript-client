@@ -1,6 +1,6 @@
 # full client build script
 
-Import qw( BASE_CFLAGS CONFIG_DIR BUILD_DIR CC CXX LINK );
+Import qw( BASE_CFLAGS CONFIG_DIR BUILD_DIR CC CXX LINK cpu );
 
 # splines
 $env_splines = new cons(
@@ -121,65 +121,62 @@ $JPEGLIB_REF = \@JPEGLIB_FILES;
   
 Library $env_jpeglib 'jpeglib', @$JPEGLIB_REF;   
 
-# NOTE TTimo this requires patched cons version to work (see unix/cons)
-%nasm_hash = new cons()->copy(
-  CC => 'nasm',
-  CCCOM => '%CC -f elf -o %> %<'
-);
-$nasm_hash{SUFMAP}{'.nasm'} = 'build::command::cc';
-$nasm_env = new cons(%nasm_hash);
-
-Library $nasm_env 'asmlib', 'ftol.nasm', 'snapvector.nasm';
-
-# compiling files with inlined assembly
-$env_inlined = new cons(
-  CFLAGS => '-m32 -DELF -x assembler-with-cpp'
+# Assembly optimizations (x86 only)
+if ($cpu eq 'x86') {
+  # NOTE TTimo this requires patched cons version to work (see unix/cons)
+  %nasm_hash = new cons()->copy(
+    CC => 'nasm',
+    CCCOM => '%CC -f elf -o %> %<'
   );
+  $nasm_hash{SUFMAP}{'.nasm'} = 'build::command::cc';
+  $nasm_env = new cons(%nasm_hash);
 
-Library $env_inlined 'inlinelib', '../unix/matha.s', '../unix/snd_mixa.s';
+  Library $nasm_env 'asmlib', 'ftol.nasm', 'snapvector.nasm';
+
+  # compiling files with inlined assembly
+  $env_inlined = new cons(
+    CFLAGS => '-m32 -DELF -x assembler-with-cpp'
+    );
+
+  Library $env_inlined 'inlinelib', '../unix/matha.s', '../unix/snd_mixa.s';
+}
 
 # putting it all together
+
+# Base libraries (always included)
+$BASE_LIBS = ' ' . $BUILD_DIR . '/unix/splines.a ' 
+  . $BUILD_DIR . '/unix/botlib.a ' 
+  . $BUILD_DIR . '/unix/jpeglib.a ';
+
+# Assembly libraries (x86 only)
+if ($cpu eq 'x86') {
+  $BASE_LIBS .= $BUILD_DIR . '/unix/asmlib.a '
+    . $BUILD_DIR . '/unix/inlinelib.a ';
+}
+
+$BASE_LIBS .= '-lGL -ldl -lX11 -lXext -lXxf86dga -lXxf86vm -lm';
 
 $env = new cons(
 	CC => $CC,
 	CXX => $CXX,
 	LINK => $LINK,
   CFLAGS => $BASE_CFLAGS,
-#  LDFLAGS => '-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga -lXxf86vm -ldl -lm',
-  LIBS => ' ' . $BUILD_DIR . '/unix/splines.a ' 
-  . $BUILD_DIR . '/unix/botlib.a ' 
-  . $BUILD_DIR . '/unix/jpeglib.a '
-  . $BUILD_DIR . '/unix/asmlib.a '
-  . $BUILD_DIR . '/unix/inlinelib.a '
-  . '-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga -lXxf86vm -ldl -lm'
+  LIBS => $BASE_LIBS
 );
 
+# OpenGL renderer
 @RENDERER_FILES = qw(
-  ../renderer/tr_animation.c   
-  ../renderer/tr_backend.c   
-  ../renderer/tr_bsp.c   
-  ../renderer/tr_cmds.c   
-  ../renderer/tr_cmesh.c
-  ../renderer/tr_curve.c   
-  ../renderer/tr_flares.c   
-  ../renderer/tr_font.c    
-  ../renderer/tr_image.c    
-  ../renderer/tr_init.c     
-  ../renderer/tr_light.c   
-  ../renderer/tr_main.c    
-  ../renderer/tr_marks.c    
-  ../renderer/tr_mesh.c    
-  ../renderer/tr_model.c    
-  ../renderer/tr_noise.c    
-  ../renderer/tr_scene.c    
-  ../renderer/tr_shade.c    
-  ../renderer/tr_shade_calc.c   
-  ../renderer/tr_shader.c    
-  ../renderer/tr_shadows.c    
-  ../renderer/tr_sky.c    
-  ../renderer/tr_surface.c   
-  ../renderer/tr_world.c    
-  );
+  ../renderer/tr_init.c
+  ../renderer/tr_image.c
+  ../renderer/tr_scene.c
+  ../renderer/tr_shader.c
+  ../renderer/tr_backend.c
+  ../renderer/tr_world.c
+  ../renderer/tr_light.c
+  ../renderer/tr_model.c
+  ../renderer/tr_main.c
+  ../renderer/tr_bsp.c
+ );
 $RENDERER_REF = \@RENDERER_FILES;  
 
 @CLIENT_FILES = qw(
@@ -257,8 +254,14 @@ $SERVER_REF = \@SERVER_FILES;
   );
 $VM_REF = \@VM_FILES;
 
-# FIXME: import the CPU string to build the name of the target
-Program $env 'wolfsp.x86', '../game/q_shared.c', '../game/q_math.c',
+# Target name based on architecture
+if ($cpu eq 'x86') {
+  $TARGET_NAME = 'wolfsp.x86';
+} else {
+  $TARGET_NAME = 'wolfsp.' . $cpu;
+}
+
+Program $env $TARGET_NAME, '../game/q_shared.c', '../game/q_math.c',
   @$RENDERER_REF, @$CLIENT_REF, @$COMMON_REF, @$SOUND_REF,
   @$UNIX_REF, @$SERVER_REF, @$VM_REF;
-Install $env '#' . $CONFIG_DIR . '/out', 'wolfsp.x86';
+Install $env '#' . $CONFIG_DIR . '/out', $TARGET_NAME;

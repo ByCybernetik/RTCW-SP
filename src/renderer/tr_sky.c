@@ -53,7 +53,7 @@ static vec3_t sky_clip[6] =
 	{-1,0,1}
 };
 
-static float sky_mins[2][6], sky_maxs[2][6];
+float sky_mins[2][6], sky_maxs[2][6];
 static float sky_min, sky_max;
 
 /*

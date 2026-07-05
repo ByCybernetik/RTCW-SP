@@ -27,6 +27,11 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "tr_local.h"
+#ifdef VULKAN_BACKEND
+#include "../vulkan/vk_local.h"
+#include "../vulkan/vk_sky.h"
+extern qboolean vk_active;
+#endif
 
 backEndData_t   *backEndData[SMP_FRAMES];
 backEndState_t backEnd;
@@ -62,6 +67,11 @@ void GL_Bind( image_t *image ) {
 	if ( glState.currenttextures[glState.currenttmu] != texnum ) {
 		image->frameUsed = tr.frameCount;
 		glState.currenttextures[glState.currenttmu] = texnum;
+#ifdef VULKAN_BACKEND
+		if ( vk_active ) {
+			return;
+		}
+#endif
 		qglBindTexture( GL_TEXTURE_2D, texnum );
 	}
 }
@@ -73,6 +83,13 @@ void GL_SelectTexture( int unit ) {
 	if ( glState.currenttmu == unit ) {
 		return;
 	}
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		glState.currenttmu = unit;
+		return;
+	}
+#endif
 
 	if ( unit == 0 ) {
 		qglActiveTextureARB( GL_TEXTURE0_ARB );
@@ -1144,6 +1161,36 @@ void RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byte *
 	}
 	R_SyncRenderThread();
 
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		stretchRawCommand_t *cmd;
+
+		for ( i = 0 ; ( 1 << i ) < cols ; i++ ) {
+		}
+		for ( j = 0 ; ( 1 << j ) < rows ; j++ ) {
+		}
+		if ( ( 1 << i ) != cols || ( 1 << j ) != rows ) {
+			ri.Error( ERR_DROP, "Draw_StretchRaw: size not a power of 2: %i by %i", cols, rows );
+		}
+
+		VK_UploadScratchImage( tr.scratchImage[client], data, cols, rows, dirty );
+
+		cmd = (stretchRawCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
+		if ( !cmd ) {
+			return;
+		}
+		cmd->commandId = RC_STRETCH_RAW;
+		cmd->x = (float)x;
+		cmd->y = (float)y;
+		cmd->w = (float)w;
+		cmd->h = (float)h;
+		cmd->cols = cols;
+		cmd->rows = rows;
+		cmd->client = client;
+		return;
+	}
+#endif
+
 	// we definately want to sync every frame for the cinematics
 	qglFinish();
 
@@ -1204,6 +1251,13 @@ void RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byte *
 
 void RE_UploadCinematic( int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty ) {
 
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		VK_UploadScratchImage( tr.scratchImage[client], data, cols, rows, dirty );
+		return;
+	}
+#endif
+
 	GL_Bind( tr.scratchImage[client] );
 
 	// if the scratchImage isn't in the format we want, specify it as a new texture
@@ -1224,6 +1278,27 @@ void RE_UploadCinematic( int w, int h, int cols, int rows, const byte *data, int
 	}
 }
 
+
+/*
+=============
+RB_StretchRaw
+=============
+*/
+const void *RB_StretchRaw( const void *data ) {
+	const stretchRawCommand_t *cmd;
+
+	cmd = (const stretchRawCommand_t *)data;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		VK_DrawStretchRaw( (int)cmd->x, (int)cmd->y, (int)cmd->w, (int)cmd->h,
+		                   cmd->cols, cmd->rows, cmd->client );
+		return (const void *)( cmd + 1 );
+	}
+#endif
+
+	return (const void *)( cmd + 1 );
+}
 
 /*
 =============
@@ -1255,6 +1330,25 @@ const void *RB_StretchPic( const void *data ) {
 	int numVerts, numIndexes;
 
 	cmd = (const stretchPicCommand_t *)data;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		float color[4];
+
+		backEnd.refdef.time = ri.Milliseconds();
+		backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
+
+		color[0] = backEnd.color2D[0] / 255.0f;
+		color[1] = backEnd.color2D[1] / 255.0f;
+		color[2] = backEnd.color2D[2] / 255.0f;
+		color[3] = backEnd.color2D[3] / 255.0f;
+		VK_SetColor( color );
+		VK_StretchPic( cmd->x, cmd->y, cmd->w, cmd->h,
+		               cmd->s1, cmd->t1, cmd->s2, cmd->t2, cmd->shader );
+		backEnd.projection2D = qtrue;
+		return (const void *)( cmd + 1 );
+	}
+#endif
 
 	if ( !backEnd.projection2D ) {
 		RB_SetGL2D();
@@ -1331,6 +1425,26 @@ const void *RB_StretchPicGradient( const void *data ) {
 	int numVerts, numIndexes;
 
 	cmd = (const stretchPicCommand_t *)data;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		float color[4];
+
+		backEnd.refdef.time = ri.Milliseconds();
+		backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
+
+		color[0] = backEnd.color2D[0] / 255.0f;
+		color[1] = backEnd.color2D[1] / 255.0f;
+		color[2] = backEnd.color2D[2] / 255.0f;
+		color[3] = backEnd.color2D[3] / 255.0f;
+		VK_SetColor( color );
+		VK_StretchPicGradient( cmd->x, cmd->y, cmd->w, cmd->h,
+		                       cmd->s1, cmd->t1, cmd->s2, cmd->t2, cmd->shader,
+		                       cmd->gradientColor );
+		backEnd.projection2D = qtrue;
+		return (const void *)( cmd + 1 );
+	}
+#endif
 
 	if ( !backEnd.projection2D ) {
 		RB_SetGL2D();
@@ -1411,12 +1525,24 @@ RB_DrawSurfs
 const void  *RB_DrawSurfs( const void *data ) {
 	const drawSurfsCommand_t    *cmd;
 
+	cmd = (const drawSurfsCommand_t *)data;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		tess.numIndexes = 0;
+		tess.numVertexes = 0;
+		backEnd.refdef = cmd->refdef;
+		backEnd.viewParms = cmd->viewParms;
+		VK_DrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+		VK_DrawSun( vk_state.cmdBuffers[vk_state.currentImageIndex] );
+		return (const void *)( cmd + 1 );
+	}
+#endif
+
 	// finish any 2D drawing if needed
 	if ( tess.numIndexes ) {
 		RB_EndSurface();
 	}
-
-	cmd = (const drawSurfsCommand_t *)data;
 
 	backEnd.refdef = cmd->refdef;
 	backEnd.viewParms = cmd->viewParms;
@@ -1437,6 +1563,15 @@ const void  *RB_DrawBuffer( const void *data ) {
 	const drawBufferCommand_t   *cmd;
 
 	cmd = (const drawBufferCommand_t *)data;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		if ( !vk_state.renderPassActive ) {
+			VK_BeginFrame( STEREO_CENTER );
+		}
+		return (const void *)( cmd + 1 );
+	}
+#endif
 
 	qglDrawBuffer( cmd->buffer );
 
@@ -1460,6 +1595,11 @@ Also called by RE_EndRegistration
 ===============
 */
 void RB_ShowImages( void ) {
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		return;
+	}
+#endif
 	int i;
 	image_t *image;
 	float x, y, w, h;
@@ -1522,6 +1662,12 @@ const void  *RB_SwapBuffers( const void *data ) {
 	const swapBuffersCommand_t  *cmd;
 
 	// finish any 2D drawing if needed
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		tess.numIndexes = 0;
+		tess.numVertexes = 0;
+	} else
+#endif
 	if ( tess.numIndexes ) {
 		RB_EndSurface();
 	}
@@ -1532,6 +1678,16 @@ const void  *RB_SwapBuffers( const void *data ) {
 	}
 
 	cmd = (const swapBuffersCommand_t *)data;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		tess.numIndexes = 0;
+		tess.numVertexes = 0;
+		VK_EndFrame( NULL, NULL );
+		backEnd.projection2D = qfalse;
+		return (const void *)( cmd + 1 );
+	}
+#endif
 
 	// we measure overdraw by reading back the stencil buffer and
 	// counting up the number of increments that have happened
@@ -1594,6 +1750,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			break;
 		case RC_STRETCH_PIC_GRADIENT:
 			data = RB_StretchPicGradient( data );
+			break;
+		case RC_STRETCH_RAW:
+			data = RB_StretchRaw( data );
 			break;
 		case RC_DRAW_SURFS:
 			data = RB_DrawSurfs( data );

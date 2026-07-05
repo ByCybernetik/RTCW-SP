@@ -341,29 +341,18 @@ long RllDecodeStereoToMono( unsigned char *from,short *to,unsigned int size,char
 *
 ******************************************************************************/
 
+// x64-safe version using memcpy to avoid alignment issues
 static void move8_32( byte *src, byte *dst, int spl ) {
-	double *dsrc, *ddst;
-	int dspl;
+	int i;
 
-	dsrc = (double *)src;
-	ddst = (double *)dst;
-	dspl = spl >> 3;
-
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
+	if ( !src || !dst || spl <= 0 ) {
+		return;
+	}
+	for ( i = 0; i < 8; i++ ) {
+		Com_Memcpy( dst, src, 32 );  // 8 pixels * 4 bytes
+		src += spl;
+		dst += spl;
+	}
 }
 
 /******************************************************************************
@@ -374,21 +363,40 @@ static void move8_32( byte *src, byte *dst, int spl ) {
 *
 ******************************************************************************/
 
-static void move4_32( byte *src, byte *dst, int spl  ) {
-	double *dsrc, *ddst;
-	int dspl;
+// x64-safe version using memcpy to avoid alignment issues
+static void move4_32( byte *src, byte *dst, int spl ) {
+	int i;
 
-	dsrc = (double *)src;
-	ddst = (double *)dst;
-	dspl = spl >> 3;
+	if ( !src || !dst || spl <= 0 ) {
+		return;
+	}
+	for ( i = 0; i < 4; i++ ) {
+		Com_Memcpy( dst, src, 16 );  // 4 pixels * 4 bytes
+		src += spl;
+		dst += spl;
+	}
+}
 
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
-	dsrc += dspl; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
+static qboolean CIN_LinbufContains( const byte *ptr, int byteLen ) {
+	const byte *end = cin.linbuf + sizeof( cin.linbuf );
+
+	return ptr >= cin.linbuf && ptr + byteLen <= end;
+}
+
+static void CIN_McompMove8_32( byte *dst, int mcIndex, int spl ) {
+	byte *src = dst + cin.mcomp[mcIndex & 0xff];
+
+	if ( CIN_LinbufContains( src, 7 * spl + 32 ) && CIN_LinbufContains( dst, 7 * spl + 32 ) ) {
+		move8_32( src, dst, spl );
+	}
+}
+
+static void CIN_McompMove4_32( byte *dst, int mcIndex, int spl ) {
+	byte *src = dst + cin.mcomp[mcIndex & 0xff];
+
+	if ( CIN_LinbufContains( src, 3 * spl + 16 ) && CIN_LinbufContains( dst, 3 * spl + 16 ) ) {
+		move4_32( src, dst, spl );
+	}
 }
 
 /******************************************************************************
@@ -399,29 +407,14 @@ static void move4_32( byte *src, byte *dst, int spl  ) {
 *
 ******************************************************************************/
 
-static void blit8_32( byte *src, byte *dst, int spl  ) {
-	double *dsrc, *ddst;
-	int dspl;
-
-	dsrc = (double *)src;
-	ddst = (double *)dst;
-	dspl = spl >> 3;
-
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += 4; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += 4; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += 4; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += 4; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += 4; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += 4; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
-	dsrc += 4; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1]; ddst[2] = dsrc[2]; ddst[3] = dsrc[3];
+// x64-safe version using memcpy to avoid alignment issues
+static void blit8_32( byte *src, byte *dst, int spl ) {
+	int i;
+	for ( i = 0; i < 8; i++ ) {
+		Com_Memcpy( dst, src, 32 );  // 8 pixels * 4 bytes
+		src += 32;
+		dst += spl;
+	}
 }
 
 /******************************************************************************
@@ -431,22 +424,14 @@ static void blit8_32( byte *src, byte *dst, int spl  ) {
 * Description:
 *
 ******************************************************************************/
-#define movs double
-static void blit4_32( byte *src, byte *dst, int spl  ) {
-	movs *dsrc, *ddst;
-	int dspl;
-
-	dsrc = (movs *)src;
-	ddst = (movs *)dst;
-	dspl = spl >> 3;
-
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
-	dsrc += 2; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
-	dsrc += 2; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
-	dsrc += 2; ddst += dspl;
-	ddst[0] = dsrc[0]; ddst[1] = dsrc[1];
+// x64-safe version using memcpy to avoid alignment issues
+static void blit4_32( byte *src, byte *dst, int spl ) {
+	int i;
+	for ( i = 0; i < 4; i++ ) {
+		Com_Memcpy( dst, src, 16 );  // 4 pixels * 4 bytes
+		src += 16;
+		dst += spl;
+	}
 }
 
 /******************************************************************************
@@ -457,16 +442,10 @@ static void blit4_32( byte *src, byte *dst, int spl  ) {
 *
 ******************************************************************************/
 
-static void blit2_32( byte *src, byte *dst, int spl  ) {
-	double *dsrc, *ddst;
-	int dspl;
-
-	dsrc = (double *)src;
-	ddst = (double *)dst;
-	dspl = spl >> 3;
-
-	ddst[0] = dsrc[0];
-	ddst[dspl] = dsrc[1];
+// x64-safe version using memcpy to avoid alignment issues
+static void blit2_32( byte *src, byte *dst, int spl ) {
+	Com_Memcpy( dst, src, 8 );       // 2 pixels * 4 bytes
+	Com_Memcpy( dst + spl, src + 8, 8 );
 }
 
 /******************************************************************************
@@ -489,6 +468,12 @@ static void blitVQQuad32fs( byte **status, unsigned char *data ) {
 	spl = cinTable[currentHandle].samplesPerLine;
 
 	do {
+		// x64: validate status[index] before use
+		if ( !status[index] ) {
+			index++;
+			continue;
+		}
+		
 		if ( !newd ) {
 			newd = 7;
 			celdata = data[0] + data[1] * 256;
@@ -535,7 +520,7 @@ static void blitVQQuad32fs( byte **status, unsigned char *data ) {
 					data++;
 					break;
 				case    0x4000:                                             // motion compensation
-					move4_32( status[index] + cin.mcomp[( *data )], status[index], spl );
+					CIN_McompMove4_32( status[index], *data, spl );
 					data++;
 					break;
 				}
@@ -543,7 +528,7 @@ static void blitVQQuad32fs( byte **status, unsigned char *data ) {
 			}
 			break;
 		case    0x4000:                                                     // motion compensation
-			move8_32( status[index] + cin.mcomp[( *data )], status[index], spl );
+			CIN_McompMove8_32( status[index], *data, spl );
 			data++;
 			index += 5;
 			break;
@@ -1102,14 +1087,16 @@ static void readQuadInfo( byte *qData ) {
 	cinTable[currentHandle].VQ0 = cinTable[currentHandle].VQNormal;
 	cinTable[currentHandle].VQ1 = cinTable[currentHandle].VQBuffer;
 
-	cinTable[currentHandle].t[0] = ( 0 - (unsigned int)cin.linbuf ) + (unsigned int)cin.linbuf + cinTable[currentHandle].screenDelta;
-	cinTable[currentHandle].t[1] = ( 0 - ( (unsigned int)cin.linbuf + cinTable[currentHandle].screenDelta ) ) + (unsigned int)cin.linbuf;
+	// These are just offset values (screenDelta and -screenDelta)
+	// The original code used a convoluted pointer arithmetic trick that breaks on x64
+	cinTable[currentHandle].t[0] = cinTable[currentHandle].screenDelta;
+	cinTable[currentHandle].t[1] = -cinTable[currentHandle].screenDelta;
 
 	cinTable[currentHandle].drawX = cinTable[currentHandle].CIN_WIDTH;
 	cinTable[currentHandle].drawY = cinTable[currentHandle].CIN_HEIGHT;
 
 	// rage pro is very slow at 512 wide textures, voodoo can't do it at all
-	if ( glConfig.hardwareType == GLHW_RAGEPRO || glConfig.maxTextureSize <= 256 ) {
+	if ( glConfig.hardwareType == GLHW_RAGEPRO ) {
 		if ( cinTable[currentHandle].drawX > 256 ) {
 			cinTable[currentHandle].drawX = 256;
 		}
@@ -1686,6 +1673,47 @@ void CIN_SetLooping( int handle, qboolean loop ) {
 	cinTable[handle].looping = loop;
 }
 
+static void CIN_DownsampleRGBA32( const int *src, int srcWidth, int srcHeight,
+                                  int *dst, int dstWidth, int dstHeight ) {
+	int xm = srcWidth / dstWidth;
+	int ym = srcHeight / dstHeight;
+	int dy, dx;
+
+	if ( xm < 1 ) {
+		xm = 1;
+	}
+	if ( ym < 1 ) {
+		ym = 1;
+	}
+
+	for ( dy = 0; dy < dstHeight; dy++ ) {
+		for ( dx = 0; dx < dstWidth; dx++ ) {
+			int sy, sx;
+			int r = 0, g = 0, b = 0, a = 0;
+			int count = 0;
+			byte *out;
+
+			for ( sy = 0; sy < ym; sy++ ) {
+				for ( sx = 0; sx < xm; sx++ ) {
+					const byte *p = (const byte *)&src[( dy * ym + sy ) * srcWidth + ( dx * xm + sx )];
+
+					r += p[0];
+					g += p[1];
+					b += p[2];
+					a += p[3];
+					count++;
+				}
+			}
+
+			out = (byte *)&dst[dy * dstWidth + dx];
+			out[0] = (byte)( r / count );
+			out[1] = (byte)( g / count );
+			out[2] = (byte)( b / count );
+			out[3] = (byte)( a / count );
+		}
+	}
+}
+
 /*
 ==================
 SCR_DrawCinematic
@@ -1728,24 +1756,24 @@ void CIN_DrawCinematic( int handle ) {
 	}
 
 	if ( cinTable[handle].dirty && ( cinTable[handle].CIN_WIDTH != cinTable[handle].drawX || cinTable[handle].CIN_HEIGHT != cinTable[handle].drawY ) ) {
-		int ix, iy, *buf2, *buf3, xm, ym, ll;
+		int ix, iy, *buf2, *buf3;
+		int outW, outH;
+		int xm, ym;
 
-		xm = cinTable[handle].CIN_WIDTH / 256;
-		ym = cinTable[handle].CIN_HEIGHT / 256;
-		ll = 8;
-		if ( cinTable[handle].CIN_WIDTH == 512 ) {
-			ll = 9;
-		}
+		outW = cinTable[handle].drawX;
+		outH = cinTable[handle].drawY;
+		xm = cinTable[handle].CIN_WIDTH / outW;
+		ym = cinTable[handle].CIN_HEIGHT / outH;
 
-		buf3 = (int*)buf;
-		buf2 = Hunk_AllocateTempMemory( 256 * 256 * 4 );
-		if ( xm == 2 && ym == 2 ) {
+		buf3 = (int *)buf;
+		buf2 = Hunk_AllocateTempMemory( outW * outH * 4 );
+		if ( cinTable[handle].samplesPerPixel == 2 && xm == 2 && ym == 2 ) {
 			byte *bc2, *bc3;
 			int ic, iiy;
 
 			bc2 = (byte *)buf2;
 			bc3 = (byte *)buf3;
-			for ( iy = 0; iy < 256; iy++ ) {
+			for ( iy = 0; iy < outH; iy++ ) {
 				iiy = iy << 12;
 				for ( ix = 0; ix < 2048; ix += 8 ) {
 					for ( ic = ix; ic < ( ix + 4 ); ic++ ) {
@@ -1754,13 +1782,13 @@ void CIN_DrawCinematic( int handle ) {
 					}
 				}
 			}
-		} else if ( xm == 2 && ym == 1 ) {
+		} else if ( cinTable[handle].samplesPerPixel == 2 && xm == 2 && ym == 1 ) {
 			byte *bc2, *bc3;
 			int ic, iiy;
 
 			bc2 = (byte *)buf2;
 			bc3 = (byte *)buf3;
-			for ( iy = 0; iy < 256; iy++ ) {
+			for ( iy = 0; iy < outH; iy++ ) {
 				iiy = iy << 11;
 				for ( ix = 0; ix < 2048; ix += 8 ) {
 					for ( ic = ix; ic < ( ix + 4 ); ic++ ) {
@@ -1770,13 +1798,10 @@ void CIN_DrawCinematic( int handle ) {
 				}
 			}
 		} else {
-			for ( iy = 0; iy < 256; iy++ ) {
-				for ( ix = 0; ix < 256; ix++ ) {
-					buf2[( iy << 8 ) + ix] = buf3[( ( iy * ym ) << ll ) + ( ix * xm )];
-				}
-			}
+			CIN_DownsampleRGBA32( buf3, cinTable[handle].CIN_WIDTH, cinTable[handle].CIN_HEIGHT,
+			                      buf2, outW, outH );
 		}
-		re.DrawStretchRaw( x, y, w, h, 256, 256, (byte *)buf2, handle, qtrue );
+		re.DrawStretchRaw( x, y, w, h, outW, outH, (byte *)buf2, handle, qtrue );
 		cinTable[handle].dirty = qfalse;
 		Hunk_FreeTempMemory( buf2 );
 		return;
@@ -1869,7 +1894,9 @@ void CIN_UploadCinematic( int handle ) {
 				}
 			}
 		}
-		re.UploadCinematic( 256, 256, 256, 256, cinTable[handle].buf, handle, cinTable[handle].dirty );
+		re.UploadCinematic( cinTable[handle].drawX, cinTable[handle].drawY,
+		                      cinTable[handle].drawX, cinTable[handle].drawY,
+		                      cinTable[handle].buf, handle, cinTable[handle].dirty );
 		if ( cl_inGameVideo->integer == 0 && cinTable[handle].playonwalls == 1 ) {
 			cinTable[handle].playonwalls--;
 		}

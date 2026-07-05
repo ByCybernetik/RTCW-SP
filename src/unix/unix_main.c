@@ -63,7 +63,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "linux_local.h" // bk001204
 
 // Structure containing functions exported from refresh DLL
-refexport_t re;
+extern refexport_t re;
 
 unsigned sys_frame_time;
 
@@ -433,7 +433,7 @@ void Sys_ConsoleInputInit() {
 				  characters  EOF,  EOL,  EOL2, ERASE, KILL, REPRINT,
 				  STATUS, and WERASE, and buffers by lines.
 		 ISIG: when any of the characters  INTR,  QUIT,  SUSP,  or
-				  DSUSP are received, generate the corresponding sig­
+				  DSUSP are received, generate the corresponding sigï¿½
 				  nal
 		*/
 		tc.c_lflag &= ~( ECHO | ICANON );
@@ -615,9 +615,83 @@ void Sys_UnloadDll( void *dllHandle ) {
 
 /*
 =================
-Sys_LoadDll
+Sys_LoadRenderer
 =================
 */
+extern char *FS_BuildOSPath( const char *base, const char *game, const char *qpath );
+
+void *Sys_LoadRenderer( const char *name, void *(**entryPoint)(int, void *) )
+{
+	void *libHandle;
+	char fname[MAX_OSPATH];
+	char *homepath;
+	char *basepath;
+	char *pwdpath;
+	char *gamedir;
+	char *fn;
+
+	assert( name );
+
+#if defined __i386__
+	snprintf( fname, sizeof( fname ), "%si386.so", name );
+#elif defined __x86_64__
+	snprintf( fname, sizeof( fname ), "%sx86_64.so", name );
+#else
+#error Unknown arch
+#endif
+
+	homepath = Cvar_VariableString( "fs_homepath" );
+	basepath = Cvar_VariableString( "fs_basepath" );
+	gamedir = Cvar_VariableString( "fs_game" );
+	pwdpath = Sys_Cwd();
+
+	// Try pwd
+	fn = FS_BuildOSPath( pwdpath, gamedir, fname );
+	Com_Printf( "Sys_LoadRenderer(%s)... ", fn );
+	libHandle = dlopen( fn, RTLD_NOW );
+
+	if ( !libHandle ) {
+		Com_Printf( "failed (%s)\n", dlerror() );
+		// Try homepath
+		fn = FS_BuildOSPath( homepath, gamedir, fname );
+		Com_Printf( "Sys_LoadRenderer(%s)... ", fn );
+		libHandle = dlopen( fn, RTLD_NOW );
+
+		if ( !libHandle ) {
+			Com_Printf( "failed (%s)\n", dlerror() );
+			// Try basepath
+			fn = FS_BuildOSPath( basepath, gamedir, fname );
+			Com_Printf( "Sys_LoadRenderer(%s)... ", fn );
+			libHandle = dlopen( fn, RTLD_NOW );
+
+			if ( !libHandle ) {
+				Com_Printf( "failed (%s)\n", dlerror() );
+				// Try main directory
+				fn = FS_BuildOSPath( pwdpath, "", fname );
+				Com_Printf( "Sys_LoadRenderer(%s)... ", fn );
+				libHandle = dlopen( fn, RTLD_NOW );
+
+				if ( !libHandle ) {
+					Com_Printf( "failed (%s)\n", dlerror() );
+					return NULL;
+				}
+			}
+		}
+	}
+
+	Com_Printf( "ok\n" );
+
+	// Look for GetRefAPI
+	*entryPoint = dlsym( libHandle, "GetRefAPI" );
+	if ( !*entryPoint ) {
+		Com_Printf( "Sys_LoadRenderer(%s) failed dlsym(GetRefAPI): %s\n", name, dlerror() );
+		dlclose( libHandle );
+		return NULL;
+	}
+
+	Com_Printf( "Sys_LoadRenderer(%s) succeeded!\n", name );
+	return libHandle;
+}
 extern char   *FS_BuildOSPath( const char *base, const char *game, const char *qpath );
 
 // TTimo
@@ -630,16 +704,16 @@ extern char   *FS_BuildOSPath( const char *base, const char *game, const char *q
 
 #if defined( DO_LOADDLL_WRAP )
 void *Sys_LoadDll_Wrapped( const char *name,
-						   int( **entryPoint ) ( int, ... ),
-						   int ( *systemcalls )( int, ... ) )
+						   intptr_t( **entryPoint ) ( intptr_t, ... ),
+						   intptr_t ( *systemcalls )( intptr_t, ... ) )
 #else
 void *Sys_LoadDll( const char *name,
-				   int( **entryPoint ) ( int, ... ),
-				   int ( *systemcalls )( int, ... ) )
+				   intptr_t( **entryPoint ) ( intptr_t, ... ),
+				   intptr_t ( *systemcalls )( intptr_t, ... ) )
 #endif
 {
 	void *libHandle;
-	void ( *dllEntry )( int ( *syscallptr )( int, ... ) );
+	void ( *dllEntry )( intptr_t ( *syscallptr )( intptr_t, ... ) );
 	char fname[MAX_OSPATH];
 	char  *homepath;
 	char  *basepath;
@@ -653,6 +727,8 @@ void *Sys_LoadDll( const char *name,
 
 #if defined __i386__
 	snprintf( fname, sizeof( fname ), "%si386.so", name );
+#elif defined __x86_64__
+	snprintf( fname, sizeof( fname ), "%sx86_64.so", name );
 #elif defined __powerpc__   //rcg010207 - PPC support.
 	snprintf( fname, sizeof( fname ), "%sppc.so", name );
 #elif defined __axp__
@@ -773,8 +849,8 @@ void *Sys_LoadDll( const char *name,
 
 #if defined( DO_LOADDLL_WRAP )
 void *Sys_LoadDll( const char *name,
-				   int( **entryPoint ) ( int, ... ),
-				   int ( *systemcalls )( int, ... ) ) {
+				   intptr_t( **entryPoint ) ( intptr_t, ... ),
+				   intptr_t ( *systemcalls )( intptr_t, ... ) ) {
 	void *ret;
 	Cvar_Set( "cl_noprint", "1" );
 	ret = Sys_LoadDll_Wrapped( name, entryPoint, systemcalls );
@@ -1293,6 +1369,16 @@ int main( int argc, char* argv[] ) {
 	// go back to real user for config loads
 	saved_euid = geteuid();
 	seteuid( getuid() );
+
+	// Ignore signals that can cause SDL_QUIT on some terminals
+	struct sigaction sa;
+	sa.sa_handler = SIG_IGN;
+	sa.sa_flags = SA_RESTART;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
 
 	Sys_ParseArgs( argc, argv ); // bk010104 - added this for support
 

@@ -77,6 +77,7 @@ cvar_t  *cl_serverStatusResendTime;
 cvar_t  *cl_trn;
 cvar_t  *cl_missionStats;
 cvar_t  *cl_waitForFire;
+cvar_t  *cl_renderer;
 
 // NERVE - SMF - localization
 cvar_t  *cl_language;
@@ -2341,6 +2342,10 @@ CL_InitRef
 void CL_InitRef( void ) {
 	refimport_t ri;
 	refexport_t *ret;
+	void *rendererLib;
+	char rendererName[MAX_QPATH];
+	const char *rendererCvar;
+	refexport_t *(*GetRefAPI)( int, refimport_t * );
 
 	Com_Printf( "----- Initializing Renderer ----\n" );
 
@@ -2372,16 +2377,35 @@ void CL_InitRef( void ) {
 	ri.Cvar_Set = Cvar_Set;
 
 	// cinematic stuff
-
 	ri.CIN_UploadCinematic = CIN_UploadCinematic;
 	ri.CIN_PlayCinematic = CIN_PlayCinematic;
 	ri.CIN_RunCinematic = CIN_RunCinematic;
 
-	ret = GetRefAPI( REF_API_VERSION, &ri );
-
-#if 0 // MrE defined __USEA3D && defined __A3D_GEOM
-	hA3Dg_ExportRenderGeom( ret );
+	// Renderer selection
+	Q_strncpyz( rendererName, "renderer", sizeof( rendererName ) );
+#ifdef VULKAN_BACKEND
+	Com_Printf( "Loading Vulkan renderer...\n" );
+#else
+	Com_Printf( "Loading OpenGL renderer...\n" );
 #endif
+
+	// Try to load renderer as dynamic library
+	rendererLib = Sys_LoadRenderer( rendererName, (void *(**)(int, void *))&GetRefAPI );
+
+	if ( rendererLib ) {
+		// Loaded dynamically
+		Com_Printf( "Renderer loaded as dynamic library\n" );
+		ret = GetRefAPI( REF_API_VERSION, &ri );
+	} else {
+		// Fallback: use statically linked renderer
+#ifdef VULKAN_BACKEND
+		Com_Printf( "Dynamic renderer not found, using built-in Vulkan\n" );
+#else
+		Com_Printf( "Dynamic renderer not found, using built-in OpenGL\n" );
+#endif
+		extern refexport_t *GetRefAPI( int apiVersion, refimport_t *rimp );
+		ret = GetRefAPI( REF_API_VERSION, &ri );
+	}
 
 	Com_Printf( "-------------------------------\n" );
 
@@ -2554,6 +2578,13 @@ void CL_Init( void ) {
 
 	cl_missionStats = Cvar_Get( "g_missionStats", "0", CVAR_ROM );
 	cl_waitForFire = Cvar_Get( "cl_waitForFire", "0", CVAR_ROM );
+
+	// Renderer selection: "opengl" or "vulkan"
+#ifdef VULKAN_BACKEND
+	cl_renderer = Cvar_Get( "cl_renderer", "vulkan", CVAR_ARCHIVE | CVAR_LATCH );
+#else
+	cl_renderer = Cvar_Get( "cl_renderer", "opengl", CVAR_ARCHIVE | CVAR_LATCH );
+#endif
 
 	// NERVE - SMF - localization
 	cl_language = Cvar_Get( "cl_language", "0", CVAR_ARCHIVE );

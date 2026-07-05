@@ -1220,6 +1220,12 @@ void  R_NoiseInit( void );
 void R_SwapBuffers( int );
 
 void R_RenderView( viewParms_t *parms );
+extern void (*RB_RenderView)( viewParms_t * );
+
+void R_RotateForViewer( void );
+void R_SetupFrustum( void );
+void R_GenerateDrawSurfs( void );
+void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs );
 
 void R_AddMD3Surfaces( trRefEntity_t *e );
 void R_AddNullModelSurfaces( trRefEntity_t *e );
@@ -1375,6 +1381,11 @@ IMPLEMENTATION SPECIFIC FUNCTIONS
 void        GLimp_Init( void );
 void        GLimp_Shutdown( void );
 void        GLimp_EndFrame( void );
+
+#ifdef VULKAN_BACKEND
+qboolean VKimp_Init( void );
+void VKimp_Shutdown( void );
+#endif
 
 qboolean GLimp_SpawnRenderThread( void ( *function )( void ) );
 void        *GLimp_RendererSleep( void );
@@ -1581,6 +1592,7 @@ ANIMATED MODELS
 void R_MakeAnimModel( model_t *model );
 void R_AddAnimSurfaces( trRefEntity_t *ent );
 void RB_SurfaceAnim( mdsSurface_t *surfType );
+void RB_SurfaceEntity( surfaceType_t *surfType );
 int R_GetBoneTag( orientation_t *outTag, mdsHeader_t *mds, int startTagIndex, const refEntity_t *refent, const char *tagName );
 
 /*
@@ -1686,6 +1698,13 @@ typedef struct {
 
 typedef struct {
 	int commandId;
+	float x, y, w, h;
+	int cols, rows;
+	int client;
+} stretchRawCommand_t;
+
+typedef struct {
+	int commandId;
 	trRefdef_t refdef;
 	viewParms_t viewParms;
 	drawSurf_t *drawSurfs;
@@ -1697,6 +1716,7 @@ typedef enum {
 	RC_SET_COLOR,
 	RC_STRETCH_PIC,
 	RC_STRETCH_PIC_GRADIENT,    // (SA) added
+	RC_STRETCH_RAW,
 	RC_DRAW_SURFS,
 	RC_DRAW_BUFFER,
 	RC_SWAP_BUFFERS

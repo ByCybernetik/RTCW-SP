@@ -27,6 +27,9 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "tr_local.h"
+#ifdef VULKAN_BACKEND
+extern qboolean vk_active;
+#endif
 
 volatile renderCommandList_t    *renderCommandList;
 
@@ -353,6 +356,24 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 
 	tr.frameCount++;
 	tr.frameSceneNum = 0;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		drawBufferCommand_t *vkCmd;
+
+		r_measureOverdraw->modified = qfalse;
+		r_textureMode->modified = qfalse;
+		r_gamma->modified = qfalse;
+
+		vkCmd = R_GetCommandBuffer( sizeof( *vkCmd ) );
+		if ( !vkCmd ) {
+			return;
+		}
+		vkCmd->commandId = RC_DRAW_BUFFER;
+		vkCmd->buffer = (int)GL_BACK;
+		return;
+	}
+#endif
 
 	//
 	// do overdraw measurement
