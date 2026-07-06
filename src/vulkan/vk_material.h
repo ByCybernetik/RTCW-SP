@@ -11,6 +11,7 @@ qboolean VK_StageUsesSourceAlphaBlend(const shaderStage_t *stage);
 void VK_SetStageStateFromShader(const shader_t *shader, const shaderStage_t *stage);
 void VK_SetUIStageStateFromShader(const shader_t *shader, const shaderStage_t *stage);
 void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_constants_t *pc);
+void VK_FillFogPushConstants(vk_push_constants_t *pc);
 void VK_FillPicStageColors(const shader_t *shader, const shaderStage_t *stage,
                            const byte color0[4], const byte color1[4],
                            const byte color2[4], const byte color3[4],

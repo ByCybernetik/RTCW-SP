@@ -241,6 +241,12 @@ void    R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 	cmd->refdef = tr.refdef;
 	cmd->viewParms = tr.viewParms;
+
+	/* Snapshot the distance-fog state at the moment the view is generated.
+	 * The backend may render later, and global glfogsettings can change
+	 * between front-end emission and back-end execution. */
+	cmd->glfogNum = glfogNum;
+	cmd->glfog = glfogsettings[FOG_CURRENT];
 }
 
 

@@ -1533,8 +1533,9 @@ const void  *RB_DrawSurfs( const void *data ) {
 		tess.numVertexes = 0;
 		backEnd.refdef = cmd->refdef;
 		backEnd.viewParms = cmd->viewParms;
-		VK_DrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+		VK_DrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs, cmd->glfogNum, &cmd->glfog );
 		VK_DrawSun( vk_state.cmdBuffers[vk_state.currentImageIndex] );
+		VK_RenderFlares( vk_state.cmdBuffers[vk_state.currentImageIndex] );
 		return (const void *)( cmd + 1 );
 	}
 #endif

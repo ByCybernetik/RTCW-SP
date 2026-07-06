@@ -64,37 +64,12 @@ up to five or more times in a frame with 3D status bar icons).
 
 // flare states maintain visibility over multiple frames for fading
 // layers: view, mirror, menu
-typedef struct flare_s {
-	struct      flare_s *next;      // for active chain
-
-	int addedFrame;
-
-	qboolean inPortal;                  // true if in a portal view of the scene
-	int frameSceneNum;
-	void        *surface;
-	int fogNum;
-
-	int fadeTime;
-
-	int flags;
-	// for coronas, the client determines current visibility, but it's still inserted so it will fade out properly
-
-	qboolean visible;               // state of last test
-	float drawIntensity;            // may be non 0 even if !visible due to fading
-
-	int windowX, windowY;
-	float eyeZ;
-
-	vec3_t color;
-	float scale;
-
-	int id;
-} flare_t;
 
 #define     MAX_FLARES      128
 
 flare_t r_flareStructs[MAX_FLARES];
-flare_t     *r_activeFlares, *r_inactiveFlares;
+flare_t     *r_activeFlares;
+flare_t     *r_inactiveFlares;
 
 
 /*

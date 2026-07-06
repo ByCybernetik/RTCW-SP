@@ -18,6 +18,10 @@ layout(push_constant) uniform PushConstants {
     vec4 params13;
     vec4 params14;
     vec4 params15;
+    vec4 params16;
+    vec4 params17;
+    vec4 params18;
+    vec4 params19;
 } pc;
 
 layout(location = 0) in vec3 inPos;
@@ -31,6 +35,7 @@ layout(location = 1) out vec2 vLightmapCoord;
 layout(location = 2) out vec4 vColor;
 layout(location = 3) out vec3 vWorldPos;
 layout(location = 4) out float vNormalZFadeAlpha;
+layout(location = 5) out float vFogFactor;
 
 float evalWave(float waveFunc, float x) {
     float t = fract(x);
@@ -138,10 +143,53 @@ void main() {
         vec3 reflected = n * 2.0 * d - viewer;
         uv = vec2(0.5 + reflected.y * 0.5, 0.5 - reflected.z * 0.5);
     }
-    vTexCoord = (pc.params14.w > 0.1 && pc.params14.w < 0.5) ? uv : applyTcMod(uv, pos);
+    vec2 finalUv;
+    vec4 finalColor;
+    if (pc.params16.w > 2.5) {
+        /* Volumetric fog pass: compute fog texture coordinates exactly like
+         * RB_CalcFogTexCoords and use the fog color as the vertex color. */
+        float s = dot(pos, pc.params18.xyz) + pc.params18.w;
+        float eyeT = dot(pc.params14.xyz, pc.params19.xyz) + pc.params19.w;
+        float t = dot(pos, pc.params19.xyz) + pc.params19.w;
+        bool eyeOutside = eyeT < 0.0;
+        if (eyeOutside) {
+            if (t < 1.0) {
+                t = 1.0 / 32.0;
+            } else {
+                t = 1.0 / 32.0 + 30.0 / 32.0 * t / (t - eyeT);
+            }
+        } else {
+            if (t < 0.0) {
+                t = 1.0 / 32.0;
+            } else {
+                t = 31.0 / 32.0;
+            }
+        }
+        finalUv = vec2(s, t);
+        finalColor = vec4(pc.params16.xyz, 1.0);
+    } else {
+        finalUv = (pc.params14.w > 0.1 && pc.params14.w < 0.5) ? uv : applyTcMod(uv, pos);
+        finalColor = inColor;
+    }
+    vTexCoord = finalUv;
     vLightmapCoord = inLightmapCoord;
-    vColor = inColor;
+    vColor = finalColor;
     vWorldPos = pos;
+
+    /* Distance fog factor computed per-vertex to match OpenGL's per-vertex fog
+     * coordinate. The scalar is perspective-correct interpolated, just like GL_FOG.
+     * Keep at 1.0 when distance fog is off or volumetric modulation is active. */
+    vFogFactor = 1.0;
+    if (pc.params17.w > 0.5 && pc.params17.w < 1.5 && pc.params16.w > 0.0) {
+        float dist = length(pos - pc.params14.xyz);
+        if (pc.params16.w < 1.5) {
+            /* GL_LINEAR */
+            vFogFactor = clamp((pc.params17.y - dist) / (pc.params17.y - pc.params17.x), 0.0, 1.0);
+        } else {
+            /* GL_EXP */
+            vFogFactor = exp(-pc.params17.z * dist);
+        }
+    }
 
     float normalZFadeAlpha = 1.0;
     if (pc.params15.w > 0.0) {

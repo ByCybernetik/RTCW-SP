@@ -7,6 +7,7 @@ vk_state_t vk_state;
 qboolean vk_active = qfalse;
 
 static qboolean VK_CreateWhiteTexture(void);
+static qboolean VK_CreateFogTexture(void);
 void VK_DestroyTexture(vk_texture_t *t);
 
 static VkShaderModule LoadSPIRV(const char *path) {
@@ -391,6 +392,14 @@ static void VK_ConfigurePipelineBlend(int pipelineIndex, VkPipelineColorBlendAtt
         cba->srcAlphaBlendFactor = VK_BLEND_FACTOR_DST_COLOR;
         cba->dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
         break;
+    case VK_PIPELINE_FOG:
+    case VK_PIPELINE_FOG_EQUAL:
+        cba->blendEnable = VK_TRUE;
+        cba->srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        cba->dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cba->srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        cba->dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        break;
     case VK_PIPELINE_ONE_MINUS_DST_ALPHA_ONE:
     case VK_PIPELINE_ONE_MINUS_DST_ALPHA_ONE_DEPTHWRITE:
         cba->blendEnable = VK_TRUE;
@@ -592,7 +601,8 @@ void VK_SetupPipelines(void) {
         } else if (i == VK_PIPELINE_SKY) {
             useDepthTest = 0;
             useDepthWrite = 0;
-        } else if (i == VK_PIPELINE_DLIGHT || i == VK_PIPELINE_FILTER_EQUAL) {
+        } else if (i == VK_PIPELINE_DLIGHT || i == VK_PIPELINE_FILTER_EQUAL ||
+                   i == VK_PIPELINE_FOG || i == VK_PIPELINE_FOG_EQUAL) {
             useDepthTest = 1;
             useDepthWrite = 0;
         } else if (i == VK_PIPELINE_SHADOW_STENCIL) {
@@ -619,8 +629,16 @@ void VK_SetupPipelines(void) {
             ds.back = ds.front;
         }
 
-        if (i == VK_PIPELINE_DLIGHT || i == VK_PIPELINE_FILTER_EQUAL) {
+        if (i == VK_PIPELINE_DLIGHT || i == VK_PIPELINE_FILTER_EQUAL ||
+            i == VK_PIPELINE_FOG_EQUAL) {
             ds.depthCompareOp = VK_COMPARE_OP_EQUAL;
+        }
+
+        /* Regular fog pass should use LESS like OpenGL's default GL_LESS,
+         * avoiding drawing on pixels at the exact same depth as the
+         * underlying geometry. */
+        if (i == VK_PIPELINE_FOG) {
+            ds.depthCompareOp = VK_COMPARE_OP_LESS;
         }
 
         rs.cullMode = VK_CULL_MODE_NONE;
@@ -852,6 +870,11 @@ qboolean VK_InitFromPlatform(int width, int height,
 
     if (!VK_CreateWhiteTexture()) {
         ri.Printf(PRINT_WARNING, "VK_InitFromPlatform: could not create white texture\n");
+        return qfalse;
+    }
+
+    if (!VK_CreateFogTexture()) {
+        ri.Printf(PRINT_WARNING, "VK_InitFromPlatform: could not create fog texture\n");
         return qfalse;
     }
 
@@ -1230,12 +1253,44 @@ static qboolean VK_CreateWhiteTexture(void) {
     return VK_CreateTextureFromPixels(white, 1, 1, &vk_state.whiteTexture, GL_CLAMP);
 }
 
+#define VK_FOG_S 256
+#define VK_FOG_T 32
+
+static qboolean VK_CreateFogTexture(void) {
+    byte *data;
+    int x, y;
+    qboolean ok;
+
+    data = ri.Hunk_AllocateTempMemory(VK_FOG_S * VK_FOG_T * 4);
+    if (!data) {
+        return qfalse;
+    }
+
+    for (x = 0; x < VK_FOG_S; x++) {
+        for (y = 0; y < VK_FOG_T; y++) {
+            float d = R_FogFactor((x + 0.5f) / (float)VK_FOG_S,
+                                  (y + 0.5f) / (float)VK_FOG_T);
+            byte b = (byte)(255 * d);
+            data[(y * VK_FOG_S + x) * 4 + 0] = 255;
+            data[(y * VK_FOG_S + x) * 4 + 1] = 255;
+            data[(y * VK_FOG_S + x) * 4 + 2] = 255;
+            data[(y * VK_FOG_S + x) * 4 + 3] = b;
+        }
+    }
+
+    ok = VK_CreateTextureFromPixels(data, VK_FOG_S, VK_FOG_T,
+                                    &vk_state.fogTexture, GL_CLAMP);
+    ri.Hunk_FreeTempMemory(data);
+    return ok;
+}
+
 void VK_Setup2DPipeline(void) {
     static const int pipelineIds[] = {
         VK_PIPELINE_2D,
         VK_PIPELINE_2D_OPAQUE,
         VK_PIPELINE_2D_ADDITIVE,
-        VK_PIPELINE_2D_MODULATE
+        VK_PIPELINE_2D_MODULATE,
+        VK_PIPELINE_2D_SRC_ALPHA_ONE
     };
     VkShaderModule vertMod, fragMod;
     VkPipelineShaderStageCreateInfo stages[2];
@@ -1364,6 +1419,13 @@ void VK_Setup2DPipeline(void) {
             cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_DST_COLOR;
             cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
             break;
+        case VK_PIPELINE_2D_SRC_ALPHA_ONE:
+            cba.blendEnable = VK_TRUE;
+            cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+            cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            break;
         default:
             cba.blendEnable = VK_TRUE;
             cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
@@ -1445,6 +1507,9 @@ void VK_AllocateDescriptorSets(void) {
     ai.pSetLayouts = &vk_state.descSetLayout;
     vkAllocateDescriptorSets(vk_state.dev, &ai, &vk_state.whiteDescSet);
     VK_WriteDescriptorPair(vk_state.whiteDescSet, &vk_state.whiteTexture, &vk_state.whiteTexture);
+
+    vkAllocateDescriptorSets(vk_state.dev, &ai, &vk_state.fogDescSet);
+    VK_WriteDescriptorPair(vk_state.fogDescSet, &vk_state.fogTexture, &vk_state.whiteTexture);
 }
 
 VkDescriptorSet VK_GetDescriptorSetForImage(image_t *image) {
@@ -1589,6 +1654,7 @@ void VK_Shutdown(void) {
     VK_DestroySwapchain();
     VK_DestroyDynamicVBO();
     VK_DestroyTexture(&vk_state.whiteTexture);
+    VK_DestroyTexture(&vk_state.fogTexture);
 
     if (vk_state.descriptorSets) {
         free(vk_state.descriptorSets);

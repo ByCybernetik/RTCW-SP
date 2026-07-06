@@ -5,6 +5,7 @@ layout(location = 1) in vec2 vLightmapCoord;
 layout(location = 2) in vec4 vColor;
 layout(location = 3) in vec3 vWorldPos;
 layout(location = 4) in float vNormalZFadeAlpha;
+layout(location = 5) in float vFogFactor;
 layout(location = 0) out vec4 outColor;
 layout(binding = 0) uniform sampler2D uBaseTex;
 layout(binding = 1) uniform sampler2D uLightmapTex;
@@ -26,6 +27,10 @@ layout(push_constant) uniform PushConstants {
     vec4 params13;
     vec4 params14;
     vec4 params15;
+    vec4 params16;
+    vec4 params17;
+    vec4 params18;
+    vec4 params19;
 } pc;
 
 float evalWave(float waveFunc, float x) {
@@ -44,6 +49,41 @@ float evalWave(float waveFunc, float x) {
         return t < 0.5 ? 1.0 : -1.0;
     }
     return sin(x * 6.28318530718);
+}
+
+/* Replicates R_FogFactor from the GL renderer using the same
+ * fog table curve (exp == 0.5, i.e. sqrt). */
+float calcFogDensity(vec3 worldPos) {
+    float s = dot(worldPos, pc.params18.xyz) + pc.params18.w;
+    float eyeT = dot(pc.params14.xyz, pc.params19.xyz) + pc.params19.w;
+    float t = dot(worldPos, pc.params19.xyz) + pc.params19.w;
+    bool eyeOutside = eyeT < 0.0;
+    if (eyeOutside) {
+        if (t < 1.0) {
+            t = 1.0 / 32.0;
+        } else {
+            t = 1.0 / 32.0 + 30.0 / 32.0 * t / (t - eyeT);
+        }
+    } else {
+        if (t < 0.0) {
+            t = 1.0 / 32.0;
+        } else {
+            t = 31.0 / 32.0;
+        }
+    }
+
+    s -= 1.0 / 512.0;
+    if (s < 0.0) {
+        return 0.0;
+    }
+    if (t < 1.0 / 32.0) {
+        return 0.0;
+    }
+    if (t < 31.0 / 32.0) {
+        s *= (t - 1.0 / 32.0) / (30.0 / 32.0);
+    }
+    s = min(s * 8.0, 1.0);
+    return sqrt(s);
 }
 
 void main() {
@@ -74,6 +114,14 @@ void main() {
         if (dot(vWorldPos, pc.params13.xyz) - pc.params13.w < 0.0) {
             discard;
         }
+    }
+
+    /* Volumetric fog volume pass: draw the fog texture modulated by fog color.
+     * The fog texture is white with alpha equal to fog density. */
+    if (pc.params16.w > 2.5) {
+        vec4 fogTex = texture(uBaseTex, vTexCoord);
+        outColor = vec4(vColor.rgb, fogTex.a);
+        return;
     }
 
     vec4 base4 = texture(uBaseTex, vTexCoord);
@@ -107,6 +155,27 @@ void main() {
         vec3 fogColor = vec3(0.42, 0.58, 0.52);
         lit = mix(lit, fogColor, clamp(pc.params9.w, 0.0, 0.45));
     }
+
+    /* Volumetric fog modulation for translucent surfaces inside fog volumes.
+     * params17.w encodes the mode: 2 = RGB, 3 = RGBA, 4 = ALPHA. */
+    float fogModFactor = 1.0;
+    int fogModMode = 0;
+    if (pc.params17.w > 1.5) {
+        fogModMode = int(pc.params17.w + 0.5);
+        fogModFactor = 1.0 - calcFogDensity(vWorldPos);
+        if (fogModMode == 2 || fogModMode == 3) {
+            lit *= fogModFactor;
+        }
+    }
+
+    /* Distance fog matching OpenGL GL_FOG. The fog factor was computed per-vertex
+     * in world.vert and perspective-correct interpolated, matching OpenGL's
+     * per-vertex fog coordinate. This avoids per-pixel world-position interpolation
+     * artifacts on large brush polygons. */
+    if (pc.params17.w > 0.5 && pc.params17.w < 1.5 && pc.params16.w > 0.0) {
+        lit = mix(pc.params16.xyz, lit, vFogFactor);
+    }
+
     if (pc.params12.z > 0.5) {
         float range = max(pc.params12.w, 1.0);
         float portalAlpha = clamp(length(vWorldPos - pc.params14.xyz) / range, 0.0, 1.0);
@@ -118,6 +187,10 @@ void main() {
        For blended stages this is already required; for opaque stages
        it is harmless because blending is disabled. */
     float outAlpha = alpha;
+
+    if (fogModMode == 3 || fogModMode == 4) {
+        outAlpha *= fogModFactor;
+    }
 
     if (pc.params0.z > 0.5) {
         float ref = pc.params0.w;

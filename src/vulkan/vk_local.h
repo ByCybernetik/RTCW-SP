@@ -6,10 +6,10 @@
 #include "../renderer/qgl.h"
 
 #define VK_MAX_FRAMES_IN_FLIGHT 2
-#define VK_MAX_PIPELINES 36
+#define VK_MAX_PIPELINES 39
 #define VK_MAX_DESCRIPTOR_SETS 4096
 #define VK_MAX_TEXTURES 2048
-#define VK_PUSH_PARAMS 16
+#define VK_PUSH_PARAMS 20
 
 typedef enum {
     VK_PIPELINE_OPAQUE = 0,
@@ -45,7 +45,10 @@ typedef enum {
     VK_PIPELINE_2D_OPAQUE,
     VK_PIPELINE_2D_ADDITIVE,
     VK_PIPELINE_2D_MODULATE,
+    VK_PIPELINE_2D_SRC_ALPHA_ONE,
     VK_PIPELINE_FILTER_EQUAL,
+    VK_PIPELINE_FOG,
+    VK_PIPELINE_FOG_EQUAL,
     VK_PIPELINE_COUNT
 } vkPipelineIndex_t;
 
@@ -125,6 +128,7 @@ typedef struct {
 
     VkDescriptorSet *descriptorSets;
     VkDescriptorSet whiteDescSet;
+    VkDescriptorSet fogDescSet;
 
     VkSurfaceFormatKHR surfaceFormat;
 
@@ -136,6 +140,15 @@ typedef struct {
     float mvp[16];
     float params[VK_PUSH_PARAMS][4];
 } vk_push_constants_t;
+
+/* Fog push-constant layout (params[16]..params[17]).
+ * params[16].xyz = fog color, .w = mode (0=off, 1=linear, 2=exp)
+ * params[17].x   = fog start
+ * params[17].y   = fog end
+ * params[17].z   = fog density
+ * params[17].w   = fog registered flag (>0.5 active) */
+#define VK_FOG_COLOR_PARAM  16
+#define VK_FOG_RANGE_PARAM  17
 
 typedef struct {
     VkBuffer buffer;
@@ -207,7 +220,8 @@ void VK_StretchPicGradient(float x, float y, float w, float h,
 void VK_UploadScratchImage(image_t *image, const byte *data, int cols, int rows, qboolean dirty);
 void VK_OnTextureUploaded(int vkIdx);
 void VK_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, int client);
-void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs);
+void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int glfogNum, const glfog_t *glfog);
+void VK_RenderFlares(VkCommandBuffer cmd);
 
 int BlendModeToPipeline(shader_t *shader);
 qboolean VK_RegisterModel(model_t *model);

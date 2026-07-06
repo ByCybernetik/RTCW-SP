@@ -1487,7 +1487,39 @@ void R_ClearFlares( void );
 
 void RB_AddFlare( void *surface, int fogNum, vec3_t point, vec3_t color, float scale, vec3_t normal, int id, int flags ); // TTimo updated prototype
 void RB_AddDlightFlares( void );
+void RB_AddCoronaFlares( void );
 void RB_RenderFlares( void );
+
+typedef struct flare_s {
+	struct flare_s *next;           // for active chain
+
+	int addedFrame;
+
+	qboolean inPortal;              // true if in a portal view of the scene
+	int frameSceneNum;
+	void        *surface;
+	int fogNum;
+
+	int fadeTime;
+
+	int flags;
+	// for coronas, the client determines current visibility, but it's still inserted so it will fade out properly
+
+	qboolean visible;               // state of last test
+	float drawIntensity;            // may be non 0 even if !visible due to fading
+
+	int windowX, windowY;
+	float eyeZ;
+
+	vec3_t color;
+	float scale;
+
+	int id;
+} flare_t;
+
+extern flare_t *r_activeFlares;
+extern flare_t *r_inactiveFlares;
+void RB_TestFlare( flare_t *f );
 
 /*
 ============================================================
@@ -1709,6 +1741,8 @@ typedef struct {
 	viewParms_t viewParms;
 	drawSurf_t *drawSurfs;
 	int numDrawSurfs;
+	int glfogNum;
+	glfog_t glfog;
 } drawSurfsCommand_t;
 
 typedef enum {

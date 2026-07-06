@@ -682,6 +682,8 @@ void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_c
     pc->params[15][2] = g_normalZFadeFireRiseDir[2];
     pc->params[15][3] = g_normalZFadeMaxAlpha;
 
+    VK_FillFogPushConstants(pc);
+
     if (g_alphaGenNormalZFade) {
         static int logCount = 0;
         if (logCount < 20) {
@@ -694,6 +696,83 @@ void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_c
                       shader ? shader->name : "?");
         }
     }
+}
+
+void VK_FillFogPushConstants(vk_push_constants_t *pc) {
+    glfog_t *curfog = NULL;
+    float start, end, density;
+    int mode;
+
+    if (!pc) {
+        return;
+    }
+
+    /* params[16..17] are reserved for fog; default to off. */
+    memset(pc->params[VK_FOG_COLOR_PARAM], 0, sizeof(float) * 4);
+    memset(pc->params[VK_FOG_RANGE_PARAM], 0, sizeof(float) * 4);
+
+    if (!r_wolffog || !r_wolffog->integer) {
+        return;
+    }
+
+    if (backEnd.refdef.rdflags & RDF_NOWORLDMODEL) {
+        return;
+    }
+
+    /* Mirror SetIteratorFog logic from tr_shade.c. */
+    if (backEnd.refdef.rdflags & RDF_DRAWINGSKY) {
+        if (glfogsettings[FOG_SKY].registered) {
+            curfog = &glfogsettings[FOG_SKY];
+        }
+    } else if (skyboxportal && (backEnd.refdef.rdflags & RDF_SKYBOXPORTAL)) {
+        if (glfogsettings[FOG_PORTALVIEW].registered) {
+            curfog = &glfogsettings[FOG_PORTALVIEW];
+        }
+    } else {
+        if (glfogNum > FOG_NONE && glfogsettings[FOG_CURRENT].registered) {
+            curfog = &glfogsettings[FOG_CURRENT];
+        } else if (glfogNum > FOG_NONE && glfogsettings[FOG_TARGET].registered) {
+            /* FOG_CURRENT may not be refreshed yet if R_SetFog was called after
+             * R_SetFrameFog for this view. Fall back to FOG_TARGET so distance
+             * fog is active immediately, matching OpenGL's per-draw-call fog. */
+            curfog = &glfogsettings[FOG_TARGET];
+        }
+    }
+
+    if (!curfog) {
+        return;
+    }
+
+    if (curfog->mode == GL_EXP) {
+        mode = 2;
+    } else {
+        mode = 1; /* GL_LINEAR or default. */
+    }
+
+    /* Match R_Fog defaults and overrides. */
+    density = curfog->density > 0.0f ? curfog->density : 1.0f;
+
+    if (backEnd.refdef.rdflags & RDF_SNOOPERVIEW) {
+        start = curfog->end;
+        end = curfog->end + 1000.0f;
+    } else {
+        start = curfog->start;
+        if (r_zfar && r_zfar->value) {
+            end = r_zfar->value;
+        } else {
+            end = curfog->end;
+        }
+    }
+
+    pc->params[VK_FOG_COLOR_PARAM][0] = curfog->color[0];
+    pc->params[VK_FOG_COLOR_PARAM][1] = curfog->color[1];
+    pc->params[VK_FOG_COLOR_PARAM][2] = curfog->color[2];
+    pc->params[VK_FOG_COLOR_PARAM][3] = (float)mode;
+
+    pc->params[VK_FOG_RANGE_PARAM][0] = start;
+    pc->params[VK_FOG_RANGE_PARAM][1] = end;
+    pc->params[VK_FOG_RANGE_PARAM][2] = density;
+    pc->params[VK_FOG_RANGE_PARAM][3] = 1.0f; /* registered/active flag */
 }
 
 void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
