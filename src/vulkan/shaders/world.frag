@@ -125,7 +125,9 @@ void main() {
     }
 
     vec4 base4 = texture(uBaseTex, vTexCoord);
-    vec3 lm = (pc.params7.z > 0.5) ? vec3(1.0) : texture(uLightmapTex, vLightmapCoord).rgb * 2.0;
+    /* Lightmaps are already scaled during upload (R_ColorShiftLightingBytes),
+     * matching OpenGL's GL_MODULATE path, so no extra *2.0 factor is needed. */
+    vec3 lm = (pc.params7.z > 0.5) ? vec3(1.0) : texture(uLightmapTex, vLightmapCoord).rgb;
     bool sourceAlphaDecal = pc.params9.z > 0.5;
     bool skyMode = pc.params11.w > 0.5;
     vec3 vertexRgb = (pc.params7.x > 0.5) ? vColor.rgb : vec3(1.0);
@@ -171,8 +173,9 @@ void main() {
     /* Distance fog matching OpenGL GL_FOG. The fog factor was computed per-vertex
      * in world.vert and perspective-correct interpolated, matching OpenGL's
      * per-vertex fog coordinate. This avoids per-pixel world-position interpolation
-     * artifacts on large brush polygons. */
-    if (pc.params17.w > 0.5 && pc.params17.w < 1.5 && pc.params16.w > 0.0) {
+     * artifacts on large brush polygons.  Active whenever params16.w selects a
+     * distance-fog mode (1=linear, 2=exp), even if volumetric modulation is also on. */
+    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 3.0) {
         lit = mix(pc.params16.xyz, lit, vFogFactor);
     }
 

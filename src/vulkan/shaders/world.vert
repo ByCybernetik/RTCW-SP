@@ -178,9 +178,10 @@ void main() {
 
     /* Distance fog factor computed per-vertex to match OpenGL's per-vertex fog
      * coordinate. The scalar is perspective-correct interpolated, just like GL_FOG.
-     * Keep at 1.0 when distance fog is off or volumetric modulation is active. */
+     * params16.w holds the distance-fog mode (1=linear, 2=exp); keep at 1.0 when
+     * distance fog is off or during the volumetric fog pass (params16.w == 3). */
     vFogFactor = 1.0;
-    if (pc.params17.w > 0.5 && pc.params17.w < 1.5 && pc.params16.w > 0.0) {
+    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 3.0) {
         float dist = length(pos - pc.params14.xyz);
         if (pc.params16.w < 1.5) {
             /* GL_LINEAR */

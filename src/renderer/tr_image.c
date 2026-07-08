@@ -916,7 +916,13 @@ image_t *R_CreateImageExt( const char *name, const byte *pic, int width, int hei
 
 	// Ridah
 	if ( r_cacheShaders->integer ) {
+#ifdef VULKAN_BACKEND
+		if ( !vk_active ) {
+			R_FindFreeTexnum( image );
+		}
+#else
 		R_FindFreeTexnum( image );
+#endif
 	}
 	// done.
 

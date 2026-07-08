@@ -676,6 +676,7 @@ void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_c
     pc->params[14][0] = backEnd.or.viewOrigin[0];
     pc->params[14][1] = backEnd.or.viewOrigin[1];
     pc->params[14][2] = backEnd.or.viewOrigin[2];
+    pc->params[14][3] = 0.0f;    /* dlight pass flag; keep clear for normal draws */
 
     pc->params[15][0] = g_normalZFadeFireRiseDir[0];
     pc->params[15][1] = g_normalZFadeFireRiseDir[1];
@@ -893,7 +894,14 @@ VkDescriptorSet VK_StageDescriptorSet(const shader_t *shader, const shaderStage_
     }
 
     base = VK_BundleImage(&stage->bundle[0], shader);
-    light = VK_StageLightmapImage(shader);
+    /* Use the explicit lightmap in bundle[1] when present (produced by OpenGL's
+     * CollapseMultitexture for lightmap+base shaders).  Falling back to the
+     * implicit surface lightmap keeps non-collapsed shaders working. */
+    if (stage->bundle[1].image[0] && stage->bundle[1].isLightmap) {
+        light = VK_BundleImage(&stage->bundle[1], shader);
+    } else {
+        light = VK_StageLightmapImage(shader);
+    }
     return VK_GetDescriptorSetForImages(base, light);
 }
 

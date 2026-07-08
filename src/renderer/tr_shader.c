@@ -27,6 +27,9 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "tr_local.h"
+#ifdef VULKAN_BACKEND
+#include "../vulkan/vk_local.h"
+#endif
 
 // tr_shader.c -- this file deals with the parsing and definition of shaders
 
@@ -1830,9 +1833,19 @@ static qboolean CollapseMultitexture( void ) {
 	int i;
 	textureBundle_t tmpBundle;
 
+	/* Vulkan always supports multitexturing, so allow stage collapse even when
+	 * no GL multitexture context is active.  This keeps lightmap+base shaders
+	 * (e.g. textures/doors/door_c05) in the same single-pass form the GL path
+	 * uses, which is required for correct distance-fog behaviour. */
+#ifdef VULKAN_BACKEND
+	if ( !qglActiveTextureARB && !vk_active ) {
+		return qfalse;
+	}
+#else
 	if ( !qglActiveTextureARB ) {
 		return qfalse;
 	}
+#endif
 
 	// make sure both stages are active
 	if ( !stages[0].active || !stages[1].active ) {

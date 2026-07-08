@@ -1,0 +1,45 @@
+Изменения в Vulkan backend (08.07.2026)
+========================================
+
+Проблема
+--------
+В Vulkan-рендере lightmap-шейдеры (например, textures/doors/door_c05) выглядели
+слишком темными, а distance fog некорректно взаимодействовал с lightmap.
+
+Причина
+-------
+OpenGL сворачивает пару стадий "lightmap + diffuse (GL_DST_COLOR GL_ZERO)" в
+один multitexture-проход функцией CollapseMultitexture(). Distance fog в OpenGL
+применяется один раз к результату diffuse * lightmap.
+
+Вulkan не выполнял collapse, потому что CollapseMultitexture() отказывался
+работать при qglActiveTextureARB == NULL. В результате шейдер рисовался в
+несколько проходов, туман накладывался на каждый проход отдельно, и финальный
+цвет получался темнее, чем в OpenGL.
+
+Исправления
+-----------
+1. src/renderer/tr_shader.c
+   - Разрешено сворачивание стадий в Vulkan-режиме (vk_active), даже если
+     GL multitexture не инициализирован.
+
+2. src/vulkan/vk_material.c
+   - VK_StageDescriptorSet() теперь использует явный lightmap из
+     stage->bundle[1], который появляется после collapse.
+
+3. src/vulkan/shaders/world.frag
+   - Убран лишний множитель *2.0 у lightmap. Масштабирование уже выполняется
+     при загрузке (R_ColorShiftLightingBytes), поэтому дополнительный *2.0
+     делал Vulkan ярче OpenGL.
+   - Исправлено взаимодействие volumetric fog modulation и distance fog:
+     теперь distance fog применяется, даже когда активна volumetric-модуляция.
+
+4. src/vulkan/shaders/world.vert
+   - Обновлено условие вычисления vFogFactor для совместимости с новой
+     логикой distance/volumetric fog.
+
+Сборка
+------
+cmake --build build -j$(nproc)
+
+SPIR-V шейдеры перекомпилируются автоматически и копируются в main/.

@@ -192,8 +192,6 @@ void VK_DestroyTexture(vk_texture_t *t);
 void VK_InitTextures(void);
 int VK_FindOrCreateTexture(const char *name, qboolean mipmap,
                            qboolean allowPicmip, int wrapMode);
-void VK_InitLightmapTextures(void);
-
 void VK_SetupPipelines(void);
 void VK_Setup2DPipeline(void);
 void VK_SetupDescriptorSetLayout(void);
