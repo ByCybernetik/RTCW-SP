@@ -332,6 +332,8 @@ int BlendModeToPipeline(shader_t *shader) {
         return depthWrite ? VK_PIPELINE_ZERO_ONE_MINUS_SRC_ALPHA_DEPTHWRITE : VK_PIPELINE_ZERO_ONE_MINUS_SRC_ALPHA;
     if (srcBlend == GLS_SRCBLEND_ZERO && dstBlend == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR)
         return depthWrite ? VK_PIPELINE_ZERO_ONE_MINUS_SRC_COLOR_DEPTHWRITE : VK_PIPELINE_ZERO_ONE_MINUS_SRC_COLOR;
+    if (srcBlend == GLS_SRCBLEND_ONE_MINUS_DST_COLOR && dstBlend == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR)
+        return depthWrite ? VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR_DEPTHWRITE : VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR;
 
     return alphaTest ? VK_PIPELINE_ALPHA : VK_PIPELINE_OPAQUE;
 }
@@ -454,6 +456,14 @@ static void VK_ConfigurePipelineBlend(int pipelineIndex, VkPipelineColorBlendAtt
         cba->srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
         cba->dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
         cba->srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        cba->dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        break;
+    case VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR:
+    case VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR_DEPTHWRITE:
+        cba->blendEnable = VK_TRUE;
+        cba->srcColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+        cba->dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        cba->srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
         cba->dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
         break;
     case VK_PIPELINE_SKY:
@@ -583,7 +593,9 @@ void VK_SetupPipelines(void) {
         int useDepthTest = 1;
 
         if (i == VK_PIPELINE_2D || i == VK_PIPELINE_2D_OPAQUE ||
-            i == VK_PIPELINE_2D_ADDITIVE || i == VK_PIPELINE_2D_MODULATE) {
+            i == VK_PIPELINE_2D_ADDITIVE || i == VK_PIPELINE_2D_MODULATE ||
+            i == VK_PIPELINE_2D_SRC_ALPHA_ONE ||
+            i == VK_PIPELINE_2D_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR) {
             continue;
         }
 
@@ -591,7 +603,7 @@ void VK_SetupPipelines(void) {
 
         if (i == VK_PIPELINE_OPAQUE ||
             (i >= VK_PIPELINE_ALPHA_DEPTHWRITE &&
-             i <= VK_PIPELINE_ZERO_ONE_MINUS_SRC_COLOR_DEPTHWRITE)) {
+             i <= VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR_DEPTHWRITE)) {
             useDepthWrite = 1;
         }
 
@@ -1290,7 +1302,8 @@ void VK_Setup2DPipeline(void) {
         VK_PIPELINE_2D_OPAQUE,
         VK_PIPELINE_2D_ADDITIVE,
         VK_PIPELINE_2D_MODULATE,
-        VK_PIPELINE_2D_SRC_ALPHA_ONE
+        VK_PIPELINE_2D_SRC_ALPHA_ONE,
+        VK_PIPELINE_2D_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR
     };
     VkShaderModule vertMod, fragMod;
     VkPipelineShaderStageCreateInfo stages[2];
@@ -1425,6 +1438,13 @@ void VK_Setup2DPipeline(void) {
             cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
             cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
             cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            break;
+        case VK_PIPELINE_2D_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR:
+            cba.blendEnable = VK_TRUE;
+            cba.srcColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+            cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+            cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+            cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
             break;
         default:
             cba.blendEnable = VK_TRUE;

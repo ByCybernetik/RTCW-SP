@@ -11,7 +11,6 @@ extern int vk_worldVboFailCount;
 
 static float vk_originalTime;
 static int vk_oldEntityNum = -1;
-static int vk_fogDebugCount = 0;
 
 static void VK_FillStagePushConstants(const shader_t *shader, vk_push_constants_t *pc) {
     float proj[16];
@@ -425,14 +424,6 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                0, sizeof(pc), &pc);
 
-            if (pc.params[VK_FOG_RANGE_PARAM][3] < 0.5f && vk_fogDebugCount < 50) {
-                vk_fogDebugCount++;
-                ri.Printf(PRINT_ALL,
-                          "[VK_NOFOG] pass=%d stage=%d type=%d shader=%s sort=%d noFog=%d ent=%d fogNum=%d\n",
-                          pass, stageIdx, type, shader->name, shader->sort,
-                          shader->noFog ? 1 : 0, entityNum, fogNum);
-            }
-
             descSet = VK_StageDescriptorSet(shader, stage);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
@@ -699,7 +690,6 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
     vk_originalTime = backEnd.refdef.floatTime;
     vk_oldEntityNum = -1;
     vk_depthRange = qfalse;
-    vk_fogDebugCount = 0;
     backEnd.currentEntity = &tr.worldEntity;
     backEnd.or = backEnd.viewParms.world;
 

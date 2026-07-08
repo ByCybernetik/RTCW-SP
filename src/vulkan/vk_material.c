@@ -132,6 +132,7 @@ static int DepthWritePipelineForStage(int pipelineIndex) {
     case VK_PIPELINE_SRC_ALPHA_ONE_MINUS_SRC_COLOR: return VK_PIPELINE_SRC_ALPHA_ONE_MINUS_SRC_COLOR_DEPTHWRITE;
     case VK_PIPELINE_ZERO_ONE_MINUS_SRC_ALPHA: return VK_PIPELINE_ZERO_ONE_MINUS_SRC_ALPHA_DEPTHWRITE;
     case VK_PIPELINE_ZERO_ONE_MINUS_SRC_COLOR: return VK_PIPELINE_ZERO_ONE_MINUS_SRC_COLOR_DEPTHWRITE;
+    case VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR: return VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR_DEPTHWRITE;
     default: return pipelineIndex;
     }
 }
@@ -228,6 +229,8 @@ int VK_PipelineForStage(const shaderStage_t *stage) {
         pipelineIndex = VK_PIPELINE_ZERO_ONE_MINUS_SRC_COLOR;
     } else if (srcBlend == GLS_SRCBLEND_ZERO && dstBlend == GLS_DSTBLEND_SRC_COLOR) {
         pipelineIndex = VK_PIPELINE_ONE_MINUS_DST_ALPHA_ONE;
+    } else if (srcBlend == GLS_SRCBLEND_ONE_MINUS_DST_COLOR && dstBlend == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR) {
+        pipelineIndex = VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR;
     } else {
         pipelineIndex = VK_PIPELINE_ALPHA;
     }
@@ -552,7 +555,7 @@ int VK_PipelineForUIStage(const shaderStage_t *stage) {
         return VK_PIPELINE_DEPTH_DISABLED_ALPHA;
     }
     if (pipe >= VK_PIPELINE_ALPHA_DEPTHWRITE &&
-        pipe <= VK_PIPELINE_ZERO_ONE_MINUS_SRC_COLOR_DEPTHWRITE) {
+        pipe <= VK_PIPELINE_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR_DEPTHWRITE) {
         return pipe - (VK_PIPELINE_ALPHA_DEPTHWRITE - VK_PIPELINE_ALPHA);
     }
     if (pipe == VK_PIPELINE_SKY || pipe == VK_PIPELINE_SHADOW_STENCIL) {
@@ -583,6 +586,10 @@ int VK_PipelineFor2DPic(const shaderStage_t *stage) {
     if (srcBlend == GLS_SRCBLEND_DST_COLOR &&
         (dstBlend == GLS_DSTBLEND_ZERO || !dstBlend)) {
         return VK_PIPELINE_2D_MODULATE;
+    }
+    if (srcBlend == GLS_SRCBLEND_ONE_MINUS_DST_COLOR &&
+        dstBlend == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR) {
+        return VK_PIPELINE_2D_ONE_MINUS_DST_COLOR_ONE_MINUS_SRC_COLOR;
     }
     return VK_PIPELINE_2D;
 }

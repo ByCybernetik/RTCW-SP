@@ -38,6 +38,10 @@ OpenGL сворачивает пару стадий "lightmap + diffuse (GL_DST_
    - Обновлено условие вычисления vFogFactor для совместимости с новой
      логикой distance/volumetric fog.
 
+5. src/vulkan/vk_renderer_draw.c
+   - Удалён отладочный спам [VK_NOFOG] и связанная переменная
+     vk_fogDebugCount.
+
 Сборка
 ------
 cmake --build build -j$(nproc)
