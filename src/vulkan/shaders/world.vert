@@ -124,12 +124,42 @@ void main() {
         }
     }
 
-    if (pc.params11.w < 0.5 && pc.params2.w > 0.5 && pc.params2.z > 0.5) {
+    if (pc.params11.w < 0.5 && pc.params2.w > 0.5 && pc.params2.z > 0.5 && pc.params2.y >= 0.0) {
         float waveDiv = max(pc.params1.x, 1.0);
         float dist = length(inPos);
         float wave = evalWave(pc.params1.y, pc.params2.x + pc.params8.y * pc.params2.y + dist / waveDiv);
         float offset = pc.params1.z + pc.params1.w * wave;
         pos += normalize(inNormal) * offset;
+    }
+
+    /* Negative-frequency wave deformation: used by entityOnFire shaders.
+     * In OpenGL this deforms vertices along the fire-rise direction, scaled by
+     * the dot product with the normal.  params[2][1] holds the signed frequency,
+     * params[2][3] holds the world-space Z scale factor, and params[15].xyz
+     * holds the model-space fire-rise direction (already normalised for
+     * alphaGen normalzfade). */
+    if (pc.params11.w < 0.5 && pc.params2.y < 0.0 && pc.params2.w > 0.0) {
+        bool inverse = false;
+        float freq = -pc.params2.y;
+        if (freq > 999.0) {
+            inverse = true;
+            freq -= 999.0;
+        }
+
+        float off = (inPos.x + inPos.y + inPos.z) * pc.params1.x;
+        float wave = evalWave(pc.params1.y, pc.params2.x + pc.params8.y * freq + off);
+        float scale = pc.params1.z + pc.params1.w * wave;
+
+        vec3 up = pc.params15.xyz * pc.params2.w;
+        float upLen = length(up);
+        if (upLen > 0.001) {
+            up /= upLen;
+            float d = dot(up, normalize(inNormal));
+            if (d * scale > 0.0) {
+                if (inverse) scale = -scale;
+                pos += up * d * scale;
+            }
+        }
     }
 
     gl_Position = pc.mvp * vec4(pos, 1.0);

@@ -646,11 +646,12 @@ void VK_SetupPipelines(void) {
             ds.depthCompareOp = VK_COMPARE_OP_EQUAL;
         }
 
-        /* Regular fog pass should use LESS like OpenGL's default GL_LESS,
-         * avoiding drawing on pixels at the exact same depth as the
-         * underlying geometry. */
+        /* Regular fog pass must use LEQUAL to match OpenGL's default depth
+         * function. The fog pass draws the same surface geometry at the same
+         * depth; with LESS it fails when depth values are exactly equal,
+         * causing fog to disappear on opaque surfaces at certain angles. */
         if (i == VK_PIPELINE_FOG) {
-            ds.depthCompareOp = VK_COMPARE_OP_LESS;
+            ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
         }
 
         rs.cullMode = VK_CULL_MODE_NONE;

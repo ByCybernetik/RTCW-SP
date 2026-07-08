@@ -41,6 +41,8 @@ static int g_polygonOffset;
 static float g_polyOffsetFactor;
 static float g_polyOffsetUnits;
 
+static cvar_t *r_vkDistanceFog;
+
 static float MapWaveFunc(genFunc_t func) {
     switch (func) {
     case GF_TRIANGLE: return 1.0f;
@@ -625,7 +627,15 @@ void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_c
     pc->params[2][0] = g_deformWavePhase;
     pc->params[2][1] = g_deformWaveFreq;
     pc->params[2][2] = (float)g_deformType;
-    pc->params[2][3] = (g_deformType != 0) ? 1.0f : 0.0f;
+    /* Negative-frequency wave deformation (used by entityOnFire shaders) scales
+     * the offset along the fire-rise direction.  params[2][3] becomes the
+     * world-space Z scale factor for that path; for all other deform modes it
+     * simply flags that a deformation is active. */
+    if ( g_deformWaveFreq < 0.0f && backEnd.currentEntity ) {
+        pc->params[2][3] = 0.4f + 0.6f * fabs( backEnd.currentEntity->e.fireRiseDir[2] );
+    } else {
+        pc->params[2][3] = (g_deformType != 0) ? 1.0f : 0.0f;
+    }
 
     pc->params[3][0] = g_tcModTransform[0];
     pc->params[3][1] = g_tcModTransform[1];
@@ -718,6 +728,13 @@ void VK_FillFogPushConstants(vk_push_constants_t *pc) {
     /* params[16..17] are reserved for fog; default to off. */
     memset(pc->params[VK_FOG_COLOR_PARAM], 0, sizeof(float) * 4);
     memset(pc->params[VK_FOG_RANGE_PARAM], 0, sizeof(float) * 4);
+
+    if (!r_vkDistanceFog) {
+        r_vkDistanceFog = ri.Cvar_Get("r_vkDistanceFog", "1", CVAR_ARCHIVE);
+    }
+    if (!r_vkDistanceFog->integer) {
+        return;
+    }
 
     if (!r_wolffog || !r_wolffog->integer) {
         return;

@@ -11,6 +11,7 @@ extern int vk_worldVboFailCount;
 
 static float vk_originalTime;
 static int vk_oldEntityNum = -1;
+static cvar_t *r_vkVolumetricFog;
 
 static void VK_FillStagePushConstants(const shader_t *shader, vk_push_constants_t *pc) {
     float proj[16];
@@ -376,7 +377,10 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
             /* Volumetric fog modulation for translucent surfaces inside fog volumes.
              * params17.w encodes the modulation mode (2=RGB, 3=RGBA, 4=ALPHA)
              * and params18/19 hold the fog distance/depth vectors. */
-            if (tess.fogNum && stage->adjustColorsForFog != ACFF_NONE) {
+            if (!r_vkVolumetricFog) {
+                r_vkVolumetricFog = ri.Cvar_Get("r_vkVolumetricFog", "0", CVAR_ARCHIVE);
+            }
+            if (r_vkVolumetricFog->integer && tess.fogNum && stage->adjustColorsForFog != ACFF_NONE) {
                 vec4_t distVec;
                 vec4_t depthVec;
                 float eyeT;
@@ -447,7 +451,10 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
     /*
      * Volumetric fog volume pass, mirroring OpenGL's RB_FogPass.
      */
-    if (tess.fogNum && tess.shader->fogPass) {
+    if (!r_vkVolumetricFog) {
+        r_vkVolumetricFog = ri.Cvar_Get("r_vkVolumetricFog", "0", CVAR_ARCHIVE);
+    }
+    if (r_vkVolumetricFog->integer && tess.fogNum && tess.shader->fogPass) {
         VK_FogPass(drawSurf, type, cmd);
     }
 }
