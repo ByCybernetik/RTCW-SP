@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/cybernetik/Multimedia/RTCW-SP/build/cmake_install.cmake",
+		"/home/cybernetik/Multimedia/RTCW-SP/build/src/vulkan/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

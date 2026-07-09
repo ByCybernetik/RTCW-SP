@@ -37,7 +37,12 @@ static void VK_GetFogVectors(vec4_t fogDistanceVector, vec4_t fogDepthVector, fl
     fogDistanceVector[2] = -backEnd.or.modelMatrix[10];
     fogDistanceVector[3] = DotProduct(local, backEnd.viewParms.or.axis[0]);
 
-    VectorScale(fogDistanceVector, fog->tcScale, fogDistanceVector);
+    /* Match OpenGL's RB_CalcFogTexCoords: scale all four components of the
+     * distance vector by fog->tcScale, including the translation component. */
+    fogDistanceVector[0] *= fog->tcScale;
+    fogDistanceVector[1] *= fog->tcScale;
+    fogDistanceVector[2] *= fog->tcScale;
+    fogDistanceVector[3] *= fog->tcScale;
 
     if (fog->hasSurface) {
         fogDepthVector[0] = fog->surface[0] * backEnd.or.axis[0][0] +
@@ -378,7 +383,7 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
              * params17.w encodes the modulation mode (2=RGB, 3=RGBA, 4=ALPHA)
              * and params18/19 hold the fog distance/depth vectors. */
             if (!r_vkVolumetricFog) {
-                r_vkVolumetricFog = ri.Cvar_Get("r_vkVolumetricFog", "0", CVAR_ARCHIVE);
+                r_vkVolumetricFog = ri.Cvar_Get("r_vkVolumetricFog", "1", CVAR_ARCHIVE);
             }
             if (r_vkVolumetricFog->integer && tess.fogNum && stage->adjustColorsForFog != ACFF_NONE) {
                 vec4_t distVec;
@@ -452,7 +457,7 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
      * Volumetric fog volume pass, mirroring OpenGL's RB_FogPass.
      */
     if (!r_vkVolumetricFog) {
-        r_vkVolumetricFog = ri.Cvar_Get("r_vkVolumetricFog", "0", CVAR_ARCHIVE);
+        r_vkVolumetricFog = ri.Cvar_Get("r_vkVolumetricFog", "1", CVAR_ARCHIVE);
     }
     if (r_vkVolumetricFog->integer && tess.fogNum && tess.shader->fogPass) {
         VK_FogPass(drawSurf, type, cmd);

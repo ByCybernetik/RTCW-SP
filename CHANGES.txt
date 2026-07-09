@@ -1,3 +1,63 @@
+Исправление volumetric fog (09.07.2026)
+======================================
+
+Проблема
+--------
+Volumetric fog volume pass в Vulkan использовал CLAMP_TO_EDGE для fog texture,
+тогда как оригинальный OpenGL использует GL_CLAMP с белым border. Белый border
+дает alpha = 1.0 для UV вне [0,1], поэтому вблизи камеры (s < 0) туман
+получался полностью непрозрачным. Кроме того, volumetric
+fog был отключен по умолчанию (r_vkVolumetricFog 0), хотя в OpenGL volume pass
+работает всегда.
+
+Исправления
+-----------
+1. src/vulkan/shaders/world.frag
+   - В volumetric fog volume pass out-of-bounds UV обрабатываются физически
+     разумно: близко к камере (s < 0) — нет тумана (alpha = 0), далеко или
+     за плоскостью отсечки (s > 1 или t вне [0,1]) — полный туман
+     (alpha = 1.0). Внутри текстуры используется сэмплирование fog texture.
+   - Сохранена vertex alpha при формировании итогового цвета, чтобы
+     соответствовать OpenGL modulate path для неполностью непрозрачного fog.
+
+2. src/vulkan/vk_renderer_draw.c
+   - r_vkVolumetricFog теперь включен по умолчанию (1), как и в OpenGL.
+
+
+Исправление масштабирования fogDistanceVector (09.07.2026)
+==========================================================
+
+Проблема
+--------
+После предыдущих правок volumetric fog в Vulkan всё ещё выглядел заметно
+плотнее и непрозрачнее, чем в OpenGL на одной и той же карте.
+
+Причина
+-------
+OpenGL в RB_CalcFogTexCoords() масштабирует все четыре компонента
+fogDistanceVector на fog->tcScale, включая translation-компонент [3]:
+
+    fogDistanceVector[0..3] *= fog->tcScale;
+
+Vulkan использовал VectorScale(), который масштабирует только первые три
+компонента. Из-за этого смещение fogDistanceVector[3] оставалось
+немасштабированным, координата s fog texture сдвигалась относительно
+OpenGL, и плотность тумана получалась другой (в данных сценах — выше).
+
+Исправления
+-----------
+1. src/vulkan/vk_renderer_draw.c
+   - VK_GetFogVectors() теперь явно масштабирует все 4 компонента
+     fogDistanceVector на fog->tcScale, совпадая с OpenGL.
+
+2. src/vulkan/shaders/world.frag
+   - Убран временный диагностический множитель fogAlpha *= 0.5.
+
+Сборка
+------
+cmake --build build -j$(nproc)
+
+
 Изменения в Vulkan backend (08.07.2026)
 ========================================
 

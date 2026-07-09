@@ -1,0 +1,6 @@
+# Hashes of file build rules.
+554573fe2a381e0af43ea9f1ad281b3b CMakeFiles/vulkan_shaders
+8605b1da288dc1b99489e94aa97d9ea8 main/2d_frag.spv
+46b98508990fdd701b150ec9c248668d main/2d_vert.spv
+6b734f1b36ecec5c85fd77a6c3632254 main/world_frag.spv
+25c5b94e077ba6c3e86ff51588e06f92 main/world_vert.spv

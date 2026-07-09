@@ -1,0 +1,1 @@
+/usr/bin/cc -Wl,--dependency-file=CMakeFiles/bsp_viewer_gl.dir/link.d CMakeFiles/bsp_viewer_gl.dir/src/tools/bsp_viewer_gl.c.o -o bsp_viewer_gl  -lSDL2 -lm -ldl -lpthread /usr/lib/libasound.so /usr/lib/libGLX.so /usr/lib/libOpenGL.so

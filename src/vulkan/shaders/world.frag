@@ -117,10 +117,21 @@ void main() {
     }
 
     /* Volumetric fog volume pass: draw the fog texture modulated by fog color.
-     * The fog texture is white with alpha equal to fog density. */
+     * The fog texture is white with alpha equal to fog density.
+     * For UVs outside the texture we keep a physically reasonable fallback:
+     * close to the eye (s < 0) means no fog, far/behind the clipping plane
+     * (s > 1 or t out of bounds) means fully fogged. Vertex alpha is preserved
+     * so a future non-opaque fog color behaves like OpenGL's modulate path. */
     if (pc.params16.w > 2.5) {
-        vec4 fogTex = texture(uBaseTex, vTexCoord);
-        outColor = vec4(vColor.rgb, fogTex.a);
+        float fogAlpha;
+        if (vTexCoord.s < 0.0) {
+            fogAlpha = 0.0;
+        } else if (vTexCoord.s > 1.0 || vTexCoord.t < 0.0 || vTexCoord.t > 1.0) {
+            fogAlpha = 1.0;
+        } else {
+            fogAlpha = texture(uBaseTex, vTexCoord).a;
+        }
+        outColor = vec4(vColor.rgb, vColor.a * fogAlpha);
         return;
     }
 
