@@ -10,8 +10,9 @@ qboolean VK_StageUsesSourceAlphaBlend(const shaderStage_t *stage);
 
 void VK_SetStageStateFromShader(const shader_t *shader, const shaderStage_t *stage);
 void VK_SetUIStageStateFromShader(const shader_t *shader, const shaderStage_t *stage);
-void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_constants_t *pc);
-void VK_FillFogPushConstants(vk_push_constants_t *pc);
+void VK_FillPushConstants(const float mvp[16], const shader_t *shader,
+                          vk_push_constants_t *pc, float params[VK_PUSH_PARAMS][4]);
+void VK_FillFogPushConstants(float params[VK_PUSH_PARAMS][4]);
 void VK_FillPicStageColors(const shader_t *shader, const shaderStage_t *stage,
                            const byte color0[4], const byte color1[4],
                            const byte color2[4], const byte color3[4],
@@ -19,7 +20,7 @@ void VK_FillPicStageColors(const shader_t *shader, const shaderStage_t *stage,
 int VK_PipelineForUIStage(const shaderStage_t *stage);
 int VK_PipelineFor2DPic(const shaderStage_t *stage);
 void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
-                            vk_push_constants_t *pc, qboolean cloudLayer);
+                            float params[VK_PUSH_PARAMS][4], qboolean cloudLayer);
 
 image_t *VK_BundleImage(const textureBundle_t *bundle, const shader_t *shader);
 image_t *VK_StageLightmapImage(const shader_t *shader);

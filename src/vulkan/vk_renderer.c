@@ -86,6 +86,7 @@ void VK_BeginFrame(stereoFrame_t stereoFrame) {
     }
 
     VK_ResetDynamicVBO();
+    VK_ResetUBO();
 }
 
 void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
@@ -322,6 +323,7 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
     shader_t *state;
     float mvp[16];
     vk_push_constants_t pc;
+    float params[VK_PUSH_PARAMS][4];
     int vboSize;
     int iboSize;
     int iboOff;
@@ -428,6 +430,7 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
                 currentPipe = pipeIdx;
             }
 
+            /* 2D shaders only use the MVP push constant, not the dynamic UBO. */
             vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
                                0, sizeof(mvp), mvp);
 
@@ -439,8 +442,8 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
         }
 
         VK_SetUIStageStateFromShader(state, stage);
-        VK_FillPushConstants(mvp, state, &pc);
-        pc.params[14][3] = 0.2f;
+        VK_FillPushConstants(mvp, state, &pc, params);
+        params[14][3] = 0.2f;
 
         pipeIdx = VK_PipelineForUIStage(stage);
         if (pipeIdx != currentPipe) {
@@ -452,6 +455,7 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
         vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(pc), &pc);
+        VK_BindUBO(cmd, params);
 
         descSet = VK_StageDescriptorSet(state, stage);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -577,6 +581,7 @@ void VK_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, int clien
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[VK_PIPELINE_2D]);
     vkCmdBindVertexBuffers(cmd, 0, 1, &vk_dyn.buffer, offsets);
     vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
+    /* 2D shader only uses the MVP push constant, not the dynamic UBO. */
     vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
 
     descSet = VK_GetDescriptorSetForImage(image);

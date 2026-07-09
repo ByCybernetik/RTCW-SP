@@ -2,28 +2,11 @@
 
 layout(push_constant) uniform PushConstants {
     mat4 mvp;
-    vec4 params0;
-    vec4 params1;
-    vec4 params2;
-    vec4 params3;
-    vec4 params4;
-    vec4 params5;
-    vec4 params6;
-    vec4 params7;
-    vec4 params8;
-    vec4 params9;
-    vec4 params10;
-    vec4 params11;
-    vec4 params12;
-    vec4 params13;
-    vec4 params14;
-    vec4 params15;
-    vec4 params16;
-    vec4 params17;
-    vec4 params18;
-    vec4 params19;
-    vec4 params20;
 } pc;
+
+layout(set = 1, binding = 0) uniform UBO {
+    vec4 params[21];
+} ubo;
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inTexCoord;
@@ -61,38 +44,38 @@ float q3SinTable(float index) {
 vec2 applyTcMod(vec2 uv, vec3 worldPos) {
     vec2 outUv = uv;
 
-    if (pc.params4.z > 0.5) {
+    if (ubo.params[4].z > 0.5) {
         outUv = vec2(
-            outUv.x * pc.params3.x + outUv.y * pc.params3.y,
-            outUv.x * pc.params3.z + outUv.y * pc.params3.w
-        ) + pc.params4.xy;
+            outUv.x * ubo.params[3].x + outUv.y * ubo.params[3].y,
+            outUv.x * ubo.params[3].z + outUv.y * ubo.params[3].w
+        ) + ubo.params[4].xy;
     }
 
-    outUv *= pc.params6.xy;
+    outUv *= ubo.params[6].xy;
 
-    vec2 scrollOffset = pc.params6.zw * pc.params8.y;
+    vec2 scrollOffset = ubo.params[6].zw * ubo.params[8].y;
     scrollOffset -= floor(scrollOffset);
     outUv += scrollOffset;
 
-    if (abs(pc.params8.x) > 0.001) {
-        float angle = radians(pc.params8.x * pc.params8.y);
+    if (abs(ubo.params[8].x) > 0.001) {
+        float angle = radians(ubo.params[8].x * ubo.params[8].y);
         float c = cos(angle);
         float s = sin(angle);
         vec2 p = outUv - vec2(0.5);
         outUv = vec2(p.x * c - p.y * s, p.x * s + p.y * c) + vec2(0.5);
     }
 
-    if (pc.params4.w > 0.5) {
-        float now = pc.params5.z + pc.params8.y * pc.params5.w;
-        float amp = pc.params5.y;
+    if (ubo.params[4].w > 0.5) {
+        float now = ubo.params[5].z + ubo.params[8].y * ubo.params[5].w;
+        float amp = ubo.params[5].y;
         float turbS = (worldPos.x + worldPos.z) * (1.0 / 128.0) * 0.125 + now;
         float turbT = worldPos.y * (1.0 / 128.0) * 0.125 + now;
         outUv.s += q3SinTable(turbS) * amp;
         outUv.t += q3SinTable(turbT) * amp;
     }
 
-    if (pc.params11.y > 0.5) {
-        float w = pc.params10.y + pc.params10.z * evalWave(pc.params10.x, pc.params10.w + pc.params8.y * pc.params11.x);
+    if (ubo.params[11].y > 0.5) {
+        float w = ubo.params[10].y + ubo.params[10].z * evalWave(ubo.params[10].x, ubo.params[10].w + ubo.params[8].y * ubo.params[11].x);
         w = max(abs(w), 0.001);
         outUv = (outUv - vec2(0.5)) / w + vec2(0.5);
     }
@@ -101,14 +84,14 @@ vec2 applyTcMod(vec2 uv, vec3 worldPos) {
 }
 
 void main() {
-    vec2 uv = (pc.params8.z > 0.5) ? inLightmapCoord : inTexCoord;
+    vec2 uv = (ubo.params[8].z > 0.5) ? inLightmapCoord : inTexCoord;
     vec3 pos = inPos;
 
-    if (pc.params11.w > 0.5 && pc.params12.y > 0.5) {
+    if (ubo.params[11].w > 0.5 && ubo.params[12].y > 0.5) {
         float radiusWorld = 4096.0;
-        float h = max(pc.params12.x, 1.0);
+        float h = max(ubo.params[12].x, 1.0);
         /* inPos includes the view origin; the cloud formula needs the direction from the viewer. */
-        vec3 skyVec = inPos - pc.params14.xyz;
+        vec3 skyVec = inPos - ubo.params[14].xyz;
         float d2 = dot(skyVec, skyVec);
         if (d2 > 0.001) {
             float z = skyVec.z;
@@ -125,11 +108,11 @@ void main() {
         }
     }
 
-    if (pc.params11.w < 0.5 && pc.params2.w > 0.5 && pc.params2.z > 0.5 && pc.params2.y >= 0.0) {
-        float waveDiv = max(pc.params1.x, 1.0);
+    if (ubo.params[11].w < 0.5 && ubo.params[2].w > 0.5 && ubo.params[2].z > 0.5 && ubo.params[2].y >= 0.0) {
+        float waveDiv = max(ubo.params[1].x, 1.0);
         float dist = length(inPos);
-        float wave = evalWave(pc.params1.y, pc.params2.x + pc.params8.y * pc.params2.y + dist / waveDiv);
-        float offset = pc.params1.z + pc.params1.w * wave;
+        float wave = evalWave(ubo.params[1].y, ubo.params[2].x + ubo.params[8].y * ubo.params[2].y + dist / waveDiv);
+        float offset = ubo.params[1].z + ubo.params[1].w * wave;
         pos += normalize(inNormal) * offset;
     }
 
@@ -139,19 +122,19 @@ void main() {
      * params[2][3] holds the world-space Z scale factor, and params[15].xyz
      * holds the model-space fire-rise direction (already normalised for
      * alphaGen normalzfade). */
-    if (pc.params11.w < 0.5 && pc.params2.y < 0.0 && pc.params2.w > 0.0) {
+    if (ubo.params[11].w < 0.5 && ubo.params[2].y < 0.0 && ubo.params[2].w > 0.0) {
         bool inverse = false;
-        float freq = -pc.params2.y;
+        float freq = -ubo.params[2].y;
         if (freq > 999.0) {
             inverse = true;
             freq -= 999.0;
         }
 
-        float off = (inPos.x + inPos.y + inPos.z) * pc.params1.x;
-        float wave = evalWave(pc.params1.y, pc.params2.x + pc.params8.y * freq + off);
-        float scale = pc.params1.z + pc.params1.w * wave;
+        float off = (inPos.x + inPos.y + inPos.z) * ubo.params[1].x;
+        float wave = evalWave(ubo.params[1].y, ubo.params[2].x + ubo.params[8].y * freq + off);
+        float scale = ubo.params[1].z + ubo.params[1].w * wave;
 
-        vec3 up = pc.params15.xyz * pc.params2.w;
+        vec3 up = ubo.params[15].xyz * ubo.params[2].w;
         float upLen = length(up);
         if (upLen > 0.001) {
             up /= upLen;
@@ -164,24 +147,24 @@ void main() {
     }
 
     gl_Position = pc.mvp * vec4(pos, 1.0);
-    if (pc.params11.w > 0.5) {
+    if (ubo.params[11].w > 0.5) {
         gl_Position.z = gl_Position.w;
     }
-    if (pc.params7.w > 0.5) {
+    if (ubo.params[7].w > 0.5) {
         vec3 n = normalize(inNormal);
-        vec3 viewer = normalize(pc.params14.xyz - pos);
+        vec3 viewer = normalize(ubo.params[14].xyz - pos);
         float d = dot(n, viewer);
         vec3 reflected = n * 2.0 * d - viewer;
         uv = vec2(0.5 + reflected.y * 0.5, 0.5 - reflected.z * 0.5);
     }
     vec2 finalUv;
     vec4 finalColor;
-    if (pc.params16.w > 3.5) {
+    if (ubo.params[16].w > 3.5) {
         /* Volumetric fog pass: compute fog texture coordinates exactly like
          * RB_CalcFogTexCoords and use the fog color as the vertex color. */
-        float s = dot(pos, pc.params18.xyz) + pc.params18.w;
-        float eyeT = dot(pc.params14.xyz, pc.params19.xyz) + pc.params19.w;
-        float t = dot(pos, pc.params19.xyz) + pc.params19.w;
+        float s = dot(pos, ubo.params[18].xyz) + ubo.params[18].w;
+        float eyeT = dot(ubo.params[14].xyz, ubo.params[19].xyz) + ubo.params[19].w;
+        float t = dot(pos, ubo.params[19].xyz) + ubo.params[19].w;
         bool eyeOutside = eyeT < 0.0;
         if (eyeOutside) {
             if (t < 1.0) {
@@ -197,9 +180,9 @@ void main() {
             }
         }
         finalUv = vec2(s, t);
-        finalColor = vec4(pc.params16.xyz, 1.0);
+        finalColor = vec4(ubo.params[16].xyz, 1.0);
     } else {
-        finalUv = (pc.params14.w > 0.1 && pc.params14.w < 0.5) ? uv : applyTcMod(uv, pos);
+        finalUv = (ubo.params[14].w > 0.1 && ubo.params[14].w < 0.5) ? uv : applyTcMod(uv, pos);
         finalColor = inColor;
     }
     vTexCoord = finalUv;
@@ -216,36 +199,36 @@ void main() {
      * distance metric (0=GL_EYE_RADIAL_NV, 1=GL_EYE_PLANE_ABSOLUTE_NV,
      * 2=GL_EYE_PLANE). */
     vFogFactor = 1.0;
-    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 4.0) {
-        vec3 eyeVec = pos - pc.params14.xyz;
+    if (ubo.params[17].w > 0.5 && ubo.params[16].w > 0.0 && ubo.params[16].w < 4.0) {
+        vec3 eyeVec = pos - ubo.params[14].xyz;
         float dist;
-        int distMode = int(pc.params20.w + 0.5);
+        int distMode = int(ubo.params[20].w + 0.5);
         if (distMode == 1) {
-            dist = abs(dot(eyeVec, pc.params20.xyz));
+            dist = abs(dot(eyeVec, ubo.params[20].xyz));
         } else if (distMode == 2) {
-            dist = dot(eyeVec, pc.params20.xyz);
+            dist = dot(eyeVec, ubo.params[20].xyz);
         } else {
             dist = length(eyeVec);
         }
-        if (pc.params16.w < 1.5) {
+        if (ubo.params[16].w < 1.5) {
             /* GL_LINEAR */
-            vFogFactor = clamp((pc.params17.y - dist) / (pc.params17.y - pc.params17.x), 0.0, 1.0);
-        } else if (pc.params16.w < 2.5) {
+            vFogFactor = clamp((ubo.params[17].y - dist) / (ubo.params[17].y - ubo.params[17].x), 0.0, 1.0);
+        } else if (ubo.params[16].w < 2.5) {
             /* GL_EXP */
-            vFogFactor = exp(-pc.params17.z * dist);
+            vFogFactor = exp(-ubo.params[17].z * dist);
         } else {
             /* GL_EXP2 */
-            float d = pc.params17.z * dist;
+            float d = ubo.params[17].z * dist;
             vFogFactor = exp(-d * d);
         }
     }
 
     float normalZFadeAlpha = 1.0;
-    if (pc.params15.w > 0.0) {
-        vec3 worldUp = normalize(pc.params15.xyz);
+    if (ubo.params[15].w > 0.0) {
+        vec3 worldUp = normalize(ubo.params[15].xyz);
         float d = dot(normalize(inNormal), worldUp);
-        float lowest = pc.params12.x;
-        float highest = pc.params12.y;
+        float lowest = ubo.params[12].x;
+        float highest = ubo.params[12].y;
         if (d < highest && d > lowest) {
             float range = highest - lowest;
             float mid = lowest + range * 0.5;

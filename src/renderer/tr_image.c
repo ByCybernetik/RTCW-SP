@@ -198,6 +198,9 @@ void GL_TextureMode( const char *string ) {
 			GL_Bind( glt );
 			qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min );
 			qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max );
+			if ( glConfig.anisotropicAvailable && r_ext_texture_filter_anisotropic->integer ) {
+				qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, glConfig.maxAnisotropy );
+			}
 		}
 	}
 }
@@ -853,6 +856,9 @@ done:
 	if ( mipmap ) {
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max );
+		if ( glConfig.anisotropicAvailable && r_ext_texture_filter_anisotropic->integer ) {
+			qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, glConfig.maxAnisotropy );
+		}
 	} else
 	{
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
@@ -954,7 +960,8 @@ image_t *R_CreateImageExt( const char *name, const byte *pic, int width, int hei
 
 		if ( vkIdx >= 0 && vkIdx < VK_MAX_TEXTURES ) {
         if ( VK_CreateTextureFromPixels( (const uint8_t *)pic, width, height,
-			                                 &vk_state.textures[vkIdx], glWrapClampMode ) ) {
+			                                 &vk_state.textures[vkIdx], glWrapClampMode,
+		                                 image->mipmap ) ) {
 				if ( vkIdx >= vk_state.textureCount ) {
 					vk_state.textureCount = vkIdx + 1;
 				}

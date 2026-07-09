@@ -836,7 +836,17 @@ void IN_ProcessEvents( void ) {
                 break;
                 
             case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+                if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+#ifdef VULKAN_BACKEND
+                    int newWidth = event.window.data1;
+                    int newHeight = event.window.data2;
+                    if (newWidth > 0 && newHeight > 0) {
+                        glConfig.vidWidth = newWidth;
+                        glConfig.vidHeight = newHeight;
+                        VK_UpdateSwapchain(newWidth, newHeight);
+                    }
+#endif
+                } else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
                     // Release all mouse grabs when focus lost
                     SDL_CaptureMouse(SDL_FALSE);
                     SDL_SetWindowMouseGrab(window, SDL_FALSE);

@@ -13,7 +13,8 @@ static float vk_originalTime;
 static int vk_oldEntityNum = -1;
 static cvar_t *r_vkVolumetricFog;
 
-static void VK_FillStagePushConstants(const shader_t *shader, vk_push_constants_t *pc) {
+static void VK_FillStagePushConstants(const shader_t *shader, vk_push_constants_t *pc,
+                                      float params[VK_PUSH_PARAMS][4]) {
     float proj[16];
     float mvp[16];
 
@@ -22,7 +23,7 @@ static void VK_FillStagePushConstants(const shader_t *shader, vk_push_constants_
     memcpy(proj, backEnd.viewParms.projectionMatrix, sizeof(proj));
     VK_ConvertProjectionMatrixToVulkan(proj);
     VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-    VK_FillPushConstants(mvp, shader, pc);
+    VK_FillPushConstants(mvp, shader, pc, params);
 }
 
 static void VK_GetFogVectors(vec4_t fogDistanceVector, vec4_t fogDepthVector, float *eyeT) {
@@ -68,6 +69,7 @@ static void VK_GetFogVectors(vec4_t fogDistanceVector, vec4_t fogDepthVector, fl
 static void VK_FogPass(drawSurf_t *drawSurf, surfaceType_t type, VkCommandBuffer cmd) {
     fog_t *fog;
     vk_push_constants_t pc;
+    float params[VK_PUSH_PARAMS][4];
     vec4_t fogDistanceVector;
     vec4_t fogDepthVector;
     float eyeT;
@@ -88,54 +90,55 @@ static void VK_FogPass(drawSurf_t *drawSurf, surfaceType_t type, VkCommandBuffer
 
     pipelineIdx = (tess.shader->fogPass == FP_EQUAL) ? VK_PIPELINE_FOG_EQUAL : VK_PIPELINE_FOG;
 
-    VK_FillStagePushConstants(tess.shader, &pc);
+    VK_FillStagePushConstants(tess.shader, &pc, params);
 
     /* Use the volumetric fog volume color. params16.w == 4.0 selects the fog
      * pass path in the shaders; it also disables the distance-fog branch.
      * Modes 1..3 are reserved for distance fog (linear, exp, exp2). */
     color = fog->colorInt;
-    pc.params[VK_FOG_COLOR_PARAM][0] = (float)(color & 0xFF) / 255.0f;
-    pc.params[VK_FOG_COLOR_PARAM][1] = (float)((color >> 8) & 0xFF) / 255.0f;
-    pc.params[VK_FOG_COLOR_PARAM][2] = (float)((color >> 16) & 0xFF) / 255.0f;
-    pc.params[VK_FOG_COLOR_PARAM][3] = 4.0f;
+    params[VK_FOG_COLOR_PARAM][0] = (float)(color & 0xFF) / 255.0f;
+    params[VK_FOG_COLOR_PARAM][1] = (float)((color >> 8) & 0xFF) / 255.0f;
+    params[VK_FOG_COLOR_PARAM][2] = (float)((color >> 16) & 0xFF) / 255.0f;
+    params[VK_FOG_COLOR_PARAM][3] = 4.0f;
 
     /* Disable distance fog modulation for this pass. */
-    pc.params[VK_FOG_RANGE_PARAM][0] = 0.0f;
-    pc.params[VK_FOG_RANGE_PARAM][1] = 0.0f;
-    pc.params[VK_FOG_RANGE_PARAM][2] = 0.0f;
-    pc.params[VK_FOG_RANGE_PARAM][3] = 0.0f;
+    params[VK_FOG_RANGE_PARAM][0] = 0.0f;
+    params[VK_FOG_RANGE_PARAM][1] = 0.0f;
+    params[VK_FOG_RANGE_PARAM][2] = 0.0f;
+    params[VK_FOG_RANGE_PARAM][3] = 0.0f;
 
     VK_GetFogVectors(fogDistanceVector, fogDepthVector, &eyeT);
     (void)eyeT;
-    pc.params[18][0] = fogDistanceVector[0];
-    pc.params[18][1] = fogDistanceVector[1];
-    pc.params[18][2] = fogDistanceVector[2];
-    pc.params[18][3] = fogDistanceVector[3];
-    pc.params[19][0] = fogDepthVector[0];
-    pc.params[19][1] = fogDepthVector[1];
-    pc.params[19][2] = fogDepthVector[2];
-    pc.params[19][3] = fogDepthVector[3];
+    params[18][0] = fogDistanceVector[0];
+    params[18][1] = fogDistanceVector[1];
+    params[18][2] = fogDistanceVector[2];
+    params[18][3] = fogDistanceVector[3];
+    params[19][0] = fogDepthVector[0];
+    params[19][1] = fogDepthVector[1];
+    params[19][2] = fogDepthVector[2];
+    params[19][3] = fogDepthVector[3];
 
     /* Force a fog-texture draw: no alpha test, no lightmap, no vertex color,
      * no environment mapping, no dlight pass flag, no water fog. */
-    pc.params[0][2] = 0.0f;                 /* alpha test off */
-    pc.params[7][0] = 0.0f;                 /* rgbGen vertex off */
-    pc.params[7][1] = 0.0f;                 /* alphaGen vertex off */
-    pc.params[7][2] = 1.0f;                 /* no lightmap */
-    pc.params[7][3] = 0.0f;                 /* no environment mapping */
-    pc.params[11][2] = 0.0f;                /* water fog off */
-    pc.params[13][0] = 0.0f;                /* portal clip plane off */
-    pc.params[13][1] = 0.0f;
-    pc.params[13][2] = 0.0f;
-    pc.params[13][3] = 0.0f;
-    pc.params[14][3] = 0.0f;                /* not a dlight pass */
-    pc.params[15][3] = 0.0f;                /* normal Z fade off */
+    params[0][2] = 0.0f;                 /* alpha test off */
+    params[7][0] = 0.0f;                 /* rgbGen vertex off */
+    params[7][1] = 0.0f;                 /* alphaGen vertex off */
+    params[7][2] = 1.0f;                 /* no lightmap */
+    params[7][3] = 0.0f;                 /* no environment mapping */
+    params[11][2] = 0.0f;                /* water fog off */
+    params[13][0] = 0.0f;                /* portal clip plane off */
+    params[13][1] = 0.0f;
+    params[13][2] = 0.0f;
+    params[13][3] = 0.0f;
+    params[14][3] = 0.0f;                /* not a dlight pass */
+    params[15][3] = 0.0f;                /* normal Z fade off */
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipelineIdx]);
     vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
     vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), &pc);
+    VK_BindUBO(cmd, params);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             vk_state.pipelineLayout, 0, 1, &vk_state.fogDescSet, 0, NULL);
 
@@ -225,29 +228,35 @@ static int VK_SurfaceDlightBits(surfaceType_t *surf) {
     }
 }
 
-static void VK_FillDlightPushConstants(const dlight_t *dl, vk_push_constants_t *pc) {
+static void VK_FillDlightPushConstants(const dlight_t *dl, vk_push_constants_t *pc,
+                                       float params[VK_PUSH_PARAMS][4]) {
     float proj[16];
     float mvp[16];
 
     memcpy(proj, backEnd.viewParms.projectionMatrix, sizeof(proj));
     VK_ConvertProjectionMatrixToVulkan(proj);
     VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-    memcpy(pc->mvp, mvp, sizeof(pc->mvp));
-    memset(pc->params, 0, sizeof(pc->params));
+    if (pc) {
+        memcpy(pc->mvp, mvp, sizeof(pc->mvp));
+    }
+    if (!params) {
+        return;
+    }
+    memset(params, 0, sizeof(float) * VK_PUSH_PARAMS * 4);
 
-    pc->params[1][0] = dl->transformed[0];
-    pc->params[1][1] = dl->transformed[1];
-    pc->params[1][2] = dl->transformed[2];
-    pc->params[1][3] = dl->radius;
+    params[1][0] = dl->transformed[0];
+    params[1][1] = dl->transformed[1];
+    params[1][2] = dl->transformed[2];
+    params[1][3] = dl->radius;
 
-    pc->params[2][0] = dl->color[0];
-    pc->params[2][1] = dl->color[1];
-    pc->params[2][2] = dl->color[2];
+    params[2][0] = dl->color[0];
+    params[2][1] = dl->color[1];
+    params[2][2] = dl->color[2];
 
-    pc->params[14][0] = backEnd.or.viewOrigin[0];
-    pc->params[14][1] = backEnd.or.viewOrigin[1];
-    pc->params[14][2] = backEnd.or.viewOrigin[2];
-    pc->params[14][3] = 1.0f; /* dlight pass flag */
+    params[14][0] = backEnd.or.viewOrigin[0];
+    params[14][1] = backEnd.or.viewOrigin[1];
+    params[14][2] = backEnd.or.viewOrigin[2];
+    params[14][3] = 1.0f; /* dlight pass flag */
 }
 
 static void VK_ProjectDlightTexture(drawSurf_t *drawSurf, int dlightBits) {
@@ -255,6 +264,7 @@ static void VK_ProjectDlightTexture(drawSurf_t *drawSurf, int dlightBits) {
     surfaceType_t type;
     VkCommandBuffer cmd;
     vk_push_constants_t pc;
+    float params[VK_PUSH_PARAMS][4];
     int i;
 
     surf = drawSurf->surface;
@@ -294,10 +304,11 @@ static void VK_ProjectDlightTexture(drawSurf_t *drawSurf, int dlightBits) {
 
         dl = &backEnd.refdef.dlights[i];
 
-        VK_FillDlightPushConstants(dl, &pc);
+        VK_FillDlightPushConstants(dl, &pc, params);
         vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(pc), &pc);
+        VK_BindUBO(cmd, params);
 
         /* Surface functions append geometry and issue the draw call. */
         tess.numVertexes = 0;
@@ -319,6 +330,7 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
     int atiTess;
     shader_t *sortShader;
     vk_push_constants_t pc;
+    float params[VK_PUSH_PARAMS][4];
 
     surf = drawSurf->surface;
     if (!surf) {
@@ -372,12 +384,12 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
             }
 
             VK_SetStageStateFromShader(shader, stage);
-            VK_FillStagePushConstants(shader, &pc);
+            VK_FillStagePushConstants(shader, &pc, params);
 
             /* Match OpenGL's per-stage fog toggling: shaders with noFog only get
              * distance fog on stages explicitly marked as isFogged. */
             if (shader->noFog && !stage->isFogged) {
-                pc.params[VK_FOG_COLOR_PARAM][3] = 0.0f;
+                params[VK_FOG_COLOR_PARAM][3] = 0.0f;
             }
 
             /* Volumetric fog modulation for translucent surfaces inside fog volumes.
@@ -393,27 +405,27 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
 
                 VK_GetFogVectors(distVec, depthVec, &eyeT);
                 (void)eyeT;
-                pc.params[18][0] = distVec[0];
-                pc.params[18][1] = distVec[1];
-                pc.params[18][2] = distVec[2];
-                pc.params[18][3] = distVec[3];
-                pc.params[19][0] = depthVec[0];
-                pc.params[19][1] = depthVec[1];
-                pc.params[19][2] = depthVec[2];
-                pc.params[19][3] = depthVec[3];
+                params[18][0] = distVec[0];
+                params[18][1] = distVec[1];
+                params[18][2] = distVec[2];
+                params[18][3] = distVec[3];
+                params[19][0] = depthVec[0];
+                params[19][1] = depthVec[1];
+                params[19][2] = depthVec[2];
+                params[19][3] = depthVec[3];
 
                 switch (stage->adjustColorsForFog) {
                 case ACFF_MODULATE_RGB:
-                    pc.params[17][3] = 2.0f;
+                    params[17][3] = 2.0f;
                     break;
                 case ACFF_MODULATE_RGBA:
-                    pc.params[17][3] = 3.0f;
+                    params[17][3] = 3.0f;
                     break;
                 case ACFF_MODULATE_ALPHA:
-                    pc.params[17][3] = 4.0f;
+                    params[17][3] = 4.0f;
                     break;
                 default:
-                    pc.params[17][3] = 0.0f;
+                    params[17][3] = 0.0f;
                     break;
                 }
             }
@@ -433,6 +445,7 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
             vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                0, sizeof(pc), &pc);
+            VK_BindUBO(cmd, params);
 
             descSet = VK_StageDescriptorSet(shader, stage);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -668,6 +681,7 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         offsets[0] = (VkDeviceSize)vboOff;
         vkCmdBindVertexBuffers(cmd, 0, 1, &vk_dyn.buffer, offsets);
         vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
+        /* 2D flare shader only uses the MVP push constant, not the dynamic UBO. */
         vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
                            0, sizeof(mvp), mvp);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
