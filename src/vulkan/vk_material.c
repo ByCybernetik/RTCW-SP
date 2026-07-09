@@ -756,12 +756,9 @@ void VK_FillFogPushConstants(vk_push_constants_t *pc) {
     } else {
         if (glfogNum > FOG_NONE && glfogsettings[FOG_CURRENT].registered) {
             curfog = &glfogsettings[FOG_CURRENT];
-        } else if (glfogNum > FOG_NONE && glfogsettings[FOG_TARGET].registered) {
-            /* FOG_CURRENT may not be refreshed yet if R_SetFog was called after
-             * R_SetFrameFog for this view. Fall back to FOG_TARGET so distance
-             * fog is active immediately, matching OpenGL's per-draw-call fog. */
-            curfog = &glfogsettings[FOG_TARGET];
         }
+        /* No fallback to FOG_TARGET: OpenGL's SetIteratorFog() uses only
+         * FOG_CURRENT and calls R_FogOff() when it is not registered. */
     }
 
     if (!curfog) {
@@ -770,6 +767,8 @@ void VK_FillFogPushConstants(vk_push_constants_t *pc) {
 
     if (curfog->mode == GL_EXP) {
         mode = 2;
+    } else if (curfog->mode == GL_EXP2) {
+        mode = 3;
     } else {
         mode = 1; /* GL_LINEAR or default. */
     }
@@ -798,6 +797,29 @@ void VK_FillFogPushConstants(vk_push_constants_t *pc) {
     pc->params[VK_FOG_RANGE_PARAM][1] = end;
     pc->params[VK_FOG_RANGE_PARAM][2] = density;
     pc->params[VK_FOG_RANGE_PARAM][3] = 1.0f; /* registered/active flag */
+
+    /* NV distance-fog mode. params[20].xyz is the eye-space forward axis
+     * (used for GL_EYE_PLANE* modes), and .w selects the distance metric:
+     * 0 = GL_EYE_RADIAL_NV, 1 = GL_EYE_PLANE_ABSOLUTE_NV, 2 = GL_EYE_PLANE. */
+    if (!r_nv_fogdist_mode) {
+        r_nv_fogdist_mode = ri.Cvar_Get("r_nv_fogdist_mode", "GL_EYE_RADIAL_NV", CVAR_ARCHIVE);
+    }
+
+    /* OpenGL eye-space Z axis points down -Z; in the engine's coordinate system
+     * that corresponds to -viewForward (-axis[0]).  Using -axis[0] makes
+     * GL_EYE_PLANE/GL_EYE_PLANE_ABSOLUTE_NV match the fixed-function fog
+     * coordinate computed by the driver. */
+    pc->params[20][0] = -backEnd.viewParms.or.axis[0][0];
+    pc->params[20][1] = -backEnd.viewParms.or.axis[0][1];
+    pc->params[20][2] = -backEnd.viewParms.or.axis[0][2];
+
+    if (!Q_stricmp(r_nv_fogdist_mode->string, "GL_EYE_PLANE_ABSOLUTE_NV")) {
+        pc->params[20][3] = 1.0f;
+    } else if (!Q_stricmp(r_nv_fogdist_mode->string, "GL_EYE_PLANE")) {
+        pc->params[20][3] = 2.0f;
+    } else {
+        pc->params[20][3] = 0.0f; /* default GL_EYE_RADIAL_NV */
+    }
 }
 
 void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,

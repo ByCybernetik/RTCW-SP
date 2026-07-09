@@ -22,6 +22,7 @@ layout(push_constant) uniform PushConstants {
     vec4 params17;
     vec4 params18;
     vec4 params19;
+    vec4 params20;
 } pc;
 
 layout(location = 0) in vec3 inPos;
@@ -175,7 +176,7 @@ void main() {
     }
     vec2 finalUv;
     vec4 finalColor;
-    if (pc.params16.w > 2.5) {
+    if (pc.params16.w > 3.5) {
         /* Volumetric fog pass: compute fog texture coordinates exactly like
          * RB_CalcFogTexCoords and use the fog color as the vertex color. */
         float s = dot(pos, pc.params18.xyz) + pc.params18.w;
@@ -208,17 +209,34 @@ void main() {
 
     /* Distance fog factor computed per-vertex to match OpenGL's per-vertex fog
      * coordinate. The scalar is perspective-correct interpolated, just like GL_FOG.
-     * params16.w holds the distance-fog mode (1=linear, 2=exp); keep at 1.0 when
-     * distance fog is off or during the volumetric fog pass (params16.w == 3). */
+     * params16.w holds the distance-fog mode (1=linear, 2=exp, 3=exp2); keep at
+     * 1.0 when distance fog is off or during the volumetric fog pass
+     * (params16.w == 4).
+     * params20.xyz is the eye-space forward axis and .w selects the NV fog
+     * distance metric (0=GL_EYE_RADIAL_NV, 1=GL_EYE_PLANE_ABSOLUTE_NV,
+     * 2=GL_EYE_PLANE). */
     vFogFactor = 1.0;
-    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 3.0) {
-        float dist = length(pos - pc.params14.xyz);
+    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 4.0) {
+        vec3 eyeVec = pos - pc.params14.xyz;
+        float dist;
+        int distMode = int(pc.params20.w + 0.5);
+        if (distMode == 1) {
+            dist = abs(dot(eyeVec, pc.params20.xyz));
+        } else if (distMode == 2) {
+            dist = dot(eyeVec, pc.params20.xyz);
+        } else {
+            dist = length(eyeVec);
+        }
         if (pc.params16.w < 1.5) {
             /* GL_LINEAR */
             vFogFactor = clamp((pc.params17.y - dist) / (pc.params17.y - pc.params17.x), 0.0, 1.0);
-        } else {
+        } else if (pc.params16.w < 2.5) {
             /* GL_EXP */
             vFogFactor = exp(-pc.params17.z * dist);
+        } else {
+            /* GL_EXP2 */
+            float d = pc.params17.z * dist;
+            vFogFactor = exp(-d * d);
         }
     }
 

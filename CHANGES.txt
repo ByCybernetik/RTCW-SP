@@ -1,3 +1,95 @@
+Реализация NVIDIA distance fog в Vulkan (09.07.2026)
+====================================================
+
+Проблема
+--------
+В Vulkan режиме расстояние для distance fog всегда вычислялось как
+радиальное (`length(worldPos - viewOrigin)`), независимо от cvar
+`r_nv_fogdist_mode`. OpenGL же через расширение `GL_NV_fog_distance`
+поддерживает три режима:
+
+* `GL_EYE_RADIAL_NV` — радиальное расстояние;
+* `GL_EYE_PLANE_ABSOLUTE_NV` — модуль проекции на ось взгляда;
+* `GL_EYE_PLANE` — знаковая проекция на ось взгляда.
+
+Реализация
+----------
+1. src/vulkan/vk_local.h
+   - Увеличен `VK_PUSH_PARAMS` с 20 до 21, чтобы выделить `params[20]`
+     под данные NV distance fog.
+
+2. src/vulkan/vk_material.c
+   - `VK_FillFogPushConstants()` теперь читает `r_nv_fogdist_mode` и
+     заполняет `params[20]`:
+     * `.xyz` — eye-space Z axis (`-backEnd.viewParms.or.axis[0]`), т.е.
+       `-viewForward`.  Изначально ошибочно использовался `axis[2]` (up),
+       поэтому `GL_EYE_PLANE*` режимы не давали видимого отличия от
+       радиального.  Правильный вектор получен из анализа modelview matrix
+       `viewerMatrix * s_flipMatrix`: OpenGL eyeZ равен
+       `-dot(worldPos - viewOrigin, viewForward)`.
+     * `.w` — метрика расстояния (0=radial, 1=eye-plane-absolute,
+       2=eye-plane).
+
+3. src/vulkan/shaders/world.vert
+   - Добавлен `params20` в push-constant layout.
+   - Ветка distance fog выбирает метрику по `params20.w`:
+     * radial — `length(eyeVec)`;
+     * eye-plane-absolute — `abs(dot(eyeVec, forward))`;
+     * eye-plane — `dot(eyeVec, forward)` (знаковое).
+   - Далее применяются те же формулы `GL_LINEAR`/`GL_EXP`/`GL_EXP2`.
+
+4. src/vulkan/shaders/world.frag
+   - Добавлен `params20` в push-constant layout для соответствия
+     vertex-шейдеру.
+
+Сборка
+------
+cmake -B build -S . -DVULKAN_BACKEND=ON && cmake --build build -j$(nproc)
+
+
+Исправление расхождений distance fog Vulkan с OpenGL (09.07.2026)
+=================================================================
+
+Проблема
+--------
+В процессе анализа реализации NVIDIA distance fog выявлены расхождения
+между OpenGL и Vulkan рендерами:
+
+1. В `VK_SetStageStateFromShader()` при отсутствии зарегистрированного
+   `glfogsettings[FOG_CURRENT]` использовался fallback на
+   `glfogsettings[FOG_TARGET]`. В OpenGL `SetIteratorFog()` в такой
+   ситуации вызывает `R_FogOff()` — туман отключается. Fallback мог
+   включать туман там, где OpenGL его не рисовал.
+
+2. Режим `GL_EXP2` не обрабатывался в Vulkan: любой режим, отличный от
+   `GL_EXP`, считался `GL_LINEAR`.
+
+3. Значение `params16.w == 3.0` одновременно использовалось для
+   volumetric fog pass и могло конфликтовать с будущими режимами.
+
+Исправления
+-----------
+1. src/vulkan/vk_material.c
+   - Убран fallback на `FOG_TARGET`; поведение теперь совпадает с
+     OpenGL (`R_FogOff()` при незарегистрированном `FOG_CURRENT`).
+   - Добавлена обработка `GL_EXP2` (mode = 3).
+
+2. src/vulkan/vk_renderer_draw.c
+   - Volumetric fog pass теперь использует `params16.w = 4.0`, чтобы
+     освободить значения 1..3 для distance-fog режимов.
+
+3. src/vulkan/shaders/world.vert
+   - Проверки volumetric pass обновлены на `params16.w > 3.5`.
+   - Добавлена ветка `GL_EXP2`: `exp(-(density*dist)^2)`.
+
+4. src/vulkan/shaders/world.frag
+   - Проверки distance fog обновлены на `params16.w < 4.0`.
+
+Сборка
+------
+cmake -B build -S . -DVULKAN_BACKEND=ON && cmake --build build -j$(nproc)
+
+
 Исправление дрожания/сдвига flares при приближении в Vulkan (09.07.2026)
 =======================================================================
 

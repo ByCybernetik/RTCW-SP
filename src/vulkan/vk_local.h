@@ -9,7 +9,7 @@
 #define VK_MAX_PIPELINES 41
 #define VK_MAX_DESCRIPTOR_SETS 4096
 #define VK_MAX_TEXTURES 2048
-#define VK_PUSH_PARAMS 20
+#define VK_PUSH_PARAMS 21
 
 typedef enum {
     VK_PIPELINE_OPAQUE = 0,

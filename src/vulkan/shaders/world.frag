@@ -31,6 +31,7 @@ layout(push_constant) uniform PushConstants {
     vec4 params17;
     vec4 params18;
     vec4 params19;
+    vec4 params20;
 } pc;
 
 float evalWave(float waveFunc, float x) {
@@ -122,7 +123,7 @@ void main() {
      * close to the eye (s < 0) means no fog, far/behind the clipping plane
      * (s > 1 or t out of bounds) means fully fogged. Vertex alpha is preserved
      * so a future non-opaque fog color behaves like OpenGL's modulate path. */
-    if (pc.params16.w > 2.5) {
+    if (pc.params16.w > 3.5) {
         float fogAlpha;
         if (vTexCoord.s < 0.0) {
             fogAlpha = 0.0;
@@ -185,8 +186,9 @@ void main() {
      * in world.vert and perspective-correct interpolated, matching OpenGL's
      * per-vertex fog coordinate. This avoids per-pixel world-position interpolation
      * artifacts on large brush polygons.  Active whenever params16.w selects a
-     * distance-fog mode (1=linear, 2=exp), even if volumetric modulation is also on. */
-    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 3.0) {
+     * distance-fog mode (1=linear, 2=exp, 3=exp2), even if volumetric modulation
+     * is also on. */
+    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 4.0) {
         lit = mix(pc.params16.xyz, lit, vFogFactor);
     }
 

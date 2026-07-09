@@ -90,13 +90,14 @@ static void VK_FogPass(drawSurf_t *drawSurf, surfaceType_t type, VkCommandBuffer
 
     VK_FillStagePushConstants(tess.shader, &pc);
 
-    /* Use the volumetric fog volume color. params16.w == 3.0 selects the fog
-     * pass path in the shaders; it also disables the distance-fog branch. */
+    /* Use the volumetric fog volume color. params16.w == 4.0 selects the fog
+     * pass path in the shaders; it also disables the distance-fog branch.
+     * Modes 1..3 are reserved for distance fog (linear, exp, exp2). */
     color = fog->colorInt;
     pc.params[VK_FOG_COLOR_PARAM][0] = (float)(color & 0xFF) / 255.0f;
     pc.params[VK_FOG_COLOR_PARAM][1] = (float)((color >> 8) & 0xFF) / 255.0f;
     pc.params[VK_FOG_COLOR_PARAM][2] = (float)((color >> 16) & 0xFF) / 255.0f;
-    pc.params[VK_FOG_COLOR_PARAM][3] = 3.0f;
+    pc.params[VK_FOG_COLOR_PARAM][3] = 4.0f;
 
     /* Disable distance fog modulation for this pass. */
     pc.params[VK_FOG_RANGE_PARAM][0] = 0.0f;
