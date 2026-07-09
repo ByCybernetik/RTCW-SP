@@ -184,8 +184,10 @@ void RB_AddFlare( void *surface, int fogNum, vec3_t point, vec3_t color, float s
 	}
 
 	// save info needed to test
-	f->windowX = backEnd.viewParms.viewportX + window[0];
-	f->windowY = backEnd.viewParms.viewportY + window[1];
+	f->windowXF = backEnd.viewParms.viewportX + window[0];
+	f->windowYF = backEnd.viewParms.viewportY + window[1];
+	f->windowX = (int)( f->windowXF + 0.5f );
+	f->windowY = (int)( f->windowYF + 0.5f );
 
 	f->eyeZ = eye[2];
 }

@@ -471,7 +471,7 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
     shaderCommands_t savedTess;
     VkViewport vp;
     VkRect2D sc;
-    int vpX, vpY, vpW, vpH;
+    int vpX, vpY, vpYBottom, vpW, vpH;
 
     if (!cmd || !vk_state.renderPassActive) {
         return;
@@ -524,6 +524,7 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
     if (backEnd.viewParms.viewportWidth <= 0 || backEnd.viewParms.viewportHeight <= 0) {
         vpX = 0;
         vpY = 0;
+        vpYBottom = 0;
         vpW = (int)vk_state.swapExtent.width;
         vpH = (int)vk_state.swapExtent.height;
         vp.x = 0.0f;
@@ -537,7 +538,8 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         vpX = backEnd.viewParms.viewportX;
         vpW = backEnd.viewParms.viewportWidth;
         vpH = backEnd.viewParms.viewportHeight;
-        vpY = (int)vk_state.swapExtent.height - backEnd.viewParms.viewportY - vpH;
+        vpYBottom = backEnd.viewParms.viewportY;
+        vpY = (int)vk_state.swapExtent.height - vpYBottom - vpH;
         vp.x = (float)vpX;
         vp.y = (float)vpY;
         vp.width = (float)vpW;
@@ -592,10 +594,10 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         size = backEnd.viewParms.viewportWidth *
                ((r_flareSize->value * f->scale) / 640.0f + 8.0f / -f->eyeZ);
 
-        x0 = f->windowX - size;
-        x1 = f->windowX + size;
-        y0 = f->windowY - size;
-        y1 = f->windowY + size;
+        x0 = f->windowXF - size;
+        x1 = f->windowXF + size;
+        y0 = f->windowYF - size;
+        y1 = f->windowYF + size;
 
         /* Pick the 2D pipeline that matches the flare shader's blend mode.
          * flareShader uses GL_SRC_ALPHA GL_ONE; spotLight uses
@@ -613,14 +615,16 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         }
 
         /* Ortho matrix that maps OpenGL-style screen pixels to Vulkan NDC.
-         * Vulkan NDC has y=-1 at the top, but flare window coordinates are
-         * OpenGL-style with y=0 at the bottom of the viewport. */
+         * Flare window coordinates are bottom-left origin (y=0 at the bottom),
+         * matching OpenGL's qglOrtho. Vulkan NDC has y=-1 at the top and y=+1
+         * at the bottom, so a negative Y scale maps bottom-left screen coords
+         * correctly. vpYBottom is the viewport's bottom edge in screen space. */
         memset(mvp, 0, sizeof(mvp));
         mvp[0]  = 2.0f / (float)vpW;
         mvp[5]  = -2.0f / (float)vpH;
         mvp[10] = 1.0f;
         mvp[12] = -1.0f - 2.0f * (float)vpX / (float)vpW;
-        mvp[13] = 1.0f + 2.0f * (float)vpY / (float)vpH;
+        mvp[13] = 1.0f + 2.0f * (float)vpYBottom / (float)vpH;
         mvp[15] = 1.0f;
 
         vboSize = 4 * (int)sizeof(drawVert_t);
@@ -752,6 +756,11 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
 
         VK_DrawSurfaceStages(&drawSurfs[i], shader);
     }
+
+    /* Restore world orientation so later per-view commands (sun, flares)
+     * use the same modelview state as in the OpenGL path. */
+    backEnd.currentEntity = &tr.worldEntity;
+    backEnd.or = backEnd.viewParms.world;
 
     /* Restore global fog state so later commands / frames see the current
      * front-end values rather than the snapshot used for this view. */

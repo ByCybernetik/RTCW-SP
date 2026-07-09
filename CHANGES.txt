@@ -1,3 +1,78 @@
+Исправление дрожания/сдвига flares при приближении в Vulkan (09.07.2026)
+=======================================================================
+
+Проблема
+--------
+Во время рендеринга `VK_DrawSurfList()` переключает `backEnd.or` на
+orientation текущего entity. В OpenGL пути в конце
+`RB_RenderDrawSurfList()` состояние явно возвращается к мировой
+orientation (`backEnd.or = backEnd.viewParms.world`) перед отрисовкой
+солнца и flares. В Vulkan пути такого восстановления не было, поэтому
+`VK_RenderFlares()` вызывала `RB_AddDlightFlares()` / `RB_AddCoronaFlares()`
+с orientation последнего отрисованного entity. `RB_AddFlare()` умножал
+мировую позицию источника света на чужую `modelMatrix`, и при определённых
+ракурсах/приближении flare смещался относительно реальной лампы.
+
+Дополнительно позиция flare округлялась до целого пикселя в
+`R_TransformClipToWindow()`. В OpenGL это не заметно, а в Vulkan, где
+размер flare растёт плавно (`size = ... + 8 / -eyeZ`), округление центра
+усиливало видимое дрожание.
+
+Исправления
+-----------
+1. src/vulkan/vk_renderer_draw.c
+   - В конце `VK_DrawSurfList()` восстановлены `backEnd.currentEntity` и
+     `backEnd.or` к мировой orientation, как в OpenGL.
+   - `VK_RenderFlares()` теперь использует `f->windowXF/windowYF` при
+     построении flare-квада, устраняя пиксельное дрожание.
+
+2. src/renderer/tr_local.h
+   - В `flare_t` добавлены поля `windowXF` и `windowYF` для хранения
+     точной субпиксельной позиции центра flare.
+
+3. src/renderer/tr_main.c
+   - `R_TransformClipToWindow()` больше не округляет `window[0]` и
+     `window[1]` до целых. Теперь она возвращает непрерывные
+     viewport-координаты; округление выполняется там, где оно нужно.
+
+4. src/renderer/tr_flares.c
+   - `RB_AddFlare()` сохраняет неокруглённые координаты в `windowXF/YF`,
+     а округлённые — в `windowX/Y` для совместимости с OpenGL рендером.
+
+Сборка
+------
+cmake --build build -j$(nproc)
+
+Проверка
+--------
+Проверено в игре: при приближении к источнику света и повороте камеры flare
+больше не сдвигается относительно лампы.
+
+
+Исправление вертикального flip flares в Vulkan (09.07.2026)
+===========================================================
+
+Проблема
+--------
+В `VK_RenderFlares()` ортографическая матрица для flare-квадов использовала
+`vpY` (top-left origin Vulkan viewport) в смещении по Y, хотя сами flare
+координаты `f->windowY` имеют bottom-left origin, как в OpenGL. Из-за этого
+flares рисовались перевернутыми по вертикали и/или смещенными при
+неполноэкранном viewport (например, в portal view или снайперском прицеле).
+
+Исправления
+-----------
+1. src/vulkan/vk_renderer_draw.c
+   - Добавлена переменная `vpYBottom`, равная `backEnd.viewParms.viewportY`.
+   - Смещение матрицы по Y (`mvp[13]`) теперь использует `vpYBottom`,
+     совпадая с OpenGL `qglOrtho(viewportX, viewportX+width, viewportY,
+     viewportY+height, ...)`.
+
+Сборка
+------
+cmake --build build -j$(nproc)
+
+
 Исправление volumetric fog (09.07.2026)
 ======================================
 

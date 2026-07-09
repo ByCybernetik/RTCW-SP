@@ -1509,6 +1509,7 @@ typedef struct flare_s {
 	float drawIntensity;            // may be non 0 even if !visible due to fading
 
 	int windowX, windowY;
+	float windowXF, windowYF;   // precise sub-pixel position for Vulkan
 	float eyeZ;
 
 	vec3_t color;

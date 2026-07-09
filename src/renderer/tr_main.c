@@ -492,9 +492,6 @@ void R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t
 	window[0] = 0.5f * ( 1.0f + normalized[0] ) * view->viewportWidth;
 	window[1] = 0.5f * ( 1.0f + normalized[1] ) * view->viewportHeight;
 	window[2] = normalized[2];
-
-	window[0] = (int) ( window[0] + 0.5 );
-	window[1] = (int) ( window[1] + 0.5 );
 }
 
 
