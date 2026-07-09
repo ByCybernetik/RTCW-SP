@@ -1,2 +1,0 @@
-/usr/bin/ar qc libvk_renderer.a CMakeFiles/vk_renderer.dir/vk_init.c.o CMakeFiles/vk_renderer.dir/vk_renderer.c.o CMakeFiles/vk_renderer.dir/vk_renderer_draw.c.o CMakeFiles/vk_renderer.dir/vk_material.c.o CMakeFiles/vk_renderer.dir/vk_surface.c.o CMakeFiles/vk_renderer.dir/vk_math.c.o CMakeFiles/vk_renderer.dir/vk_sky.c.o
-/usr/bin/ranlib libvk_renderer.a
