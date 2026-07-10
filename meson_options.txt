@@ -1,0 +1,1 @@
+option('vulkan_backend', type: 'boolean', value: false, description: 'Build with Vulkan renderer')

@@ -30,6 +30,9 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 
 //#ifdef __USEA3D
 //// Defined in snd_a3dg_refcommon.c
@@ -501,21 +504,62 @@ void R_TakeScreenshot( int x, int y, int width, int height, char *fileName ) {
 R_TakeScreenshotJPEG
 ==============
 */
-void R_TakeScreenshotJPEG( int x, int y, int width, int height, char *fileName ) {
-	byte        *buffer;
+typedef struct {
+	byte *data;
+	int size;
+	int capacity;
+} jpg_write_buf_t;
 
-	buffer = ri.Hunk_AllocateTempMemory( glConfig.vidWidth * glConfig.vidHeight * 4 );
+static void R_JPGWriteFunc( void *context, void *data, int size ) {
+	jpg_write_buf_t *buf = (jpg_write_buf_t *)context;
+	int needed = buf->size + size;
+
+	if ( needed > buf->capacity ) {
+		int newcap = buf->capacity ? buf->capacity * 2 : 4096;
+		while ( newcap < needed ) {
+			newcap *= 2;
+		}
+		buf->data = realloc( buf->data, newcap );
+		buf->capacity = newcap;
+	}
+
+	memcpy( buf->data + buf->size, data, size );
+	buf->size += size;
+}
+
+void R_TakeScreenshotJPEG( int x, int y, int width, int height, char *fileName ) {
+	byte *buffer;
+	byte *rgb;
+	int count;
+	jpg_write_buf_t out = { 0 };
+
+	count = width * height;
+	buffer = ri.Hunk_AllocateTempMemory( count * 4 );
 
 	qglReadPixels( x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer );
 
 	// gamma correct
 	if ( ( tr.overbrightBits > 0 ) && glConfig.deviceSupportsGamma ) {
-		R_GammaCorrect( buffer, glConfig.vidWidth * glConfig.vidHeight * 4 );
+		R_GammaCorrect( buffer, count * 4 );
 	}
 
-	ri.FS_WriteFile( fileName, buffer, 1 );     // create path
-	SaveJPG( fileName, 95, glConfig.vidWidth, glConfig.vidHeight, buffer );
+	// stbi_write_jpg expects RGB input
+	rgb = ri.Hunk_AllocateTempMemory( count * 3 );
+	{
+		int i;
+		for ( i = 0; i < count; i++ ) {
+			rgb[i * 3 + 0] = buffer[i * 4 + 0];
+			rgb[i * 3 + 1] = buffer[i * 4 + 1];
+			rgb[i * 3 + 2] = buffer[i * 4 + 2];
+		}
+	}
 
+	if ( stbi_write_jpg_to_func( R_JPGWriteFunc, &out, width, height, 3, rgb, 95 ) ) {
+		ri.FS_WriteFile( fileName, out.data, out.size );
+	}
+
+	free( out.data );
+	ri.Hunk_FreeTempMemory( rgb );
 	ri.Hunk_FreeTempMemory( buffer );
 }
 
