@@ -18,15 +18,14 @@ extern float sky_maxs[2][6];
 static float vk_sky_min;
 static float vk_sky_max;
 
-static void VK_FillSkyPushConstants(const shader_t *shader, vk_push_constants_t *pc,
-                                    float params[VK_PUSH_PARAMS][4]) {
+static void VK_FillSkyPushConstants(const shader_t *shader, vk_push_constants_t *pc) {
     float proj[16];
     float mvp[16];
 
     memcpy(proj, tr.viewParms.projectionMatrix, sizeof(proj));
     VK_ConvertProjectionMatrixToVulkan(proj);
     VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-    VK_FillPushConstants(mvp, shader, pc, params);
+    VK_FillPushConstants(mvp, shader, pc);
 }
 
 static void VK_MakeSkyVec(float s, float t, int axis, float outSt[2], vec3_t outXYZ) {
@@ -85,8 +84,7 @@ static void VK_MakeSkyVec(float s, float t, int axis, float outSt[2], vec3_t out
 }
 
 static void VK_DrawSkyBoxSide(image_t *image, int axis, VkCommandBuffer cmd,
-                              vk_push_constants_t *pc,
-                              float params[VK_PUSH_PARAMS][4], int pipelineIdx) {
+                              vk_push_constants_t *pc, int pipelineIdx) {
     int sky_mins_subd[2], sky_maxs_subd[2];
     int s, t;
     int baseVert, baseIdx;
@@ -122,10 +120,6 @@ static void VK_DrawSkyBoxSide(image_t *image, int axis, VkCommandBuffer cmd,
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipelineIdx]);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
-    VK_BindUBO(cmd, params);
-    vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0, sizeof(*pc), pc);
 
     baseVert = tess.numVertexes;
     baseIdx = tess.numIndexes;
@@ -175,11 +169,10 @@ static void VK_DrawSkyBoxSide(image_t *image, int axis, VkCommandBuffer cmd,
 
 static void VK_DrawSkyBoxFaces(const shader_t *shader, image_t *images[6],
                                VkCommandBuffer cmd, vk_push_constants_t *pc,
-                               float params[VK_PUSH_PARAMS][4], int pipelineIdx) {
+                               int pipelineIdx) {
     static const int sky_texorder[6] = {0, 2, 1, 3, 4, 5};
     int i;
 
-    (void)shader;
     vk_sky_min = 0.0f;
     vk_sky_max = 1.0f;
 
@@ -190,13 +183,12 @@ static void VK_DrawSkyBoxFaces(const shader_t *shader, image_t *images[6],
             continue;
         }
 
-        VK_DrawSkyBoxSide(images[imgIdx], i, cmd, pc, params, pipelineIdx);
+        VK_DrawSkyBoxSide(images[imgIdx], i, cmd, pc, pipelineIdx);
     }
 }
 
 static void VK_DrawCloudLayers(shader_t *shader, VkCommandBuffer cmd,
-                               vk_push_constants_t *pc,
-                               float params[VK_PUSH_PARAMS][4]) {
+                               vk_push_constants_t *pc) {
     int i, v;
     int baseVert, baseIdx;
 
@@ -235,10 +227,9 @@ static void VK_DrawCloudLayers(shader_t *shader, VkCommandBuffer cmd,
         }
 
         VK_SetStageStateFromShader(shader, stage);
-        VK_FillSkyPushConstants(shader, pc, params);
-        VK_SetSkyPushConstants(shader, stage, params, qtrue);
+        VK_FillSkyPushConstants(shader, pc);
+        VK_SetSkyPushConstants(shader, stage, pc, qtrue);
 
-        VK_BindUBO(cmd, params);
         vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(*pc), pc);
@@ -257,7 +248,6 @@ static void VK_DrawCloudLayers(shader_t *shader, VkCommandBuffer cmd,
 void VK_DrawSky(shader_t *shader, surfaceType_t *surf, VkCommandBuffer cmd) {
     shaderCommands_t savedTess;
     vk_push_constants_t pc;
-    float params[VK_PUSH_PARAMS][4];
     VkViewport vp;
     VkRect2D sc;
     int vpY;
@@ -335,18 +325,18 @@ void VK_DrawSky(shader_t *shader, surfaceType_t *surf, VkCommandBuffer cmd) {
     /* Outer skybox. */
     if (shader->sky.outerbox[0] && shader->sky.outerbox[0] != tr.defaultImage) {
         VK_SetStageStateFromShader(shader, NULL);
-        VK_FillSkyPushConstants(shader, &pc, params);
-        VK_SetSkyPushConstants(shader, NULL, params, qfalse);
+        VK_FillSkyPushConstants(shader, &pc);
+        VK_SetSkyPushConstants(shader, NULL, &pc, qfalse);
 
         vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(pc), &pc);
 
-        VK_DrawSkyBoxFaces(shader, shader->sky.outerbox, cmd, &pc, params, VK_PIPELINE_SKY);
+        VK_DrawSkyBoxFaces(shader, shader->sky.outerbox, cmd, &pc, VK_PIPELINE_SKY);
     }
 
     /* Cloud layers. */
-    VK_DrawCloudLayers(shader, cmd, &pc, params);
+    VK_DrawCloudLayers(shader, cmd, &pc);
 
     /* Inner skybox (drawn with alpha blending like GL). */
     if (shader->sky.innerbox[0] && shader->sky.innerbox[0] != tr.defaultImage) {
@@ -354,14 +344,14 @@ void VK_DrawSky(shader_t *shader, surfaceType_t *surf, VkCommandBuffer cmd) {
         tess.numVertexes = 0;
 
         VK_SetStageStateFromShader(shader, NULL);
-        VK_FillSkyPushConstants(shader, &pc, params);
-        VK_SetSkyPushConstants(shader, NULL, params, qfalse);
+        VK_FillSkyPushConstants(shader, &pc);
+        VK_SetSkyPushConstants(shader, NULL, &pc, qfalse);
 
         vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(pc), &pc);
 
-        VK_DrawSkyBoxFaces(shader, shader->sky.innerbox, cmd, &pc, params, VK_PIPELINE_ALPHA);
+        VK_DrawSkyBoxFaces(shader, shader->sky.innerbox, cmd, &pc, VK_PIPELINE_ALPHA);
     }
 
     tess = savedTess;
@@ -490,7 +480,6 @@ void VK_DrawSun(VkCommandBuffer cmd) {
     for (i = 0; i < MAX_SHADER_STAGES && shader->stages[i]; i++) {
         shaderStage_t *stage = shader->stages[i];
         vk_push_constants_t pc;
-        float params[VK_PUSH_PARAMS][4];
         float proj[16];
         float mvp[16];
         int pipeIdx;
@@ -508,12 +497,11 @@ void VK_DrawSun(VkCommandBuffer cmd) {
         memcpy(proj, tr.viewParms.projectionMatrix, sizeof(proj));
         VK_ConvertProjectionMatrixToVulkan(proj);
         VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-        VK_FillPushConstants(mvp, shader, &pc, params);
+        VK_FillPushConstants(mvp, shader, &pc);
 
         pipeIdx = VK_PipelineForStage(stage);
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipeIdx]);
 
-        VK_BindUBO(cmd, params);
         vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(pc), &pc);

@@ -1054,14 +1054,20 @@ static void GLW_InitExtensions( void ) {
 	// GL_EXT_texture_filter_anisotropic
 	if ( strstr( glConfig.extensions_string, "GL_EXT_texture_filter_anisotropic" ) ) {
 		if ( r_ext_texture_filter_anisotropic->integer ) {
-			glConfig.anisotropicAvailable = qtrue;
-			ri.Printf( PRINT_ALL, "...using GL_EXT_texture_filter_anisotropic\n" );
+//			glConfig.anisotropicAvailable = qtrue;
+//			ri.Printf( PRINT_ALL, "...using GL_EXT_texture_filter_anisotropic\n" );
+
+			// always ignored.  unsupported.
+			glConfig.anisotropicAvailable = qfalse;
+			ri.Printf( PRINT_ALL, "...ignoring GL_EXT_texture_filter_anisotropic\n" );
+			ri.Cvar_Set( "r_ext_texture_filter_anisotropic", "0" );
+
 		} else {
 			glConfig.anisotropicAvailable = qfalse;
 			ri.Printf( PRINT_ALL, "...ignoring GL_EXT_texture_filter_anisotropic\n" );
+			ri.Cvar_Set( "r_ext_texture_filter_anisotropic", "0" );
 		}
 	} else {
-		glConfig.anisotropicAvailable = qfalse;
 //		ri.Printf( PRINT_ALL, "...GL_EXT_texture_filter_anisotropic not found\n" );
 		ri.Cvar_Set( "r_ext_texture_filter_anisotropic", "0" );
 	}

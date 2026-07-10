@@ -30,8 +30,6 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
-extern qboolean GLimp_HaveExtension( const char *ext );
-
 
 //#ifdef __USEA3D
 //// Defined in snd_a3dg_refcommon.c
@@ -823,23 +821,14 @@ void GL_SetDefaultState( void ) {
 		qglPNTrianglesiATI( GL_PN_TRIANGLES_TESSELATION_LEVEL_ATI, r_ati_truform_tess->value );
 	}
 
-	if ( !glConfig.anisotropicAvailable && r_ext_texture_filter_anisotropic->integer ) {
-		qboolean haveAniso = qfalse;
-		if ( glConfig.extensions_string[0] ) {
-			haveAniso = strstr( glConfig.extensions_string, "GL_EXT_texture_filter_anisotropic" ) ? qtrue : qfalse;
-		} else {
-			haveAniso = GLimp_HaveExtension( "GL_EXT_texture_filter_anisotropic" );
-		}
-		if ( haveAniso ) {
-			glConfig.anisotropicAvailable = qtrue;
-		}
-	}
-
 	if ( glConfig.anisotropicAvailable ) {
 		float maxAnisotropy;
 
 		qglGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy );
 		glConfig.maxAnisotropy = maxAnisotropy;
+
+		// set when rendering
+//	   qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, glConfig.maxAnisotropy);
 	}
 
 //----(SA)	end

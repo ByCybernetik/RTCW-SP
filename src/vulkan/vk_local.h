@@ -133,30 +133,22 @@ typedef struct {
     VkDescriptorSet whiteDescSet;
     VkDescriptorSet fogDescSet;
 
-    VkDescriptorSetLayout uboDescSetLayout;
-    VkDescriptorSet uboDescSet;
-
     VkSurfaceFormatKHR surfaceFormat;
 
+    VkPhysicalDeviceFeatures physFeatures;
     float maxSamplerAnisotropy;
 
     qboolean active;
     qboolean renderPassActive;
 } vk_state_t;
 
-/* Shader parameters are passed through a dynamic uniform buffer (set 1) instead
- * of push constants to stay well within device push-constant limits. Only the
- * MVP matrix remains in push constants. */
-typedef struct {
-    float params[VK_PUSH_PARAMS][4];
-} vk_ubo_data_t;
-
 typedef struct {
     float mvp[16];
+    float params[VK_PUSH_PARAMS][4];
 } vk_push_constants_t;
 
-/* Fog UBO layout (params[16]..params[17]).
- * params[16].xyz = fog color, .w = mode (0=off, 1=linear, 2=exp, 3=exp2, 4=vol)
+/* Fog push-constant layout (params[16]..params[17]).
+ * params[16].xyz = fog color, .w = mode (0=off, 1=linear, 2=exp)
  * params[17].x   = fog start
  * params[17].y   = fog end
  * params[17].z   = fog density
@@ -169,21 +161,11 @@ typedef struct {
     VkDeviceMemory memory;
     void *mapped;
     int offset;
-    int alignment;
-    int size;
-} vk_ubo_t;
-
-typedef struct {
-    VkBuffer buffer;
-    VkDeviceMemory memory;
-    void *mapped;
-    int offset;
 } vk_dynamic_vbo_t;
 
 extern vk_state_t vk_state;
 extern qboolean vk_active;
 extern vk_dynamic_vbo_t vk_dyn;
-extern vk_ubo_t vk_ubo;
 
 void VK_Init(void);
 void VK_Shutdown(void);
@@ -210,23 +192,22 @@ qboolean VK_CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                          vk_buffer_t *out, const void *data);
 void VK_DestroyBuffer(vk_buffer_t *b);
 qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h,
-                                    vk_texture_t *out, int wrapMode,
-                                    qboolean mipmap);
+                                    vk_texture_t *out, int wrapMode, qboolean mipmap);
 void VK_DestroyTexture(vk_texture_t *t);
 
 void VK_InitTextures(void);
 int VK_FindOrCreateTexture(const char *name, qboolean mipmap,
                            qboolean allowPicmip, int wrapMode);
-qboolean VK_SetupPipelines(void);
-qboolean VK_Setup2DPipeline(void);
-qboolean VK_SetupDescriptorSetLayout(void);
-qboolean VK_SetupDescriptorPool(void);
-qboolean VK_SetupRenderPass(void);
-qboolean VK_SetupFramebuffers(void);
+void VK_SetupPipelines(void);
+void VK_Setup2DPipeline(void);
+void VK_SetupDescriptorSetLayout(void);
+void VK_SetupDescriptorPool(void);
+void VK_SetupRenderPass(void);
+void VK_SetupFramebuffers(void);
 void VK_DestroySwapchain(void);
 void VK_UpdateSwapchain(int width, int height);
-qboolean VK_CreateSyncObjects(void);
-qboolean VK_SetupCommandBuffers(void);
+void VK_CreateSyncObjects(void);
+void VK_SetupCommandBuffers(void);
 void VK_AllocateDescriptorSets(void);
 VkDescriptorSet VK_GetDescriptorSetForImage(image_t *image);
 VkDescriptorSet VK_GetDescriptorSetForImages(image_t *base, image_t *light);
@@ -259,11 +240,6 @@ void VK_SetupEntityLighting(const trRefdef_t *refdef, trRefEntity_t *ent);
 qboolean VK_InitDynamicVBO(void);
 void VK_ResetDynamicVBO(void);
 void VK_DestroyDynamicVBO(void);
-
-qboolean VK_InitUBO(void);
-void VK_ResetUBO(void);
-void VK_DestroyUBO(void);
-void VK_BindUBO(VkCommandBuffer cmd, const float params[VK_PUSH_PARAMS][4]);
 
 extern void (*vk_surfaceTable[SF_NUM_SURFACE_TYPES])(void *);
 

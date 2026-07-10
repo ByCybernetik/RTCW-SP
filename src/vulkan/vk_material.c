@@ -596,18 +596,15 @@ int VK_PipelineFor2DPic(const shaderStage_t *stage) {
     return VK_PIPELINE_2D;
 }
 
-void VK_FillPushConstants(const float mvp[16], const shader_t *shader,
-                          vk_push_constants_t *pc, float params[VK_PUSH_PARAMS][4]) {
+void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_constants_t *pc) {
     float timeSec;
 
-    if (pc) {
-        memcpy(pc->mvp, mvp, sizeof(float) * 16);
-    }
-    if (!params) {
+    if (!pc) {
         return;
     }
 
-    memset(params, 0, sizeof(float) * VK_PUSH_PARAMS * 4);
+    memcpy(pc->mvp, mvp, sizeof(float) * 16);
+    memset(pc->params, 0, sizeof(pc->params));
 
     timeSec = backEnd.refdef.floatTime;
     if (shader) {
@@ -617,93 +614,93 @@ void VK_FillPushConstants(const float mvp[16], const shader_t *shader,
         }
     }
 
-    params[0][0] = 0.0f;
-    params[0][1] = 1.0f;
-    params[0][2] = (float)g_alphaTestEnabled;
-    params[0][3] = g_alphaTestRef;
+    pc->params[0][0] = 0.0f;
+    pc->params[0][1] = 1.0f;
+    pc->params[0][2] = (float)g_alphaTestEnabled;
+    pc->params[0][3] = g_alphaTestRef;
 
-    params[1][0] = g_deformWaveDiv;
-    params[1][1] = g_deformWaveFunc;
-    params[1][2] = g_deformWaveBase;
-    params[1][3] = g_deformWaveAmp;
+    pc->params[1][0] = g_deformWaveDiv;
+    pc->params[1][1] = g_deformWaveFunc;
+    pc->params[1][2] = g_deformWaveBase;
+    pc->params[1][3] = g_deformWaveAmp;
 
-    params[2][0] = g_deformWavePhase;
-    params[2][1] = g_deformWaveFreq;
-    params[2][2] = (float)g_deformType;
+    pc->params[2][0] = g_deformWavePhase;
+    pc->params[2][1] = g_deformWaveFreq;
+    pc->params[2][2] = (float)g_deformType;
     /* Negative-frequency wave deformation (used by entityOnFire shaders) scales
      * the offset along the fire-rise direction.  params[2][3] becomes the
      * world-space Z scale factor for that path; for all other deform modes it
      * simply flags that a deformation is active. */
     if ( g_deformWaveFreq < 0.0f && backEnd.currentEntity ) {
-        params[2][3] = 0.4f + 0.6f * fabs( backEnd.currentEntity->e.fireRiseDir[2] );
+        pc->params[2][3] = 0.4f + 0.6f * fabs( backEnd.currentEntity->e.fireRiseDir[2] );
     } else {
-        params[2][3] = (g_deformType != 0) ? 1.0f : 0.0f;
+        pc->params[2][3] = (g_deformType != 0) ? 1.0f : 0.0f;
     }
 
-    params[3][0] = g_tcModTransform[0];
-    params[3][1] = g_tcModTransform[1];
-    params[3][2] = g_tcModTransform[2];
-    params[3][3] = g_tcModTransform[3];
+    pc->params[3][0] = g_tcModTransform[0];
+    pc->params[3][1] = g_tcModTransform[1];
+    pc->params[3][2] = g_tcModTransform[2];
+    pc->params[3][3] = g_tcModTransform[3];
 
-    params[4][0] = g_tcModTranslate[0];
-    params[4][1] = g_tcModTranslate[1];
-    params[4][2] = (float)g_tcModTransformEnabled;
-    params[4][3] = (float)g_tcModTurbEnabled;
+    pc->params[4][0] = g_tcModTranslate[0];
+    pc->params[4][1] = g_tcModTranslate[1];
+    pc->params[4][2] = (float)g_tcModTransformEnabled;
+    pc->params[4][3] = (float)g_tcModTurbEnabled;
 
-    params[5][0] = g_tcModTurb[0];
-    params[5][1] = g_tcModTurb[1];
-    params[5][2] = g_tcModTurb[2];
-    params[5][3] = g_tcModTurb[3];
+    pc->params[5][0] = g_tcModTurb[0];
+    pc->params[5][1] = g_tcModTurb[1];
+    pc->params[5][2] = g_tcModTurb[2];
+    pc->params[5][3] = g_tcModTurb[3];
 
-    params[6][0] = g_tcModScale[0];
-    params[6][1] = g_tcModScale[1];
-    params[6][2] = g_tcModScroll[0];
-    params[6][3] = g_tcModScroll[1];
+    pc->params[6][0] = g_tcModScale[0];
+    pc->params[6][1] = g_tcModScale[1];
+    pc->params[6][2] = g_tcModScroll[0];
+    pc->params[6][3] = g_tcModScroll[1];
 
-    params[7][0] = (float)g_rgbGenVertex;
-    params[7][1] = (float)g_alphaGenVertex;
-    params[7][2] = (float)g_noLightmap;
-    params[7][3] = (float)g_tcGenEnvironment;
+    pc->params[7][0] = (float)g_rgbGenVertex;
+    pc->params[7][1] = (float)g_alphaGenVertex;
+    pc->params[7][2] = (float)g_noLightmap;
+    pc->params[7][3] = (float)g_tcGenEnvironment;
 
-    params[8][0] = g_tcModRotate;
-    params[8][1] = timeSec;
-    params[8][2] = (float)g_stageIsLightmap;
+    pc->params[8][0] = g_tcModRotate;
+    pc->params[8][1] = timeSec;
+    pc->params[8][2] = (float)g_stageIsLightmap;
 
-    params[9][0] = (float)g_alphaTestFunc;
-    params[9][1] = (float)g_materialBlendEnabled;
-    params[9][2] = (float)g_sourceAlphaDecal;
-    params[9][3] = g_waterFogStrength;
+    pc->params[9][0] = (float)g_alphaTestFunc;
+    pc->params[9][1] = (float)g_materialBlendEnabled;
+    pc->params[9][2] = (float)g_sourceAlphaDecal;
+    pc->params[9][3] = g_waterFogStrength;
 
-    params[10][0] = g_tcModStretch[0];
-    params[10][1] = g_tcModStretch[1];
-    params[10][2] = g_tcModStretch[2];
-    params[10][3] = g_tcModStretch[3];
+    pc->params[10][0] = g_tcModStretch[0];
+    pc->params[10][1] = g_tcModStretch[1];
+    pc->params[10][2] = g_tcModStretch[2];
+    pc->params[10][3] = g_tcModStretch[3];
 
-    params[11][0] = g_tcModStretch[4];
-    params[11][1] = (float)g_tcModStretchEnabled;
-    params[11][2] = (float)g_waterFog;
+    pc->params[11][0] = g_tcModStretch[4];
+    pc->params[11][1] = (float)g_tcModStretchEnabled;
+    pc->params[11][2] = (float)g_waterFog;
 
-    params[12][0] = g_normalZFadeBounds[0];
-    params[12][1] = g_normalZFadeBounds[1];
-    params[12][2] = (float)g_alphaGenPortal;
-    params[12][3] = g_alphaGenPortalRange;
+    pc->params[12][0] = g_normalZFadeBounds[0];
+    pc->params[12][1] = g_normalZFadeBounds[1];
+    pc->params[12][2] = (float)g_alphaGenPortal;
+    pc->params[12][3] = g_alphaGenPortalRange;
 
-    params[13][0] = backEnd.viewParms.portalPlane.normal[0];
-    params[13][1] = backEnd.viewParms.portalPlane.normal[1];
-    params[13][2] = backEnd.viewParms.portalPlane.normal[2];
-    params[13][3] = backEnd.viewParms.portalPlane.dist;
+    pc->params[13][0] = backEnd.viewParms.portalPlane.normal[0];
+    pc->params[13][1] = backEnd.viewParms.portalPlane.normal[1];
+    pc->params[13][2] = backEnd.viewParms.portalPlane.normal[2];
+    pc->params[13][3] = backEnd.viewParms.portalPlane.dist;
 
-    params[14][0] = backEnd.or.viewOrigin[0];
-    params[14][1] = backEnd.or.viewOrigin[1];
-    params[14][2] = backEnd.or.viewOrigin[2];
-    params[14][3] = 0.0f;    /* dlight pass flag; keep clear for normal draws */
+    pc->params[14][0] = backEnd.or.viewOrigin[0];
+    pc->params[14][1] = backEnd.or.viewOrigin[1];
+    pc->params[14][2] = backEnd.or.viewOrigin[2];
+    pc->params[14][3] = 0.0f;    /* dlight pass flag; keep clear for normal draws */
 
-    params[15][0] = g_normalZFadeFireRiseDir[0];
-    params[15][1] = g_normalZFadeFireRiseDir[1];
-    params[15][2] = g_normalZFadeFireRiseDir[2];
-    params[15][3] = g_normalZFadeMaxAlpha;
+    pc->params[15][0] = g_normalZFadeFireRiseDir[0];
+    pc->params[15][1] = g_normalZFadeFireRiseDir[1];
+    pc->params[15][2] = g_normalZFadeFireRiseDir[2];
+    pc->params[15][3] = g_normalZFadeMaxAlpha;
 
-    VK_FillFogPushConstants(params);
+    VK_FillFogPushConstants(pc);
 
     if (g_alphaGenNormalZFade) {
         static int logCount = 0;
@@ -719,18 +716,18 @@ void VK_FillPushConstants(const float mvp[16], const shader_t *shader,
     }
 }
 
-void VK_FillFogPushConstants(float params[VK_PUSH_PARAMS][4]) {
+void VK_FillFogPushConstants(vk_push_constants_t *pc) {
     glfog_t *curfog = NULL;
     float start, end, density;
     int mode;
 
-    if (!params) {
+    if (!pc) {
         return;
     }
 
     /* params[16..17] are reserved for fog; default to off. */
-    memset(params[VK_FOG_COLOR_PARAM], 0, sizeof(float) * 4);
-    memset(params[VK_FOG_RANGE_PARAM], 0, sizeof(float) * 4);
+    memset(pc->params[VK_FOG_COLOR_PARAM], 0, sizeof(float) * 4);
+    memset(pc->params[VK_FOG_RANGE_PARAM], 0, sizeof(float) * 4);
 
     if (!r_vkDistanceFog) {
         r_vkDistanceFog = ri.Cvar_Get("r_vkDistanceFog", "1", CVAR_ARCHIVE);
@@ -791,15 +788,15 @@ void VK_FillFogPushConstants(float params[VK_PUSH_PARAMS][4]) {
         }
     }
 
-    params[VK_FOG_COLOR_PARAM][0] = curfog->color[0];
-    params[VK_FOG_COLOR_PARAM][1] = curfog->color[1];
-    params[VK_FOG_COLOR_PARAM][2] = curfog->color[2];
-    params[VK_FOG_COLOR_PARAM][3] = (float)mode;
+    pc->params[VK_FOG_COLOR_PARAM][0] = curfog->color[0];
+    pc->params[VK_FOG_COLOR_PARAM][1] = curfog->color[1];
+    pc->params[VK_FOG_COLOR_PARAM][2] = curfog->color[2];
+    pc->params[VK_FOG_COLOR_PARAM][3] = (float)mode;
 
-    params[VK_FOG_RANGE_PARAM][0] = start;
-    params[VK_FOG_RANGE_PARAM][1] = end;
-    params[VK_FOG_RANGE_PARAM][2] = density;
-    params[VK_FOG_RANGE_PARAM][3] = 1.0f; /* registered/active flag */
+    pc->params[VK_FOG_RANGE_PARAM][0] = start;
+    pc->params[VK_FOG_RANGE_PARAM][1] = end;
+    pc->params[VK_FOG_RANGE_PARAM][2] = density;
+    pc->params[VK_FOG_RANGE_PARAM][3] = 1.0f; /* registered/active flag */
 
     /* NV distance-fog mode. params[20].xyz is the eye-space forward axis
      * (used for GL_EYE_PLANE* modes), and .w selects the distance metric:
@@ -812,31 +809,31 @@ void VK_FillFogPushConstants(float params[VK_PUSH_PARAMS][4]) {
      * that corresponds to -viewForward (-axis[0]).  Using -axis[0] makes
      * GL_EYE_PLANE/GL_EYE_PLANE_ABSOLUTE_NV match the fixed-function fog
      * coordinate computed by the driver. */
-    params[20][0] = -backEnd.viewParms.or.axis[0][0];
-    params[20][1] = -backEnd.viewParms.or.axis[0][1];
-    params[20][2] = -backEnd.viewParms.or.axis[0][2];
+    pc->params[20][0] = -backEnd.viewParms.or.axis[0][0];
+    pc->params[20][1] = -backEnd.viewParms.or.axis[0][1];
+    pc->params[20][2] = -backEnd.viewParms.or.axis[0][2];
 
     if (!Q_stricmp(r_nv_fogdist_mode->string, "GL_EYE_PLANE_ABSOLUTE_NV")) {
-        params[20][3] = 1.0f;
+        pc->params[20][3] = 1.0f;
     } else if (!Q_stricmp(r_nv_fogdist_mode->string, "GL_EYE_PLANE")) {
-        params[20][3] = 2.0f;
+        pc->params[20][3] = 2.0f;
     } else {
-        params[20][3] = 0.0f; /* default GL_EYE_RADIAL_NV */
+        pc->params[20][3] = 0.0f; /* default GL_EYE_RADIAL_NV */
     }
 }
 
 void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
-                            float params[VK_PUSH_PARAMS][4], qboolean cloudLayer) {
+                            vk_push_constants_t *pc, qboolean cloudLayer) {
     float timeSec;
 
-    if (!shader || !params) {
+    if (!shader || !pc) {
         return;
     }
 
-    timeSec = params[8][1];
-    params[11][3] = 1.0f;
-    params[12][0] = shader->sky.cloudHeight > 0.0f ? shader->sky.cloudHeight : 512.0f;
-    params[12][1] = cloudLayer ? 1.0f : 0.0f;
+    timeSec = pc->params[8][1];
+    pc->params[11][3] = 1.0f;
+    pc->params[12][0] = shader->sky.cloudHeight > 0.0f ? shader->sky.cloudHeight : 512.0f;
+    pc->params[12][1] = cloudLayer ? 1.0f : 0.0f;
 
     /*
      * params1.x selects the sky rgbGen mode in world.frag.
@@ -844,30 +841,30 @@ void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
      * which would be misread as rgbMode 1 and zero out the cloud color.
      * Default to mode 0 (no modification) and override for const/waveform.
      */
-    params[1][0] = 0.0f;
+    pc->params[1][0] = 0.0f;
 
     if (stage) {
         if (stage->rgbGen == CGEN_CONST) {
-            params[1][0] = 1.0f;
-            params[1][1] = stage->constantColor[0] / 255.0f;
-            params[1][2] = stage->constantColor[1] / 255.0f;
-            params[1][3] = stage->constantColor[2] / 255.0f;
+            pc->params[1][0] = 1.0f;
+            pc->params[1][1] = stage->constantColor[0] / 255.0f;
+            pc->params[1][2] = stage->constantColor[1] / 255.0f;
+            pc->params[1][3] = stage->constantColor[2] / 255.0f;
         } else if (stage->rgbGen == CGEN_WAVEFORM) {
-            params[1][0] = 2.0f;
-            params[2][0] = MapWaveFunc(stage->rgbWave.func);
-            params[2][1] = stage->rgbWave.base;
-            params[2][2] = stage->rgbWave.amplitude;
-            params[2][3] = stage->rgbWave.phase;
-            params[8][3] = stage->rgbWave.frequency;
+            pc->params[1][0] = 2.0f;
+            pc->params[2][0] = MapWaveFunc(stage->rgbWave.func);
+            pc->params[2][1] = stage->rgbWave.base;
+            pc->params[2][2] = stage->rgbWave.amplitude;
+            pc->params[2][3] = stage->rgbWave.phase;
+            pc->params[8][3] = stage->rgbWave.frequency;
         }
         (void)timeSec;
     }
 
     if (shader->fogParms.depthForOpaque > 0.0f) {
-        params[3][0] = shader->fogParms.color[0];
-        params[3][1] = shader->fogParms.color[1];
-        params[3][2] = shader->fogParms.color[2];
-        params[3][3] = 0.35f;
+        pc->params[3][0] = shader->fogParms.color[0];
+        pc->params[3][1] = shader->fogParms.color[1];
+        pc->params[3][2] = shader->fogParms.color[2];
+        pc->params[3][3] = 0.35f;
     } else {
         /*
          * FillPushConstants stores the texture-coordinate transform matrix
@@ -875,7 +872,7 @@ void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
          * whenever params3.w > 0, so a default identity matrix (1,0,0,1)
          * tints the sky red. Disable the sky-fog branch when no fog is set.
          */
-        params[3][3] = 0.0f;
+        pc->params[3][3] = 0.0f;
     }
 }
 

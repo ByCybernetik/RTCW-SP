@@ -11,11 +11,28 @@ layout(binding = 0) uniform sampler2D uBaseTex;
 layout(binding = 1) uniform sampler2D uLightmapTex;
 layout(push_constant) uniform PushConstants {
     mat4 mvp;
+    vec4 params0;
+    vec4 params1;
+    vec4 params2;
+    vec4 params3;
+    vec4 params4;
+    vec4 params5;
+    vec4 params6;
+    vec4 params7;
+    vec4 params8;
+    vec4 params9;
+    vec4 params10;
+    vec4 params11;
+    vec4 params12;
+    vec4 params13;
+    vec4 params14;
+    vec4 params15;
+    vec4 params16;
+    vec4 params17;
+    vec4 params18;
+    vec4 params19;
+    vec4 params20;
 } pc;
-
-layout(set = 1, binding = 0) uniform UBO {
-    vec4 params[21];
-} ubo;
 
 float evalWave(float waveFunc, float x) {
     float t = fract(x);
@@ -38,9 +55,9 @@ float evalWave(float waveFunc, float x) {
 /* Replicates R_FogFactor from the GL renderer using the same
  * fog table curve (exp == 0.5, i.e. sqrt). */
 float calcFogDensity(vec3 worldPos) {
-    float s = dot(worldPos, ubo.params[18].xyz) + ubo.params[18].w;
-    float eyeT = dot(ubo.params[14].xyz, ubo.params[19].xyz) + ubo.params[19].w;
-    float t = dot(worldPos, ubo.params[19].xyz) + ubo.params[19].w;
+    float s = dot(worldPos, pc.params18.xyz) + pc.params18.w;
+    float eyeT = dot(pc.params14.xyz, pc.params19.xyz) + pc.params19.w;
+    float t = dot(worldPos, pc.params19.xyz) + pc.params19.w;
     bool eyeOutside = eyeT < 0.0;
     if (eyeOutside) {
         if (t < 1.0) {
@@ -71,9 +88,9 @@ float calcFogDensity(vec3 worldPos) {
 }
 
 void main() {
-    if (ubo.params[14].w > 0.5) {
-        vec3 dist = ubo.params[1].xyz - vWorldPos;
-        float radius = max(ubo.params[1].w, 1.0);
+    if (pc.params14.w > 0.5) {
+        vec3 dist = pc.params1.xyz - vWorldPos;
+        float radius = max(pc.params1.w, 1.0);
         vec2 dlightUv = vec2(0.5) + dist.xy / radius;
         if (dlightUv.x < 0.0 || dlightUv.x > 1.0 || dlightUv.y < 0.0 || dlightUv.y > 1.0) {
             discard;
@@ -88,14 +105,14 @@ void main() {
         if (radialFade <= 0.0) {
             discard;
         }
-        outColor = vec4(ubo.params[2].xyz * modulate * radialFade, 1.0);
+        outColor = vec4(pc.params2.xyz * modulate * radialFade, 1.0);
         return;
     }
 
     // Portal/mirror clip plane: discard fragments behind the portal surface.
     // params13 is zeroed for non-portal views, so this is skipped normally.
-    if (dot(ubo.params[13].xyz, ubo.params[13].xyz) > 0.001) {
-        if (dot(vWorldPos, ubo.params[13].xyz) - ubo.params[13].w < 0.0) {
+    if (dot(pc.params13.xyz, pc.params13.xyz) > 0.001) {
+        if (dot(vWorldPos, pc.params13.xyz) - pc.params13.w < 0.0) {
             discard;
         }
     }
@@ -106,7 +123,7 @@ void main() {
      * close to the eye (s < 0) means no fog, far/behind the clipping plane
      * (s > 1 or t out of bounds) means fully fogged. Vertex alpha is preserved
      * so a future non-opaque fog color behaves like OpenGL's modulate path. */
-    if (ubo.params[16].w > 3.5) {
+    if (pc.params16.w > 3.5) {
         float fogAlpha;
         if (vTexCoord.s < 0.0) {
             fogAlpha = 0.0;
@@ -122,20 +139,20 @@ void main() {
     vec4 base4 = texture(uBaseTex, vTexCoord);
     /* Lightmaps are already scaled during upload (R_ColorShiftLightingBytes),
      * matching OpenGL's GL_MODULATE path, so no extra *2.0 factor is needed. */
-    vec3 lm = (ubo.params[7].z > 0.5) ? vec3(1.0) : texture(uLightmapTex, vLightmapCoord).rgb;
-    bool sourceAlphaDecal = ubo.params[9].z > 0.5;
-    bool skyMode = ubo.params[11].w > 0.5;
-    vec3 vertexRgb = (ubo.params[7].x > 0.5) ? vColor.rgb : vec3(1.0);
-    float vertexAlpha = (ubo.params[7].y > 0.5) ? vColor.a : 1.0;
-    if (ubo.params[15].w > 0.0) {
-        vertexAlpha *= vNormalZFadeAlpha * ubo.params[15].w;
+    vec3 lm = (pc.params7.z > 0.5) ? vec3(1.0) : texture(uLightmapTex, vLightmapCoord).rgb;
+    bool sourceAlphaDecal = pc.params9.z > 0.5;
+    bool skyMode = pc.params11.w > 0.5;
+    vec3 vertexRgb = (pc.params7.x > 0.5) ? vColor.rgb : vec3(1.0);
+    float vertexAlpha = (pc.params7.y > 0.5) ? vColor.a : 1.0;
+    if (pc.params15.w > 0.0) {
+        vertexAlpha *= vNormalZFadeAlpha * pc.params15.w;
     }
     if (skyMode) {
-        int rgbMode = int(ubo.params[1].x + 0.5);
+        int rgbMode = int(pc.params1.x + 0.5);
         if (rgbMode == 1) {
-            vertexRgb *= ubo.params[1].yzw;
+            vertexRgb *= pc.params1.yzw;
         } else if (rgbMode == 2) {
-            float wave = ubo.params[2].y + ubo.params[2].z * evalWave(ubo.params[2].x, ubo.params[2].w + ubo.params[8].y * ubo.params[8].w);
+            float wave = pc.params2.y + pc.params2.z * evalWave(pc.params2.x, pc.params2.w + pc.params8.y * pc.params8.w);
             vertexRgb *= vec3(max(wave, 0.0));
         }
     }
@@ -144,21 +161,21 @@ void main() {
         vertexAlpha = sqrt(clamp(vertexAlpha, 0.0, 1.0));
     }
     vec3 lit = base4.rgb * lm * vertexRgb;
-    if (ubo.params[13].w > 0.0) {
-        lit = mix(lit, ubo.params[13].xyz, clamp(ubo.params[13].w, 0.0, 0.95));
-    } else if (skyMode && ubo.params[3].w > 0.0) {
-        lit = mix(lit, ubo.params[3].xyz, clamp(ubo.params[3].w, 0.0, 0.75));
-    } else if (ubo.params[11].z > 0.5) {
+    if (pc.params13.w > 0.0) {
+        lit = mix(lit, pc.params13.xyz, clamp(pc.params13.w, 0.0, 0.95));
+    } else if (skyMode && pc.params3.w > 0.0) {
+        lit = mix(lit, pc.params3.xyz, clamp(pc.params3.w, 0.0, 0.75));
+    } else if (pc.params11.z > 0.5) {
         vec3 fogColor = vec3(0.42, 0.58, 0.52);
-        lit = mix(lit, fogColor, clamp(ubo.params[9].w, 0.0, 0.45));
+        lit = mix(lit, fogColor, clamp(pc.params9.w, 0.0, 0.45));
     }
 
     /* Volumetric fog modulation for translucent surfaces inside fog volumes.
      * params17.w encodes the mode: 2 = RGB, 3 = RGBA, 4 = ALPHA. */
     float fogModFactor = 1.0;
     int fogModMode = 0;
-    if (ubo.params[17].w > 1.5) {
-        fogModMode = int(ubo.params[17].w + 0.5);
+    if (pc.params17.w > 1.5) {
+        fogModMode = int(pc.params17.w + 0.5);
         fogModFactor = 1.0 - calcFogDensity(vWorldPos);
         if (fogModMode == 2 || fogModMode == 3) {
             lit *= fogModFactor;
@@ -171,16 +188,16 @@ void main() {
      * artifacts on large brush polygons.  Active whenever params16.w selects a
      * distance-fog mode (1=linear, 2=exp, 3=exp2), even if volumetric modulation
      * is also on. */
-    if (ubo.params[17].w > 0.5 && ubo.params[16].w > 0.0 && ubo.params[16].w < 4.0) {
-        lit = mix(ubo.params[16].xyz, lit, vFogFactor);
+    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 4.0) {
+        lit = mix(pc.params16.xyz, lit, vFogFactor);
     }
 
-    if (ubo.params[12].z > 0.5) {
-        float range = max(ubo.params[12].w, 1.0);
-        float portalAlpha = clamp(length(vWorldPos - ubo.params[14].xyz) / range, 0.0, 1.0);
+    if (pc.params12.z > 0.5) {
+        float range = max(pc.params12.w, 1.0);
+        float portalAlpha = clamp(length(vWorldPos - pc.params14.xyz) / range, 0.0, 1.0);
         vertexAlpha *= portalAlpha;
     }
-    float alpha = clamp(base4.a * vertexAlpha * ubo.params[0].y, 0.0, 1.0);
+    float alpha = clamp(base4.a * vertexAlpha * pc.params0.y, 0.0, 1.0);
     /* Always write the texture alpha so that later stages using
        ONE_MINUS_DST_ALPHA / DST_ALPHA can read the correct value.
        For blended stages this is already required; for opaque stages
@@ -191,9 +208,9 @@ void main() {
         outAlpha *= fogModFactor;
     }
 
-    if (ubo.params[0].z > 0.5) {
-        float ref = ubo.params[0].w;
-        int func = int(ubo.params[9].x + 0.5);
+    if (pc.params0.z > 0.5) {
+        float ref = pc.params0.w;
+        int func = int(pc.params9.x + 0.5);
         bool discardPixel = false;
 
         if (func == 1) {
@@ -209,9 +226,9 @@ void main() {
         if (discardPixel) discard;
     }
 
-    if (ubo.params[14].w > 0.1 && ubo.params[14].w < 0.5) {
+    if (pc.params14.w > 0.1 && pc.params14.w < 0.5) {
         outColor = vec4(lit, outAlpha);
-    } else if (ubo.params[0].x > 0.5) {
+    } else if (pc.params0.x > 0.5) {
         outColor = vec4(alpha, alpha, alpha, 1.0);
     } else if (skyMode) {
         outColor = vec4(lit, outAlpha);
