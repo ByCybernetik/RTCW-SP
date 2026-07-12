@@ -273,7 +273,7 @@ void AssetCache() {
 
 void _UI_DrawSides( float x, float y, float w, float h, float size ) {
 	UI_AdjustFrom640( &x, &y, &w, &h );
-	size *= uiInfo.uiDC.xscale;
+	size *= uiInfo.uiDC.yscale;
 	trap_R_DrawStretchPic( x, y, size, h, 0, 0, 0, 0, uiInfo.uiDC.whiteShader );
 	trap_R_DrawStretchPic( x + w - size, y, size, h, 0, 0, 0, 0, uiInfo.uiDC.whiteShader );
 }

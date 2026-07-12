@@ -794,6 +794,38 @@ void CG_Zoom( void ) {
 
 /*
 ====================
+CG_AdjustFovForWideScreen
+
+When cg_fovAspectAdjust is enabled and the viewport is wider than 4:3,
+convert the supplied 4:3 horizontal FOV to a Hor+ FOV: the vertical FOV
+is preserved from a 4:3 display, and the horizontal FOV is widened to
+match the current aspect ratio.
+====================
+*/
+static void CG_AdjustFovForWideScreen( float *fov_x, float *fov_y ) {
+	float aspect;
+	float baseTanHalfX;
+	float fovY_4_3;
+
+	if ( !cg_fovAspectAdjust.integer ) {
+		return;
+	}
+
+	aspect = (float)cg.refdef.width / (float)cg.refdef.height;
+	if ( aspect <= ( 4.0f / 3.0f ) ) {
+		return;
+	}
+
+	baseTanHalfX = tan( *fov_x * M_PI / 360.0f );
+	fovY_4_3 = atan2( baseTanHalfX, 4.0f / 3.0f ) * 360.0f / M_PI;
+
+	*fov_x = atan2( baseTanHalfX * aspect, 4.0f / 3.0f ) * 360.0f / M_PI;
+	*fov_y = fovY_4_3;
+}
+
+
+/*
+====================
 CG_CalcFov
 
 Fixed fov at intermissions, otherwise account for fov variable and zooms.
@@ -898,6 +930,8 @@ static int CG_CalcFov( void ) {
 	x = cg.refdef.width / tan( fov_x / 360 * M_PI );
 	fov_y = atan2( cg.refdef.height, x );
 	fov_y = fov_y * 360 / M_PI;
+
+	CG_AdjustFovForWideScreen( &fov_x, &fov_y );
 
 	// warp if underwater
 	contents = CG_PointContents( cg.refdef.vieworg, -1 );
@@ -1083,6 +1117,8 @@ static int CG_CalcViewValues( void ) {
 			cg.refdef.fov_y = atan2( cg.refdef.height, x );
 			cg.refdef.fov_y = cg.refdef.fov_y * 360 / M_PI;
 			cg.refdef.fov_x = fov;
+
+			CG_AdjustFovForWideScreen( &cg.refdef.fov_x, &cg.refdef.fov_y );
 
 			// RF, had to disable, sometimes a loadgame to a camera in the same position
 			// can cause the game to not know where the camera is, therefore snapshots
@@ -1402,6 +1438,8 @@ void CG_DrawSkyBoxPortal( void ) {
 		x = cg.refdef.width / tan( fov_x / 360 * M_PI );
 		fov_y = atan2( cg.refdef.height, x );
 		fov_y = fov_y * 360 / M_PI;
+
+		CG_AdjustFovForWideScreen( &fov_x, &fov_y );
 
 		cg.refdef.fov_x = fov_x;
 		cg.refdef.fov_y = fov_y;

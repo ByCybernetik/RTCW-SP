@@ -2343,7 +2343,9 @@ static void CG_DrawCrosshair( void ) {
 
 	x = cg_crosshairX.integer;
 	y = cg_crosshairY.integer;
-	CG_AdjustFrom640( &x, &y, &w, &h );
+	// The crosshair is centered on the 3D viewport, not on the 4:3 HUD area,
+	// so do not apply the wide-screen bias here.
+	CG_AdjustFrom640NoBias( &x, &y, &w, &h );
 
 //----(SA)	modified
 	if ( friendInSights ) {

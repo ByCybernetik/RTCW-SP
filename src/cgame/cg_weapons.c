@@ -3080,6 +3080,29 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 
 //----(SA)	removed
 
+		// Center the first-person weapon inside the virtual 4:3 HUD area on
+		// wide-screen resolutions.  Only the position is shifted; the model
+		// scale and FOV are left untouched.
+		if ( cgs.screenXBias != 0 ) {
+			float halfWidth = cg.refdef.width / 2.0f;
+			float tanHalfFovX = tanf( cg.refdef.fov_x * M_PI / 360.0f );
+			float hShift = ( cgs.screenXBias * 0.5f ) * tanHalfFovX / halfWidth;
+			gunoff[1] -= hShift;
+
+			// When cg_fovAspectAdjust is disabled, wide-screen uses a smaller
+			// vertical FOV and the weapon sits lower than on 4:3; lift it back
+			// up so it matches the 4:3 position.  With Hor+ FOV enabled the
+			// vertical FOV is already the same, so no extra lift is needed.
+			if ( !cg_fovAspectAdjust.integer ) {
+				float aspect = (float)cg.refdef.width / (float)cg.refdef.height;
+				float vShiftPixels = ( aspect - ( 4.0f / 3.0f ) ) * 500.0f;
+				float halfHeight = cg.refdef.height / 2.0f;
+				float tanHalfFovY = tanf( cg.refdef.fov_y * M_PI / 360.0f );
+				float vShift = vShiftPixels * tanHalfFovY / halfHeight;
+				gunoff[2] += vShift;
+			}
+		}
+
 		VectorMA( hand.origin, gunoff[0], cg.refdef.viewaxis[0], hand.origin );
 		VectorMA( hand.origin, gunoff[1], cg.refdef.viewaxis[1], hand.origin );
 		VectorMA( hand.origin, ( gunoff[2] + fovOffset ), cg.refdef.viewaxis[2], hand.origin );

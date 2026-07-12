@@ -37,13 +37,6 @@ Adjusted for resolution and screen aspect ratio
 ================
 */
 void CG_AdjustFrom640( float *x, float *y, float *w, float *h ) {
-#if 0
-	// adjust for wide screens
-	if ( cgs.glconfig.vidWidth * 480 > cgs.glconfig.vidHeight * 640 ) {
-		*x += 0.5 * ( cgs.glconfig.vidWidth - ( cgs.glconfig.vidHeight * 640 / 480 ) );
-	}
-#endif
-
 	// NERVE - SMF - hack to make images display properly in small view / limbo mode
 	if ( cg.limboMenu && cg.refdef.width ) {
 		float xscale = ( ( cg.refdef.width / cgs.screenXScale ) / 640.f );
@@ -56,10 +49,38 @@ void CG_AdjustFrom640( float *x, float *y, float *w, float *h ) {
 	}
 	// -NERVE - SMF
 
-	// scale for screen sizes
-	*x *= cgs.screenXScale;
+	// scale for screen sizes, preserving 4:3 aspect and centering on wide screens
+	*x = *x * cgs.screenYScale + cgs.screenXBias;
 	*y *= cgs.screenYScale;
-	*w *= cgs.screenXScale;
+	*w *= cgs.screenYScale;
+	*h *= cgs.screenYScale;
+}
+
+/*
+=================
+CG_AdjustFrom640NoBias
+
+Like CG_AdjustFrom640, but does not add the wide-screen horizontal bias.
+Use for elements that should be positioned relative to the physical center
+of the screen (e.g. the crosshair) rather than inside the virtual 4:3 HUD area.
+=================
+*/
+void CG_AdjustFrom640NoBias( float *x, float *y, float *w, float *h ) {
+	// NERVE - SMF - hack to make images display properly in small view / limbo mode
+	if ( cg.limboMenu && cg.refdef.width ) {
+		float xscale = ( ( cg.refdef.width / cgs.screenXScale ) / 640.f );
+		float yscale = ( ( cg.refdef.height / cgs.screenYScale ) / 480.f );
+
+		( *x ) = ( *x ) * xscale + ( cg.refdef.x / cgs.screenXScale );
+		( *y ) = ( *y ) * yscale + ( cg.refdef.y / cgs.screenYScale );
+		( *w ) *= xscale;
+		( *h ) *= yscale;
+	}
+	// -NERVE - SMF
+
+	*x *= cgs.screenYScale;
+	*y *= cgs.screenYScale;
+	*w *= cgs.screenYScale;
 	*h *= cgs.screenYScale;
 }
 
@@ -234,7 +255,7 @@ Coords are virtual 640x480
 */
 void CG_DrawSides( float x, float y, float w, float h, float size ) {
 	CG_AdjustFrom640( &x, &y, &w, &h );
-	size *= cgs.screenXScale;
+	size *= cgs.screenYScale;
 	trap_R_DrawStretchPic( x, y, size, h, 0, 0, 0, 0, cgs.media.whiteShader );
 	trap_R_DrawStretchPic( x + w - size, y, size, h, 0, 0, 0, 0, cgs.media.whiteShader );
 }
@@ -1066,25 +1087,25 @@ static void UI_DrawBannerString2( int x, int y, const char* str, vec4_t color ) 
 	// draw the colored text
 	trap_R_SetColor( color );
 
-	ax = x * cgs.screenXScale + cgs.screenXBias;
-	ay = y * cgs.screenXScale;
+	ax = x * cgs.screenYScale + cgs.screenXBias;
+	ay = y * cgs.screenYScale;
 
 	s = str;
 	while ( *s )
 	{
 		ch = *s & 127;
 		if ( ch == ' ' ) {
-			ax += ( (float)PROPB_SPACE_WIDTH + (float)PROPB_GAP_WIDTH ) * cgs.screenXScale;
+			ax += ( (float)PROPB_SPACE_WIDTH + (float)PROPB_GAP_WIDTH ) * cgs.screenYScale;
 		} else if ( Q_isupper( ch ) )     {
 			ch -= 'A';
 			fcol = (float)propMapB[ch][0] / 256.0f;
 			frow = (float)propMapB[ch][1] / 256.0f;
 			fwidth = (float)propMapB[ch][2] / 256.0f;
 			fheight = (float)PROPB_HEIGHT / 256.0f;
-			aw = (float)propMapB[ch][2] * cgs.screenXScale;
-			ah = (float)PROPB_HEIGHT * cgs.screenXScale;
+			aw = (float)propMapB[ch][2] * cgs.screenYScale;
+			ah = (float)PROPB_HEIGHT * cgs.screenYScale;
 			trap_R_DrawStretchPic( ax, ay, aw, ah, fcol, frow, fcol + fwidth, frow + fheight, cgs.media.charsetPropB );
-			ax += ( aw + (float)PROPB_GAP_WIDTH * cgs.screenXScale );
+			ax += ( aw + (float)PROPB_GAP_WIDTH * cgs.screenYScale );
 		}
 		s++;
 	}
@@ -1173,28 +1194,28 @@ static void UI_DrawProportionalString2( int x, int y, const char* str, vec4_t co
 	// draw the colored text
 	trap_R_SetColor( color );
 
-	ax = x * cgs.screenXScale + cgs.screenXBias;
-	ay = y * cgs.screenXScale;
+	ax = x * cgs.screenYScale + cgs.screenXBias;
+	ay = y * cgs.screenYScale;
 
 	s = str;
 	while ( *s )
 	{
 		ch = *s & 127;
 		if ( ch == ' ' ) {
-			aw = (float)PROP_SPACE_WIDTH * cgs.screenXScale * sizeScale;
+			aw = (float)PROP_SPACE_WIDTH * cgs.screenYScale * sizeScale;
 		} else if ( propMap[ch][2] != -1 ) {
 			fcol = (float)propMap[ch][0] / 256.0f;
 			frow = (float)propMap[ch][1] / 256.0f;
 			fwidth = (float)propMap[ch][2] / 256.0f;
 			fheight = (float)PROP_HEIGHT / 256.0f;
-			aw = (float)propMap[ch][2] * cgs.screenXScale * sizeScale;
-			ah = (float)PROP_HEIGHT * cgs.screenXScale * sizeScale;
+			aw = (float)propMap[ch][2] * cgs.screenYScale * sizeScale;
+			ah = (float)PROP_HEIGHT * cgs.screenYScale * sizeScale;
 			trap_R_DrawStretchPic( ax, ay, aw, ah, fcol, frow, fcol + fwidth, frow + fheight, charset );
 		} else {
 			aw = 0;
 		}
 
-		ax += ( aw + (float)PROP_GAP_WIDTH * cgs.screenXScale * sizeScale );
+		ax += ( aw + (float)PROP_GAP_WIDTH * cgs.screenYScale * sizeScale );
 		s++;
 	}
 
