@@ -41,9 +41,11 @@ extern qboolean vk_active;
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "ktx_load.h"
 
 
 static void R_LoadImage_STB( const char *name, byte **pic, int *width, int *height );
+static qboolean R_LoadKTXImage( const char *name, ktx_texture_t *out );
 
 static byte s_intensitytable[256];
 static unsigned char s_gammatable[256];
@@ -1001,6 +1003,114 @@ image_t *R_CreateImage( const char *name, const byte *pic, int width, int height
 	return R_CreateImageExt( name, pic, width, height, mipmap, allowPicmip, qfalse, glWrapClampMode );
 }
 
+#ifndef GL_SRGB8_ALPHA8
+#define GL_SRGB8_ALPHA8                         0x8C43
+#endif
+#ifndef GL_COMPRESSED_RED_GREEN_RGTC2_EXT
+#define GL_COMPRESSED_RED_GREEN_RGTC2_EXT       0x8DBD
+#endif
+#ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
+#define GL_COMPRESSED_RGBA_BPTC_UNORM           0x8E8C
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
+#define GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM     0x8E8D
+#endif
+#ifndef GL_COMPRESSED_SRGB_S3TC_DXT1_EXT
+#define GL_COMPRESSED_SRGB_S3TC_DXT1_EXT        0x8C4C
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT
+#define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT  0x8C4E
+#endif
+
+static int KTX_GLInternalFormat( const ktx_texture_t *tex ) {
+	switch ( tex->format ) {
+		case KTX_FMT_RGBA8:
+			return tex->srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+		case KTX_FMT_BC1:
+			return tex->srgb ? GL_COMPRESSED_SRGB_S3TC_DXT1_EXT : GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+		case KTX_FMT_BC3:
+			return tex->srgb ? GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT : GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+		case KTX_FMT_BC5:
+			return GL_COMPRESSED_RED_GREEN_RGTC2_EXT;
+		case KTX_FMT_BC7:
+			return tex->srgb ? GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM : GL_COMPRESSED_RGBA_BPTC_UNORM;
+		default:
+			return GL_RGBA8;
+	}
+}
+
+static image_t *R_CreateImageFromKTX( const char *name, const ktx_texture_t *tex,
+									  qboolean mipmap, qboolean allowPicmip, qboolean characterMIP,
+									  int glWrapClampMode ) {
+	image_t     *image;
+	long hash;
+
+	if ( strlen( name ) >= MAX_QPATH ) {
+		ri.Error( ERR_DROP, "R_CreateImageFromKTX: \"%s\" is too long\n", name );
+	}
+	if ( tr.numImages == MAX_DRAWIMAGES ) {
+		ri.Error( ERR_DROP, "R_CreateImageFromKTX: MAX_DRAWIMAGES hit\n" );
+	}
+
+	image = tr.images[tr.numImages] = R_CacheImageAlloc( sizeof( image_t ) );
+	image->texnum = 1024 + tr.numImages;
+
+	if ( r_cacheShaders->integer ) {
+#ifdef VULKAN_BACKEND
+		if ( !vk_active ) {
+			R_FindFreeTexnum( image );
+		}
+#else
+		R_FindFreeTexnum( image );
+#endif
+	}
+
+	tr.numImages++;
+
+	image->mipmap = mipmap;
+	image->allowPicmip = allowPicmip;
+	image->characterMIP = characterMIP;
+	strcpy( image->imgName, name );
+
+	image->width = (int)tex->width;
+	image->height = (int)tex->height;
+	image->uploadWidth = (int)tex->width;
+	image->uploadHeight = (int)tex->height;
+	image->wrapClampMode = glWrapClampMode;
+
+	if ( qglActiveTextureARB && !strncmp( name, "*lightmap", 9 ) ) {
+		image->TMU = 1;
+	} else {
+		image->TMU = 0;
+	}
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		int vkIdx = (int)( image->texnum - 1024 );
+
+		image->internalFormat = KTX_GLInternalFormat( tex );
+
+		if ( vkIdx >= 0 && vkIdx < VK_MAX_TEXTURES ) {
+			if ( VK_CreateTextureFromKTX( tex, &vk_state.textures[vkIdx], glWrapClampMode, mipmap ) ) {
+				if ( vkIdx >= vk_state.textureCount ) {
+					vk_state.textureCount = vkIdx + 1;
+				}
+				VK_OnTextureUploaded( vkIdx );
+			}
+		}
+
+		hash = generateHashValue( name );
+		image->next = hashTable[hash];
+		hashTable[hash] = image;
+		image->hash = hash;
+		return image;
+	}
+#endif
+
+	ri.Printf( PRINT_ALL, "WARNING: OpenGL KTX/BCn path not implemented for %s\n", name );
+	return NULL;
+}
+
 //----(SA)	end
 
 
@@ -1029,6 +1139,24 @@ static void R_LoadImage_STB( const char *name, byte **pic, int *width, int *heig
 
 	*pic = stbi_load_from_memory( buffer, len, width, height, &comp, STBI_rgb_alpha );
 	ri.FS_FreeFile( buffer );
+}
+
+static qboolean R_LoadKTXImage( const char *name, ktx_texture_t *out ) {
+	byte *buffer;
+	int len;
+
+	len = ri.FS_ReadFile( ( char * )name, (void **)&buffer );
+	if ( len <= 0 || !buffer ) {
+		return qfalse;
+	}
+
+	if ( KTX_LoadFromMemory( buffer, (size_t)len, out ) != 0 ) {
+		ri.FS_FreeFile( buffer );
+		return qfalse;
+	}
+
+	ri.FS_FreeFile( buffer );
+	return qtrue;
 }
 
 void R_LoadImage( const char *name, byte **pic, int *width, int *height ) {
@@ -1067,6 +1195,15 @@ Returns NULL if it fails, not a default image.
 ==============
 */
 
+static image_t *R_TryLoadKTXByName( const char *name, qboolean mipmap, qboolean allowPicmip, qboolean characterMIP, int glWrapClampMode ) {
+	ktx_texture_t tex;
+	if ( R_LoadKTXImage( name, &tex ) ) {
+		image_t *image = R_CreateImageFromKTX( name, &tex, mipmap, allowPicmip, characterMIP, glWrapClampMode );
+		KTX_Free( &tex );
+		return image;
+	}
+	return NULL;
+}
 
 image_t *R_FindImageFileExt( const char *name, qboolean mipmap, qboolean allowPicmip, qboolean characterMIP, int glWrapClampMode ) {
 	image_t *image;
@@ -1117,9 +1254,60 @@ image_t *R_FindImageFileExt( const char *name, qboolean mipmap, qboolean allowPi
 	// done.
 
 	//
+	// try KTX1/KTX2 first, so a .ktx2/.ktx override takes precedence over
+	// any .jpg/.tga/.png that might still exist in the base game path
+	//
+	image = R_TryLoadKTXByName( name, mipmap, allowPicmip, characterMIP, glWrapClampMode );
+	if ( image ) {
+		return image;
+	}
+
+	{
+		int len = strlen( name );
+		if ( len > 0 ) {
+			char ktxName[MAX_QPATH];
+			int extLen = 0;
+
+			Q_strncpyz( ktxName, name, sizeof( ktxName ) );
+
+			if ( len > 5 && !Q_stricmp( name + len - 5, ".ktx2" ) ) {
+				extLen = 5;
+			} else if ( len > 4 ) {
+				const char *ext = name + len - 4;
+				if ( !Q_stricmp( ext, ".jpg" ) || !Q_stricmp( ext, ".tga" ) ||
+				     !Q_stricmp( ext, ".png" ) || !Q_stricmp( ext, ".ktx" ) ) {
+					extLen = 4;
+				}
+			}
+
+			if ( extLen ) {
+				ktxName[len - extLen] = '\0';
+			}
+
+			Q_strcat( ktxName, sizeof( ktxName ), ".ktx2" );
+			image = R_TryLoadKTXByName( ktxName, mipmap, allowPicmip, characterMIP, glWrapClampMode );
+			if ( image ) {
+				return image;
+			}
+
+			if ( extLen ) {
+				ktxName[len - extLen] = '\0';
+			} else {
+				ktxName[len] = '\0';
+			}
+			Q_strcat( ktxName, sizeof( ktxName ), ".ktx" );
+			image = R_TryLoadKTXByName( ktxName, mipmap, allowPicmip, characterMIP, glWrapClampMode );
+			if ( image ) {
+				return image;
+			}
+		}
+	}
+
+	//
 	// load the pic from disk
 	//
 	R_LoadImage( name, &pic, &width, &height );
+
 	if ( pic == NULL ) {                                    // if we dont get a successful load
 // RF, no need to check uppercase on win32 systems
 // TTimo: Duane changed to _DEBUG in all cases

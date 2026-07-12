@@ -1180,6 +1180,213 @@ fail:
     return qfalse;
 }
 
+static VkFormat VK_KTXFormatToVkFormat(const ktx_texture_t *tex) {
+    /*
+     * The rest of the engine treats uploaded textures as linear, so use
+     * UNORM block formats even when the KTX file is marked sRGB.  This keeps
+     * KTX replacements visually consistent with the original JPG/TGA assets.
+     */
+    (void)tex->srgb;
+    switch (tex->format) {
+        case KTX_FMT_RGBA8:
+            return VK_FORMAT_R8G8B8A8_UNORM;
+        case KTX_FMT_BC1:
+            return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        case KTX_FMT_BC3:
+            return VK_FORMAT_BC3_UNORM_BLOCK;
+        case KTX_FMT_BC5:
+            return VK_FORMAT_BC5_UNORM_BLOCK;
+        case KTX_FMT_BC7:
+            return VK_FORMAT_BC7_UNORM_BLOCK;
+        default:
+            return VK_FORMAT_UNDEFINED;
+    }
+}
+
+qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
+                                 int wrapMode, qboolean mipmap) {
+    qboolean wasLoaded = out ? out->loaded : qfalse;
+    VkImageCreateInfo ici = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkImageViewCreateInfo ivci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+    VkSamplerCreateInfo sci = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    VkMemoryRequirements req;
+    VkBuffer stagingBuf = VK_NULL_HANDLE;
+    VkDeviceMemory stagingMem = VK_NULL_HANDLE;
+    void *data;
+    VkCommandBuffer cmd;
+    VkCommandBufferBeginInfo cbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    VkFormat format;
+    uint32_t mipLevels;
+    uint32_t i;
+
+    (void)mipmap;
+
+    if (!out || !tex || !tex->data || tex->width == 0 || tex->height == 0 || tex->mipLevels == 0) {
+        return qfalse;
+    }
+
+    format = VK_KTXFormatToVkFormat(tex);
+    if (format == VK_FORMAT_UNDEFINED) {
+        return qfalse;
+    }
+
+    if (wasLoaded) {
+        VK_DestroyTexture(out);
+    }
+
+    out->width = (int)tex->width;
+    out->height = (int)tex->height;
+    mipLevels = tex->mipLevels;
+
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.extent.width = tex->width;
+    ici.extent.height = tex->height;
+    ici.extent.depth = 1;
+    ici.mipLevels = mipLevels;
+    ici.arrayLayers = 1;
+    ici.format = format;
+    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateImage(vk_state.dev, &ici, NULL, &out->image) != VK_SUCCESS) {
+        return qfalse;
+    }
+
+    vkGetImageMemoryRequirements(vk_state.dev, out->image, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &out->memory) != VK_SUCCESS) {
+        vkDestroyImage(vk_state.dev, out->image, NULL);
+        out->image = VK_NULL_HANDLE;
+        return qfalse;
+    }
+    vkBindImageMemory(vk_state.dev, out->image, out->memory, 0);
+
+    {
+        VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+        bci.size = tex->dataSize;
+        bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (vkCreateBuffer(vk_state.dev, &bci, NULL, &stagingBuf) != VK_SUCCESS) {
+            goto fail;
+        }
+    }
+    vkGetBufferMemoryRequirements(vk_state.dev, stagingBuf, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &stagingMem) != VK_SUCCESS) {
+        goto fail;
+    }
+    vkBindBufferMemory(vk_state.dev, stagingBuf, stagingMem, 0);
+    vkMapMemory(vk_state.dev, stagingMem, 0, tex->dataSize, 0, &data);
+    memcpy(data, tex->data, tex->dataSize);
+    vkUnmapMemory(vk_state.dev, stagingMem);
+
+    cmd = vk_state.uploadCmd;
+    vkResetCommandBuffer(cmd, 0);
+    vkBeginCommandBuffer(cmd, &cbbi);
+
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = out->image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = mipLevels;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
+
+    for (i = 0; i < mipLevels; i++) {
+        VkBufferImageCopy copy = { 0 };
+        uint32_t mipW = tex->width >> i;
+        uint32_t mipH = tex->height >> i;
+        if (mipW < 1) mipW = 1;
+        if (mipH < 1) mipH = 1;
+
+        copy.bufferOffset = (VkDeviceSize)tex->levelOffsets[i];
+        copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copy.imageSubresource.mipLevel = i;
+        copy.imageSubresource.layerCount = 1;
+        copy.imageExtent.width = mipW;
+        copy.imageExtent.height = mipH;
+        copy.imageExtent.depth = 1;
+        vkCmdCopyBufferToImage(cmd, stagingBuf, out->image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+    }
+
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = mipLevels;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
+
+    vkEndCommandBuffer(cmd);
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cmd;
+    vkQueueSubmit(vk_state.gfxQueue, 1, &si, VK_NULL_HANDLE);
+    vkQueueWaitIdle(vk_state.gfxQueue);
+
+    ivci.image = out->image;
+    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    ivci.format = format;
+    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    ivci.subresourceRange.levelCount = mipLevels;
+    ivci.subresourceRange.layerCount = 1;
+    if (vkCreateImageView(vk_state.dev, &ivci, NULL, &out->view) != VK_SUCCESS) {
+        goto fail;
+    }
+
+    sci.magFilter = VK_FILTER_LINEAR;
+    sci.minFilter = VK_FILTER_LINEAR;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sci.addressModeU = VK_WrapToAddressMode(wrapMode);
+    sci.addressModeV = VK_WrapToAddressMode(wrapMode);
+    sci.addressModeW = VK_WrapToAddressMode(wrapMode);
+    sci.minLod = 0.0f;
+    sci.maxLod = (float)(mipLevels - 1);
+
+    if (vk_state.physFeatures.samplerAnisotropy && r_ext_texture_filter_anisotropic && r_ext_texture_filter_anisotropic->value > 0.0f) {
+        float aniso = r_ext_texture_filter_anisotropic->value;
+        if (aniso > vk_state.maxSamplerAnisotropy) {
+            aniso = vk_state.maxSamplerAnisotropy;
+        }
+        if (aniso < 1.0f) {
+            aniso = 1.0f;
+        }
+        sci.anisotropyEnable = VK_TRUE;
+        sci.maxAnisotropy = aniso;
+    }
+
+    if (vkCreateSampler(vk_state.dev, &sci, NULL, &out->sampler) != VK_SUCCESS) {
+        goto fail;
+    }
+
+    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
+    vkFreeMemory(vk_state.dev, stagingMem, NULL);
+    out->loaded = qtrue;
+    return qtrue;
+
+fail:
+    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
+    vkFreeMemory(vk_state.dev, stagingMem, NULL);
+    VK_DestroyTexture(out);
+    return qfalse;
+}
+
 static void VK_WriteDescriptorPair(VkDescriptorSet dstSet, const vk_texture_t *base,
                                    const vk_texture_t *light);
 

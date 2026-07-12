@@ -272,6 +272,21 @@ CG_DrawExitStats
 ==============
 */
 
+/*
+==============
+CG_StatsFillRect
+
+Draw a filled rectangle for the mission-stats panel using uniform wide-screen
+centering instead of edge-attach, so the panel stays together as a single box.
+==============
+*/
+static void CG_StatsFillRect( float x, float y, float w, float h, const float *color ) {
+	trap_R_SetColor( color );
+	CG_AdjustFrom640Centered( &x, &y, &w, &h );
+	trap_R_DrawStretchPic( x, y, w, h, 0, 0, 0, 1, cgs.media.whiteShader );
+	trap_R_SetColor( NULL );
+}
+
 void CG_DrawExitStats( void ) {
 	int i, y, v, j;
 	float *color;   // faded color based on cursor hint drawing
@@ -310,6 +325,10 @@ void CG_DrawExitStats( void ) {
 		return;
 	}
 
+	// Mission stats is a grouped centered panel: keep all internal elements
+	// relative to each other instead of snapping them to screen edges.
+	cg_drawUniformCentered = qtrue;
+
 	// background
 	color2[3] *= 0.6f;
 	CG_FilledBar( 150, 104, 340, 230, color2, NULL, NULL, 1.0f, 0 );
@@ -317,11 +336,12 @@ void CG_DrawExitStats( void ) {
 	color2[0] = color2[1] = color2[2] = 0.3f;
 	color2[3] *= 0.6f;
 
-	// border
-	CG_FilledBar( 148, 104, 2, 230, color2, NULL, NULL, 1.0f, 0 );    // left
-	CG_FilledBar( 490, 104, 2, 230, color2, NULL, NULL, 1.0f, 0 );    // right
-	CG_FilledBar( 148, 102, 344, 2, color2, NULL, NULL, 1.0f, 0 );    // top
-	CG_FilledBar( 148, 334, 344, 2, color2, NULL, NULL, 1.0f, 0 );    // bot
+	// border -- drawn with centered coordinates so left/right borders don't
+	// snap to the screen edges on wide-screen resolutions.
+	CG_StatsFillRect( 148, 104, 2, 230, color2 );    // left
+	CG_StatsFillRect( 490, 104, 2, 230, color2 );    // right
+	CG_StatsFillRect( 148, 102, 344, 2, color2 );    // top
+	CG_StatsFillRect( 148, 334, 344, 2, color2 );    // bot
 
 
 	// text boxes
@@ -424,6 +444,8 @@ void CG_DrawExitStats( void ) {
 
 	}
 	token = COM_Parse( &mstats );
+
+	cg_drawUniformCentered = qfalse;
 
 // end (parse it)
 }

@@ -39,6 +39,15 @@ If you have questions concerning this license or the applicable additional terms
 extern displayContextDef_t cgDC;
 menuDef_t *menuScoreboard = NULL;
 
+// wide-screen text base: virtual and physical x of the current string start
+static float cg_textBaseX = 0.0f;
+static float cg_textBasePhysX = 0.0f;
+
+// when qtrue, CG_AdjustFrom640 uses uniform centering instead of edge-attach.
+// Used while drawing grouped centered panels (e.g. mission stats) so internal
+// elements keep their relative positions.
+qboolean cg_drawUniformCentered = qfalse;
+
 int sortedTeamPlayers[TEAM_MAXOVERLAY];
 int numSortedTeamPlayers;
 
@@ -149,7 +158,19 @@ void CG_Text_PaintChar( float x, float y, float width, float height, float scale
 	float w, h;
 	w = width * scale;
 	h = height * scale;
-	CG_AdjustFrom640( &x, &y, &w, &h );
+
+	// NERVE - SMF - small view / limbo mode: fall back to per-char centered adjustment
+	if ( cg.limboMenu && cg.refdef.width ) {
+		CG_AdjustFrom640Centered( &x, &y, &w, &h );
+	} else {
+		// string-level wide-screen placement: each char is placed relative to the
+		// physical start of the string so the whole text stays together.
+		x = cg_textBasePhysX + ( x - cg_textBaseX ) * cgs.screenYScale;
+		y *= cgs.screenYScale;
+		w *= cgs.screenYScale;
+		h *= cgs.screenYScale;
+	}
+
 	trap_R_DrawStretchPic( x, y, w, h, s, t, s2, t2, hShader );
 }
 
@@ -180,12 +201,24 @@ void CG_Text_Paint( float x, float y, int font, float scale, vec4_t color, const
 
 	if ( text ) {
 		const char *s = text;
+		float textW, tmpX, tmpY, tmpW, tmpH;
+
 		trap_R_SetColor( color );
 		memcpy( &newColor[0], &color[0], sizeof( vec4_t ) );
 		len = strlen( text );
 		if ( limit > 0 && len > limit ) {
 			len = limit;
 		}
+
+		// string-level wide-screen placement
+		textW = CG_Text_Width( text, font, scale, limit ) * useScale;
+		tmpX = x;
+		tmpY = y;
+		tmpW = textW;
+		tmpH = 1.0f;
+		CG_AdjustFrom640( &tmpX, &tmpY, &tmpW, &tmpH );
+		cg_textBaseX = x;
+		cg_textBasePhysX = tmpX;
 		count = 0;
 		while ( s && *s && count < len ) {
 			glyph = &fnt->glyphs[(int)*s];
@@ -1987,6 +2020,10 @@ static void CG_DrawCenterString( void ) {
 
 	y = cg.centerPrintY - cg.centerPrintLines * BIGCHAR_HEIGHT / 2;
 
+	// Center-print text must stay grouped and uniformly centered on wide screens,
+	// not have individual characters snapped to the left/right screen edges.
+	cg_drawUniformCentered = qtrue;
+
 	while ( 1 ) {
 		char linebuffer[1024];
 
@@ -2022,6 +2059,8 @@ static void CG_DrawCenterString( void ) {
 		start++;
 	}
 
+	cg_drawUniformCentered = qfalse;
+
 	trap_R_SetColor( NULL );
 }
 
@@ -2038,6 +2077,52 @@ CROSSHAIRS
 
 /*
 ==============
+CG_ReticleRect
+
+Convert virtual 640x480 coordinates to physical screen coordinates that are
+relative to the physical center of the screen. This keeps scope/crosshair
+parts centered and unstretched on wide-screen resolutions.
+==============
+*/
+static void CG_ReticleRect( float vx, float vy, float vw, float vh, float *px, float *py, float *pw, float *ph ) {
+	float scale = cgs.screenYScale;
+
+	*px = ( vx - 320.0f ) * scale + cgs.glconfig.vidWidth * 0.5f;
+	*py = ( vy - 240.0f ) * scale + cgs.glconfig.vidHeight * 0.5f;
+	*pw = vw * scale;
+	*ph = vh * scale;
+}
+
+/*
+==============
+CG_FillRectPhysical
+
+Draw a filled rectangle using already-scaled physical coordinates.
+==============
+*/
+static void CG_FillRectPhysical( float x, float y, float w, float h, const float *color ) {
+	trap_R_SetColor( color );
+	trap_R_DrawStretchPic( x, y, w, h, 0, 0, 0, 1, cgs.media.whiteShader );
+	trap_R_SetColor( NULL );
+}
+
+/*
+==============
+CG_FillReticleRect
+
+Draw a filled rectangle from virtual 640x480 coordinates, centered on the
+physical screen. Used for scope hair lines and binoc marks.
+==============
+*/
+static void CG_FillReticleRect( float vx, float vy, float vw, float vh, const float *color ) {
+	float x, y, w, h;
+
+	CG_ReticleRect( vx, vy, vw, vh, &x, &y, &w, &h );
+	CG_FillRectPhysical( x, y, w, h, color );
+}
+
+/*
+==============
 CG_DrawWeapReticle
 ==============
 */
@@ -2046,9 +2131,8 @@ static void CG_DrawWeapReticle( void ) {
 	vec4_t color = {0, 0, 0, 1};
 	vec4_t snoopercolor = {0.7, .8, 0.7, 0};    // greenish
 	float snooperBrightness;
-	float x = 80, y, w = 240, h = 240;
-
-	CG_AdjustFrom640( &x, &y, &w, &h );
+	float x, y, w, h;
+	float scopeSize, scopeX;
 
 	weap = cg.weaponSelect;
 
@@ -2061,27 +2145,37 @@ static void CG_DrawWeapReticle( void ) {
 	if ( weap == WP_SNIPERRIFLE ) {
 
 
+		scopeSize = 480.0f * cgs.screenYScale;
+		scopeX = ( cgs.glconfig.vidWidth - scopeSize ) * 0.5f;
+
 		// sides
-		CG_FillRect( 0, 0, 80, 480, color );
-		CG_FillRect( 560, 0, 80, 480, color );
+		CG_FillRectPhysical( 0, 0, scopeX, cgs.glconfig.vidHeight, color );
+		CG_FillRectPhysical( cgs.glconfig.vidWidth - scopeX, 0, scopeX, cgs.glconfig.vidHeight, color );
 
 		// center
 		if ( cgs.media.reticleShaderSimpleQ ) {
-			trap_R_DrawStretchPic( x, 0, w, h, 0, 0, 1, 1, cgs.media.reticleShaderSimpleQ );    // tl
-			trap_R_DrawStretchPic( x + w, 0, w, h, 1, 0, 0, 1, cgs.media.reticleShaderSimpleQ );  // tr
-			trap_R_DrawStretchPic( x, h, w, h, 0, 1, 1, 0, cgs.media.reticleShaderSimpleQ );    // bl
-			trap_R_DrawStretchPic( x + w, h, w, h, 1, 1, 0, 0, cgs.media.reticleShaderSimpleQ );  // br
+			CG_ReticleRect( 80, 0, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, cgs.media.reticleShaderSimpleQ );    // tl
+			CG_ReticleRect( 320, 0, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 1, 0, 0, 1, cgs.media.reticleShaderSimpleQ );  // tr
+			CG_ReticleRect( 80, 240, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 0, 1, 1, 0, cgs.media.reticleShaderSimpleQ );    // bl
+			CG_ReticleRect( 320, 240, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 1, 1, 0, 0, cgs.media.reticleShaderSimpleQ );  // br
 		}
 
 		// hairs
-		CG_FillRect( 84, 239, 177, 2, color );   // left
-		CG_FillRect( 320, 242, 1, 58, color );   // center top
-		CG_FillRect( 319, 300, 2, 178, color );  // center bot
-		CG_FillRect( 380, 239, 177, 2, color );  // right
+		CG_FillReticleRect( 84, 239, 177, 2, color );   // left
+		CG_FillReticleRect( 320, 242, 1, 58, color );   // center top
+		CG_FillReticleRect( 319, 300, 2, 178, color );  // center bot
+		CG_FillReticleRect( 380, 239, 177, 2, color );  // right
 	} else if ( weap == WP_SNOOPERSCOPE ) {
+		scopeSize = 480.0f * cgs.screenYScale;
+		scopeX = ( cgs.glconfig.vidWidth - scopeSize ) * 0.5f;
+
 		// sides
-		CG_FillRect( 0, 0, 80, 480, color );
-		CG_FillRect( 560, 0, 80, 480, color );
+		CG_FillRectPhysical( 0, 0, scopeX, cgs.glconfig.vidHeight, color );
+		CG_FillRectPhysical( cgs.glconfig.vidWidth - scopeX, 0, scopeX, cgs.glconfig.vidHeight, color );
 
 		// center
 
@@ -2095,52 +2189,62 @@ static void CG_DrawWeapReticle( void ) {
 //----(SA)	end
 
 		if ( cgs.media.snooperShaderSimple ) {
-			CG_DrawPic( 80, 0, 480, 480, cgs.media.snooperShaderSimple );
+			CG_ReticleRect( 80, 0, 480, 480, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, cgs.media.snooperShaderSimple );
 		}
+
+		trap_R_SetColor( NULL );
 
 		// hairs
 
-		CG_FillRect( 310, 120, 20, 1, color );   //					-----
-		CG_FillRect( 300, 160, 40, 1, color );   //				-------------
-		CG_FillRect( 310, 200, 20, 1, color );   //					-----
+		CG_FillReticleRect( 310, 120, 20, 1, color );   //					-----
+		CG_FillReticleRect( 300, 160, 40, 1, color );   //				-------------
+		CG_FillReticleRect( 310, 200, 20, 1, color );   //					-----
 
-		CG_FillRect( 140, 239, 360, 1, color );  // horiz ---------------------------
+		CG_FillReticleRect( 140, 239, 360, 1, color );  // horiz ---------------------------
 
-		CG_FillRect( 310, 280, 20, 1, color );   //					-----
-		CG_FillRect( 300, 320, 40, 1, color );   //				-------------
-		CG_FillRect( 310, 360, 20, 1, color );   //					-----
+		CG_FillReticleRect( 310, 280, 20, 1, color );   //					-----
+		CG_FillReticleRect( 300, 320, 40, 1, color );   //				-------------
+		CG_FillReticleRect( 310, 360, 20, 1, color );   //					-----
 
 
 
-		CG_FillRect( 400, 220, 1, 40, color );   // l
+		CG_FillReticleRect( 400, 220, 1, 40, color );   // l
 
-		CG_FillRect( 319, 60, 1, 360, color );   // vert
+		CG_FillReticleRect( 319, 60, 1, 360, color );   // vert
 
-		CG_FillRect( 240, 220, 1, 40, color );   // r
+		CG_FillReticleRect( 240, 220, 1, 40, color );   // r
 	} else if ( weap == WP_FG42SCOPE ) {
+		scopeSize = 480.0f * cgs.screenYScale;
+		scopeX = ( cgs.glconfig.vidWidth - scopeSize ) * 0.5f;
+
 		// sides
-		CG_FillRect( 0, 0, 80, 480, color );
-		CG_FillRect( 560, 0, 80, 480, color );
+		CG_FillRectPhysical( 0, 0, scopeX, cgs.glconfig.vidHeight, color );
+		CG_FillRectPhysical( cgs.glconfig.vidWidth - scopeX, 0, scopeX, cgs.glconfig.vidHeight, color );
 
 		// center
 		if ( cgs.media.reticleShaderSimpleQ ) {
-			trap_R_DrawStretchPic( x,   0, w, h, 0, 0, 1, 1, cgs.media.reticleShaderSimpleQ );  // tl
-			trap_R_DrawStretchPic( x + w, 0, w, h, 1, 0, 0, 1, cgs.media.reticleShaderSimpleQ );  // tr
-			trap_R_DrawStretchPic( x,   h, w, h, 0, 1, 1, 0, cgs.media.reticleShaderSimpleQ );  // bl
-			trap_R_DrawStretchPic( x + w, h, w, h, 1, 1, 0, 0, cgs.media.reticleShaderSimpleQ );  // br
+			CG_ReticleRect( 80, 0, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, cgs.media.reticleShaderSimpleQ );  // tl
+			CG_ReticleRect( 320, 0, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 1, 0, 0, 1, cgs.media.reticleShaderSimpleQ );  // tr
+			CG_ReticleRect( 80, 240, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 0, 1, 1, 0, cgs.media.reticleShaderSimpleQ );  // bl
+			CG_ReticleRect( 320, 240, 240, 240, &x, &y, &w, &h );
+			trap_R_DrawStretchPic( x, y, w, h, 1, 1, 0, 0, cgs.media.reticleShaderSimpleQ );  // br
 		}
 
 		// hairs
-		CG_FillRect( 84, 239, 150, 3, color );   // left
-		CG_FillRect( 234, 240, 173, 1, color );  // horiz center
-		CG_FillRect( 407, 239, 150, 3, color );  // right
+		CG_FillReticleRect( 84, 239, 150, 3, color );   // left
+		CG_FillReticleRect( 234, 240, 173, 1, color );  // horiz center
+		CG_FillReticleRect( 407, 239, 150, 3, color );  // right
 
 
-		CG_FillRect( 319, 2,   3, 151, color );  // top center top
-		CG_FillRect( 320, 153, 1, 114, color );  // top center bot
+		CG_FillReticleRect( 319, 2,   3, 151, color );  // top center top
+		CG_FillReticleRect( 320, 153, 1, 114, color );  // top center bot
 
-		CG_FillRect( 320, 241, 1, 87, color );   // bot center top
-		CG_FillRect( 319, 327, 3, 151, color );  // bot center bot
+		CG_FillReticleRect( 320, 241, 1, 87, color );   // bot center top
+		CG_FillReticleRect( 319, 327, 3, 151, color );  // bot center bot
 	}
 }
 
@@ -2155,25 +2259,28 @@ CG_DrawBinocReticle
 static void CG_DrawBinocReticle( void ) {
 	// an alternative.  This gives nice sharp lines at the expense of a few extra polys
 	vec4_t color = {0, 0, 0, 1};
-	float x, y, w = 320, h = 240;
+	float x, y, w, h;
 
 	if ( cgs.media.binocShaderSimpleQ ) {
-		CG_AdjustFrom640( &x, &y, &w, &h );
-		trap_R_DrawStretchPic( 0, 0, w, h, 0, 0, 1, 1, cgs.media.binocShaderSimpleQ );  // tl
-		trap_R_DrawStretchPic( w, 0, w, h, 1, 0, 0, 1, cgs.media.binocShaderSimpleQ );  // tr
-		trap_R_DrawStretchPic( 0, h, w, h, 0, 1, 1, 0, cgs.media.binocShaderSimpleQ );  // bl
-		trap_R_DrawStretchPic( w, h, w, h, 1, 1, 0, 0, cgs.media.binocShaderSimpleQ );  // br
+		CG_ReticleRect( 0, 0, 320, 240, &x, &y, &w, &h );
+		trap_R_DrawStretchPic( x, y, w, h, 0, 0, 1, 1, cgs.media.binocShaderSimpleQ );  // tl
+		CG_ReticleRect( 320, 0, 320, 240, &x, &y, &w, &h );
+		trap_R_DrawStretchPic( x, y, w, h, 1, 0, 0, 1, cgs.media.binocShaderSimpleQ );  // tr
+		CG_ReticleRect( 0, 240, 320, 240, &x, &y, &w, &h );
+		trap_R_DrawStretchPic( x, y, w, h, 0, 1, 1, 0, cgs.media.binocShaderSimpleQ );  // bl
+		CG_ReticleRect( 320, 240, 320, 240, &x, &y, &w, &h );
+		trap_R_DrawStretchPic( x, y, w, h, 1, 1, 0, 0, cgs.media.binocShaderSimpleQ );  // br
 	}
 
-	CG_FillRect( 146, 239, 348, 1, color );
+	CG_FillReticleRect( 146, 239, 348, 1, color );
 
-	CG_FillRect( 188, 234, 1, 13, color );   // ll
-	CG_FillRect( 234, 226, 1, 29, color );   // l
-	CG_FillRect( 274, 234, 1, 13, color );   // lr
-	CG_FillRect( 320, 213, 1, 55, color );   // center
-	CG_FillRect( 360, 234, 1, 13, color );   // rl
-	CG_FillRect( 406, 226, 1, 29, color );   // r
-	CG_FillRect( 452, 234, 1, 13, color );   // rr
+	CG_FillReticleRect( 188, 234, 1, 13, color );   // ll
+	CG_FillReticleRect( 234, 226, 1, 29, color );   // l
+	CG_FillReticleRect( 274, 234, 1, 13, color );   // lr
+	CG_FillReticleRect( 320, 213, 1, 55, color );   // center
+	CG_FillReticleRect( 360, 234, 1, 13, color );   // rl
+	CG_FillReticleRect( 406, 226, 1, 29, color );   // r
+	CG_FillReticleRect( 452, 234, 1, 13, color );   // rr
 }
 
 void CG_FinishWeaponChange( int lastweap, int newweap ); // JPW NERVE

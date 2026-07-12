@@ -46,14 +46,41 @@ void CG_AdjustFrom640( float *x, float *y, float *w, float *h ) {
 		( *y ) = ( *y ) * yscale + ( cg.refdef.y / cgs.screenYScale );
 		( *w ) *= xscale;
 		( *h ) *= yscale;
+		return;
 	}
 	// -NERVE - SMF
 
-	// scale for screen sizes, preserving 4:3 aspect and centering on wide screens
-	*x = *x * cgs.screenYScale + cgs.screenXBias;
-	*y *= cgs.screenYScale;
-	*w *= cgs.screenYScale;
-	*h *= cgs.screenYScale;
+	// Grouped centered panels (mission stats, etc.) need all of their internal
+	// elements to stay relative to each other, not snap to screen edges.
+	if ( cg_drawUniformCentered ) {
+		float scale = cgs.screenYScale;
+		*x = *x * scale + cgs.screenXBias;
+		*y *= scale;
+		*w *= scale;
+		*h *= scale;
+		return;
+	}
+
+	// Scale from virtual 640x480 to physical resolution. On wide screens
+	// preserve 4:3 aspect ratio for scale, but attach HUD elements that are
+	// clearly on the left/right side of the virtual screen to the corresponding
+	// physical screen edges instead of locking everything to the centered 4:3 box.
+	{
+		float scale = cgs.screenYScale;
+		float center = *x + *w * 0.5f;
+
+		if ( center < 320.0f ) {
+			*x = *x * scale;
+		} else if ( center > 320.0f ) {
+			*x = cgs.glconfig.vidWidth - ( 640.0f - *x ) * scale;
+		} else {
+			*x = *x * scale + cgs.screenXBias;
+		}
+
+		*y *= scale;
+		*w *= scale;
+		*h *= scale;
+	}
 }
 
 /*
@@ -85,6 +112,35 @@ void CG_AdjustFrom640NoBias( float *x, float *y, float *w, float *h ) {
 }
 
 /*
+=================
+CG_AdjustFrom640Centered
+
+Scales from virtual 640x480 and adds the wide-screen horizontal bias uniformly.
+Use for text and grouped panels that must stay together and be centered on
+wide-screen resolutions instead of being snapped to the left/right edges.
+=================
+*/
+void CG_AdjustFrom640Centered( float *x, float *y, float *w, float *h ) {
+	// NERVE - SMF - hack to make images display properly in small view / limbo mode
+	if ( cg.limboMenu && cg.refdef.width ) {
+		float xscale = ( ( cg.refdef.width / cgs.screenXScale ) / 640.f );
+		float yscale = ( ( cg.refdef.height / cgs.screenYScale ) / 480.f );
+
+		( *x ) = ( *x ) * xscale + ( cg.refdef.x / cgs.screenXScale );
+		( *y ) = ( *y ) * yscale + ( cg.refdef.y / cgs.screenYScale );
+		( *w ) *= xscale;
+		( *h ) *= yscale;
+		return;
+	}
+	// -NERVE - SMF
+
+	*x = *x * cgs.screenYScale + cgs.screenXBias;
+	*y *= cgs.screenYScale;
+	*w *= cgs.screenYScale;
+	*h *= cgs.screenYScale;
+}
+
+/*
 ================
 CG_FillRect
 
@@ -94,7 +150,34 @@ Coordinates are 640*480 virtual values
 void CG_FillRect( float x, float y, float width, float height, const float *color ) {
 	trap_R_SetColor( color );
 
-	CG_AdjustFrom640( &x, &y, &width, &height );
+	// Full-screen overlays (fade, zoom transition, etc.) must cover the whole
+	// physical display on wide-screen resolutions, not just the centered 4:3 box.
+	if ( x <= 0.0f && y <= 0.0f && x + width >= 640.0f && y + height >= 480.0f ) {
+		x = 0.0f;
+		y = 0.0f;
+		width = cgs.glconfig.vidWidth;
+		height = cgs.glconfig.vidHeight;
+	} else {
+		CG_AdjustFrom640( &x, &y, &width, &height );
+	}
+
+	trap_R_DrawStretchPic( x, y, width, height, 0, 0, 0, 1, cgs.media.whiteShader );
+
+	trap_R_SetColor( NULL );
+}
+
+/*
+================
+CG_FillRectCentered
+
+Like CG_FillRect, but uses uniform wide-screen centering so partial bars and
+composite boxes stay together instead of snapping individual pieces to edges.
+================
+*/
+void CG_FillRectCentered( float x, float y, float width, float height, const float *color ) {
+	trap_R_SetColor( color );
+
+	CG_AdjustFrom640Centered( &x, &y, &width, &height );
 	trap_R_DrawStretchPic( x, y, width, height, 0, 0, 0, 1, cgs.media.whiteShader );
 
 	trap_R_SetColor( NULL );
@@ -153,6 +236,8 @@ void CG_FilledBar( float x, float y, float w, float h, const float *startColorIn
 	vec4_t startColor;
 
 	int indent = BAR_BORDERSIZE;
+	float origX = x, origY = y, origW = w, origH = h;
+	float baseX, baseY, scaleX, scaleY;
 
 	VectorCopy4( startColorIn, startColor );
 
@@ -166,23 +251,39 @@ void CG_FilledBar( float x, float y, float w, float h, const float *startColorIn
 		if ( endColor ) {
 			endColor[3] *= cg_hudAlpha.value;
 		}
-		if ( backgroundcolor ) {
-			backgroundcolor[3] *= cg_hudAlpha.value;
-		}
+		backgroundcolor[3] *= cg_hudAlpha.value;
 	}
 
 	if ( flags & BAR_LERP_COLOR ) {
 		Vector4Average( startColor, endColor, frac, colorAtPos );
 	}
 
+	// Compute the physical position/size of the whole bar once, using the
+	// regular edge-attach/center logic. All sub-parts are then drawn relative
+	// to this base so partial fills don't snap to a different screen edge.
+	{
+		float tmpX = origX, tmpY = origY, tmpW = origW, tmpH = origH;
+		CG_AdjustFrom640( &tmpX, &tmpY, &tmpW, &tmpH );
+		baseX = tmpX;
+		baseY = tmpY;
+		scaleX = tmpW / origW;
+		scaleY = tmpH / origH;
+	}
+
+#define DRAW_BAR_SUBRECT( sx, sy, sw, sh, col ) do { \
+		float px = baseX + ( (sx) - origX ) * scaleX; \
+		float py = baseY + ( (sy) - origY ) * scaleY; \
+		float pw = (sw) * scaleX; \
+		float ph = (sh) * scaleY; \
+		trap_R_SetColor( col ); \
+		trap_R_DrawStretchPic( px, py, pw, ph, 0, 0, 0, 1, cgs.media.whiteShader ); \
+		trap_R_SetColor( NULL ); \
+	} while ( 0 )
+
 	// background
 	if ( ( flags & BAR_BG ) ) {
 		// draw background at full size and shrink the remaining box to fit inside with a border.  (alternate border may be specified by a BAR_BGSPACING_xx)
-		CG_FillRect(   x,
-					   y,
-					   w,
-					   h,
-					   backgroundcolor );
+		DRAW_BAR_SUBRECT( x, y, w, h, backgroundcolor );
 
 		if ( flags & BAR_BGSPACING_X0Y0 ) {          // fill the whole box (no border)
 
@@ -209,10 +310,10 @@ void CG_FilledBar( float x, float y, float w, float h, const float *startColorIn
 		}
 
 		if ( flags & BAR_LERP_COLOR ) {
-			CG_FillRect( x, y, w, h * frac, colorAtPos );
+			DRAW_BAR_SUBRECT( x, y, w, h * frac, colorAtPos );
 		} else {
 //			CG_FillRectGradient ( x, y, w, h * frac, startColor, endColor, 0 );
-			CG_FillRect( x, y, w, h * frac, startColor );
+			DRAW_BAR_SUBRECT( x, y, w, h * frac, startColor );
 		}
 
 	} else {
@@ -224,13 +325,14 @@ void CG_FilledBar( float x, float y, float w, float h, const float *startColorIn
 		}
 
 		if ( flags & BAR_LERP_COLOR ) {
-			CG_FillRect( x, y, w * frac, h, colorAtPos );
+			DRAW_BAR_SUBRECT( x, y, w * frac, h, colorAtPos );
 		} else {
 //			CG_FillRectGradient ( x, y, w * frac, h, startColor, endColor, 0 );
-			CG_FillRect( x, y, w * frac, h, startColor );
+			DRAW_BAR_SUBRECT( x, y, w * frac, h, startColor );
 		}
 	}
 
+#undef DRAW_BAR_SUBRECT
 }
 
 

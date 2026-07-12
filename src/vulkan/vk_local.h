@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include "../renderer/tr_local.h"
 #include "../renderer/qgl.h"
+#include "../renderer/ktx_load.h"
 
 #define VK_MAX_FRAMES_IN_FLIGHT 2
 #define VK_MAX_PIPELINES 41
@@ -193,6 +194,8 @@ qboolean VK_CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 void VK_DestroyBuffer(vk_buffer_t *b);
 qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h,
                                     vk_texture_t *out, int wrapMode, qboolean mipmap);
+qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
+                                 int wrapMode, qboolean mipmap);
 void VK_DestroyTexture(vk_texture_t *t);
 
 void VK_InitTextures(void);

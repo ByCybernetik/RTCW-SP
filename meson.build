@@ -94,6 +94,7 @@ renderer_sources = files(
     'src/renderer/tr_font.c',
     'src/renderer/tr_image.c',
     'src/renderer/tr_init.c',
+    'src/renderer/ktx_load.c',
     'src/renderer/tr_light.c',
     'src/renderer/tr_main.c',
     'src/renderer/tr_marks.c',
@@ -419,6 +420,9 @@ bsp_viewer_gl = executable('bsp_viewer_gl',
     dependencies: platform_deps,
     install: true,
 )
+
+# Standalone KTX texture viewer
+subdir('tools/ktx_viewer')
 
 # Copy game .so files into build/main/
 main_dir = 'main'
