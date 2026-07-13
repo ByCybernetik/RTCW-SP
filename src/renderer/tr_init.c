@@ -183,6 +183,8 @@ cvar_t  *r_debugLight;
 cvar_t  *r_debugSort;
 cvar_t  *r_printShaders;
 cvar_t  *r_saveFontData;
+cvar_t  *r_fontQuality;
+cvar_t  *r_fontOversample;
 
 // Ridah
 cvar_t  *r_cache;
@@ -1131,6 +1133,8 @@ void R_Register( void ) {
 	r_debugSort = ri.Cvar_Get( "r_debugSort", "0", CVAR_CHEAT );
 	r_printShaders = ri.Cvar_Get( "r_printShaders", "0", 0 );
 	r_saveFontData = ri.Cvar_Get( "r_saveFontData", "0", 0 );
+	r_fontQuality = ri.Cvar_Get( "r_fontQuality", "2", 0 );
+	r_fontOversample = ri.Cvar_Get( "r_fontOversample", "2", 0 );
 
 	// Ridah
 	// show_bug.cgi?id=440

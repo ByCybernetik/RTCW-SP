@@ -164,6 +164,9 @@ typedef enum {
 // The menu code needs to get both key and char events, but
 // to avoid duplicating the paths, the char events are just
 // distinguished by or'ing in K_CHAR_FLAG (ugly)
-#define K_CHAR_FLAG     1024
+//
+// Must be outside the Unicode codepoint range (0 .. 0x10FFFF) so that
+// multi-byte UTF-8 input (Cyrillic, etc.) is not mistaken for a key event.
+#define K_CHAR_FLAG     0x80000000
 
 #endif

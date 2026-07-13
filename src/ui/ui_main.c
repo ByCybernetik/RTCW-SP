@@ -338,9 +338,11 @@ int Text_Width( const char *text, int font, float scale, int limit ) {
 				s += 2;
 				continue;
 			} else {
-				glyph = &fnt->glyphs[(unsigned char)*s];
+				int idx = 0;
+				int codepoint = Q_UTF8_ReadChar( s, &idx );
+				glyph = R_GetGlyph( fnt, codepoint );
 				out += glyph->xSkip;
-				s++;
+				s += idx;
 				count++;
 			}
 		}
@@ -383,11 +385,13 @@ int Text_Height( const char *text, int font, float scale, int limit ) {
 				s += 2;
 				continue;
 			} else {
-				glyph = &fnt->glyphs[*s];
+				int idx = 0;
+				int codepoint = Q_UTF8_ReadChar( (const char *)s, &idx );
+				glyph = R_GetGlyph( fnt, codepoint );
 				if ( max < glyph->height ) {
 					max = glyph->height;
 				}
-				s++;
+				s += idx;
 				count++;
 			}
 		}
@@ -435,7 +439,8 @@ void Text_Paint( float x, float y, int font, float scale, vec4_t color, const ch
 		}
 		count = 0;
 		while ( s && *s && count < len ) {
-			glyph = &fnt->glyphs[*s];
+			int idx = 0;
+			int codepoint;
 			//int yadj = Assets.textFont.glyphs[text[i]].bottom + Assets.textFont.glyphs[text[i]].top;
 			//float yadj = scale * (Assets.textFont.glyphs[text[i]].imageHeight - Assets.textFont.glyphs[text[i]].height);
 			if ( Q_IsColorString( s ) ) {
@@ -445,7 +450,10 @@ void Text_Paint( float x, float y, int font, float scale, vec4_t color, const ch
 				s += 2;
 				continue;
 			} else {
-				float yadj = useScale * glyph->top;
+				float yadj;
+				codepoint = Q_UTF8_ReadChar( (const char *)s, &idx );
+				glyph = R_GetGlyph( fnt, codepoint );
+				yadj = useScale * glyph->top;
 				if ( style == ITEM_TEXTSTYLE_SHADOWED || style == ITEM_TEXTSTYLE_SHADOWEDMORE ) {
 					int ofs = style == ITEM_TEXTSTYLE_SHADOWED ? 1 : 2;
 					colorBlack[3] = newColor[3];
@@ -475,7 +483,7 @@ void Text_Paint( float x, float y, int font, float scale, vec4_t color, const ch
 								glyph->glyph );
 
 				x += ( glyph->xSkip * useScale ) + adjust;
-				s++;
+				s += idx;
 				count++;
 			}
 		}
@@ -515,9 +523,10 @@ void Text_PaintWithCursor( float x, float y, int font, float scale, vec4_t color
 			len = limit;
 		}
 		count = 0;
-		glyph2 = &fnt->glyphs[(unsigned char)cursor];
+		glyph2 = R_GetGlyph( fnt, (unsigned char)cursor );
 		while ( s && *s && count < len ) {
-			glyph = &fnt->glyphs[*s];
+			int idx = 0;
+			int codepoint;
 			//int yadj = Assets.textFont.glyphs[text[i]].bottom + Assets.textFont.glyphs[text[i]].top;
 			//float yadj = scale * (Assets.textFont.glyphs[text[i]].imageHeight - Assets.textFont.glyphs[text[i]].height);
 			if ( Q_IsColorString( s ) ) {
@@ -527,6 +536,8 @@ void Text_PaintWithCursor( float x, float y, int font, float scale, vec4_t color
 				s += 2;
 				continue;
 			} else {
+				codepoint = Q_UTF8_ReadChar( (const char *)s, &idx );
+				glyph = R_GetGlyph( fnt, codepoint );
 				yadj = useScale * glyph->top;
 				if ( style == ITEM_TEXTSTYLE_SHADOWED || style == ITEM_TEXTSTYLE_SHADOWEDMORE ) {
 					int ofs = style == ITEM_TEXTSTYLE_SHADOWED ? 1 : 2;
@@ -572,7 +583,7 @@ void Text_PaintWithCursor( float x, float y, int font, float scale, vec4_t color
 				}
 
 				x += ( glyph->xSkip * useScale );
-				s++;
+				s += idx;
 				count++;
 			}
 		}

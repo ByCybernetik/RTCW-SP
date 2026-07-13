@@ -43,6 +43,7 @@ extern qkey_t keys[MAX_KEYS];
 
 void Field_KeyDownEvent( field_t *edit, int key );
 void Field_CharEvent( field_t *edit, int ch );
+void Field_TextInput( field_t *edit, const char *utf8 );
 void Field_Draw( field_t *edit, int x, int y, int width, qboolean showCursor );
 void Field_BigDraw( field_t *edit, int x, int y, int width, qboolean showCursor );
 

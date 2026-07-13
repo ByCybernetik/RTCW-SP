@@ -1460,17 +1460,33 @@ typedef enum {
 #define GLYPH_END 255
 #define GLYPH_CHARSTART 32
 #define GLYPH_CHAREND 127
-#define GLYPHS_PER_FONT GLYPH_END - GLYPH_START + 1
+
+// Unicode ranges baked into every TrueType font atlas.
+#define FONT_RANGE_ASCII_FIRST        32
+#define FONT_RANGE_ASCII_COUNT        96      // 32..127
+#define FONT_RANGE_LATIN1_FIRST       160
+#define FONT_RANGE_LATIN1_COUNT       96      // 160..255
+#define FONT_RANGE_CYRILLIC_FIRST     0x0400
+#define FONT_RANGE_CYRILLIC_COUNT     256     // 0x0400..0x04FF
+
+#define GLYPHS_PER_FONT ( FONT_RANGE_ASCII_COUNT + FONT_RANGE_LATIN1_COUNT + FONT_RANGE_CYRILLIC_COUNT )
+
 typedef struct {
-	int height;     // number of scan lines
-	int top;        // top of glyph in buffer
-	int bottom;     // bottom of glyph in buffer
-	int pitch;      // width for copying
-	int xSkip;      // x adjustment
-	int imageWidth; // width of actual image
+	int firstCodepoint;
+	int numChars;
+	int glyphBaseIndex;
+} fontRange_t;
+
+typedef struct {
+	int height;	// number of scan lines
+	int top;		// top of glyph in buffer
+	int bottom;	// bottom of glyph in buffer
+	int pitch;		// width for copying
+	int xSkip;		// x adjustment
+	int imageWidth;	// width of actual image
 	int imageHeight; // height of actual image
-	float s;        // x offset in image where glyph starts
-	float t;        // y offset in image where glyph starts
+	float s;		// x offset in image where glyph starts
+	float t;		// y offset in image where glyph starts
 	float s2;
 	float t2;
 	qhandle_t glyph; // handle to the shader with the glyph
@@ -1481,7 +1497,19 @@ typedef struct {
 	glyphInfo_t glyphs [GLYPHS_PER_FONT];
 	float glyphScale;
 	char name[MAX_QPATH];
+	int numRanges;
+	fontRange_t ranges[4];
 } fontInfo_t;
+
+// Find a glyph for a Unicode codepoint inside a baked font.
+glyphInfo_t *R_GetGlyph( const fontInfo_t *font, int codepoint );
+
+// Read one UTF-8 codepoint starting at *idx, advance *idx by byte count.
+int Q_UTF8_ReadChar( const char *str, int *idx );
+
+// Encode a Unicode codepoint into a UTF-8 byte sequence at dst.
+// Returns the number of bytes written (0 for invalid codepoints).
+int Q_UTF8_WriteChar( char *dst, int codepoint );
 
 #define Square( x ) ( ( x ) * ( x ) )
 

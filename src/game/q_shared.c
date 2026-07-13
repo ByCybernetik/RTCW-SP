@@ -48,6 +48,130 @@ float Com_Clamp( float min, float max, float value ) {
 
 /*
 ============
+R_GetGlyph
+============
+*/
+glyphInfo_t *R_GetGlyph( const fontInfo_t *font, int codepoint ) {
+	int i;
+
+	if ( !font ) {
+		return NULL;
+	}
+
+	for ( i = 0; i < font->numRanges; i++ ) {
+		const fontRange_t *range = &font->ranges[i];
+		if ( codepoint >= range->firstCodepoint &&
+		     codepoint < range->firstCodepoint + range->numChars ) {
+			return &font->glyphs[range->glyphBaseIndex + ( codepoint - range->firstCodepoint )];
+		}
+	}
+
+	// Fallback to the first glyph (usually a space or replacement box).
+	return &font->glyphs[0];
+}
+
+/*
+============
+Q_UTF8_ReadChar
+
+Reads one Unicode codepoint from a UTF-8 string.
+On entry *idx is the byte offset; on exit it is advanced by the byte count.
+Returns the codepoint, or the byte value for invalid sequences.
+============
+*/
+int Q_UTF8_ReadChar( const char *str, int *idx ) {
+	const unsigned char *s = (const unsigned char *)str + *idx;
+	int c;
+
+	if ( !s[0] ) {
+		return 0;
+	}
+
+	if ( ( s[0] & 0x80 ) == 0 ) {
+		( *idx )++;
+		return s[0];
+	}
+
+	if ( ( s[0] & 0xE0 ) == 0xC0 ) {
+		// 2-byte sequence
+		if ( ( s[1] & 0xC0 ) != 0x80 ) {
+			( *idx )++;
+			return s[0];
+		}
+		c = ( ( s[0] & 0x1F ) << 6 ) | ( s[1] & 0x3F );
+		( *idx ) += 2;
+		return c;
+	}
+
+	if ( ( s[0] & 0xF0 ) == 0xE0 ) {
+		// 3-byte sequence
+		if ( ( s[1] & 0xC0 ) != 0x80 || ( s[2] & 0xC0 ) != 0x80 ) {
+			( *idx )++;
+			return s[0];
+		}
+		c = ( ( s[0] & 0x0F ) << 12 ) | ( ( s[1] & 0x3F ) << 6 ) | ( s[2] & 0x3F );
+		( *idx ) += 3;
+		return c;
+	}
+
+	if ( ( s[0] & 0xF8 ) == 0xF0 ) {
+		// 4-byte sequence
+		if ( ( s[1] & 0xC0 ) != 0x80 || ( s[2] & 0xC0 ) != 0x80 || ( s[3] & 0xC0 ) != 0x80 ) {
+			( *idx )++;
+			return s[0];
+		}
+		c = ( ( s[0] & 0x07 ) << 18 ) | ( ( s[1] & 0x3F ) << 12 ) | ( ( s[2] & 0x3F ) << 6 ) | ( s[3] & 0x3F );
+		( *idx ) += 4;
+		return c;
+	}
+
+	// Invalid leading byte.
+	( *idx )++;
+	return s[0];
+}
+
+/*
+============
+Q_UTF8_WriteChar
+
+Encodes a Unicode codepoint into a UTF-8 byte sequence.
+'dst' must point to a buffer with at least 4 bytes available.
+Returns the number of bytes written (0 for invalid codepoints).
+============
+*/
+int Q_UTF8_WriteChar( char *dst, int codepoint ) {
+	if ( codepoint < 0 || codepoint > 0x10FFFF ||
+	     ( codepoint >= 0xD800 && codepoint <= 0xDFFF ) ) {
+		return 0;
+	}
+
+	if ( codepoint < 0x80 ) {
+		dst[0] = (char)codepoint;
+		return 1;
+	}
+
+	if ( codepoint < 0x800 ) {
+		dst[0] = (char)( 0xC0 | ( codepoint >> 6 ) );
+		dst[1] = (char)( 0x80 | ( codepoint & 0x3F ) );
+		return 2;
+	}
+
+	if ( codepoint < 0x10000 ) {
+		dst[0] = (char)( 0xE0 | ( codepoint >> 12 ) );
+		dst[1] = (char)( 0x80 | ( ( codepoint >> 6 ) & 0x3F ) );
+		dst[2] = (char)( 0x80 | ( codepoint & 0x3F ) );
+		return 3;
+	}
+
+	dst[0] = (char)( 0xF0 | ( codepoint >> 18 ) );
+	dst[1] = (char)( 0x80 | ( ( codepoint >> 12 ) & 0x3F ) );
+	dst[2] = (char)( 0x80 | ( ( codepoint >> 6 ) & 0x3F ) );
+	dst[3] = (char)( 0x80 | ( codepoint & 0x3F ) );
+	return 4;
+}
+
+/*
+============
 COM_SkipPath
 ============
 */

@@ -847,8 +847,11 @@ int CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_CMD_EXECUTETEXT:
-		Cbuf_ExecuteText( args[1], VMA( 2 ) );
+	{
+		const char *cmdText = VMA( 2 );
+		Cbuf_ExecuteText( args[1], cmdText );
 		return 0;
+	}
 
 	case UI_FS_FOPENFILE:
 		return FS_FOpenFileByMode( VMA( 1 ), VMA( 2 ), args[3] );

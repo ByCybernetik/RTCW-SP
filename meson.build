@@ -412,15 +412,6 @@ wolfsp = executable('wolfsp_' + arch,
     install: true,
 )
 
-# Standalone BSP viewer
-bsp_viewer_gl = executable('bsp_viewer_gl',
-    'src/tools/bsp_viewer_gl.c',
-    c_args: common_c_args,
-    include_directories: inc_dirs,
-    dependencies: platform_deps,
-    install: true,
-)
-
 # Standalone KTX texture viewer
 subdir('tools/ktx_viewer')
 

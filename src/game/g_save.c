@@ -1124,8 +1124,6 @@ qboolean G_SaveGame( char *username ) {
 		return qtrue;
 	}
 
-	G_DPrintf( "G_SaveGame '%s'\n", username );
-
 	// update the playtime
 	AICast_AgePlayTime( 0 );
 
@@ -1133,12 +1131,20 @@ qboolean G_SaveGame( char *username ) {
 		username = "current";
 	}
 
-	// validate the filename
-	for ( i = 0; i < strlen( username ); i++ ) {
-		if ( !Q_isforfilename( username[i] ) && username[i] != '\\' ) { // (allow '\\' so games can be saved in subdirs)
-			G_Printf( "G_SaveGame: '%s'.  Invalid character (%c) in filename. Must use alphanumeric characters only.\n", username, username[i] );
+	// validate the filename (UTF-8 aware so Cyrillic and other alphabets work)
+	for ( i = 0; i < strlen( username ); ) {
+		int cp = Q_UTF8_ReadChar( username, &i );
+		if ( cp == 0 ) {
+			break;
+		}
+		if ( cp == '\\' ) { // (allow '\\' so games can be saved in subdirs)
+			continue;
+		}
+		if ( cp < 0x80 && !Q_isforfilename( cp ) ) {
+			G_Printf( "G_SaveGame: '%s'.  Invalid character (%d) in filename. Must use alphanumeric characters only.\n", username, cp );
 			return qtrue;
 		}
+		// Unicode codepoints >= 0x80 are allowed for non-ASCII filenames.
 	}
 
 	saveByteCount = 0;
@@ -1364,6 +1370,7 @@ qboolean G_SaveGame( char *username ) {
 
 	// double check that it saved ok
 	if ( ( len = trap_FS_FOpenFile( mapstr, &f, FS_READ ) ) != saveByteCount ) {
+		G_Printf( "G_SaveGame: verification failed for '%s' (len=%d, expected=%d)\n", mapstr, len, saveByteCount );
 		trap_FS_FCloseFile( f );
 		G_SaveWriteError();
 		return qfalse;

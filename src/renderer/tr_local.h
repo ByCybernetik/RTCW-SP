@@ -1196,6 +1196,8 @@ extern cvar_t  *r_debugSort;
 
 extern cvar_t  *r_printShaders;
 extern cvar_t  *r_saveFontData;
+extern cvar_t  *r_fontQuality;
+extern cvar_t  *r_fontOversample;
 
 // Ridah
 extern cvar_t  *r_cache;

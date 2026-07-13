@@ -314,8 +314,9 @@ void MSG_WriteString( msg_t *sb, const char *s ) {
 		Q_strncpyz( string, s, sizeof( string ) );
 
 		// get rid of 0xff chars, because old clients don't like them
+		// NOTE: UTF-8 codepoints use bytes >= 0x80, so only strip 0xff.
 		for ( i = 0 ; i < l ; i++ ) {
-			if ( ( (byte *)string )[i] > 127 ) {
+			if ( ( (byte *)string )[i] == 0xff ) {
 				string[i] = '.';
 			}
 		}
@@ -438,8 +439,8 @@ char *MSG_ReadString( msg_t *msg ) {
 		if ( c == '%' ) {
 			c = '.';
 		}
-		// don't allow higher ascii values
-		if ( c > 127 ) {
+		// Allow UTF-8 continuation/leading bytes (>= 0x80). Only strip 0xff.
+		if ( c == 0xff ) {
 			c = '.';
 		}
 

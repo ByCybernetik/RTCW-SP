@@ -831,6 +831,9 @@ void CL_KeyEvent( int key, qboolean down, unsigned time );
 void CL_CharEvent( int key );
 // char events are for field typing, not game control
 
+void CL_TextInput( const char *utf8 );
+// UTF-8 text input from the platform (SDL_TEXTINPUT, IME, etc)
+
 void CL_MouseEvent( int dx, int dy, int time );
 
 void CL_JoystickEvent( int axis, int value, int time );

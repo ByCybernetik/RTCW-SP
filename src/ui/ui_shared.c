@@ -1477,6 +1477,18 @@ void Script_Play( itemDef_t *item, char **args ) {
 void Script_playLooped( itemDef_t *item, char **args ) {
 	const char *val;
 	if ( String_Parse( args, &val ) ) {
+		char currentMusic[MAX_QPATH];
+
+		// Don't restart the background track if the requested file is already
+		// playing. This avoids the main menu music restarting every time the
+		// player returns to the menu.
+		if ( DC->getCVarString ) {
+			DC->getCVarString( "s_currentMusic", currentMusic, sizeof( currentMusic ) );
+			if ( currentMusic[0] && !Q_stricmp( currentMusic, val ) ) {
+				return;
+			}
+		}
+
 		// (SA) don't think this should happen...
 //		DC->stopBackgroundTrack();
 		DC->startBackgroundTrack( val, val, 0 );
@@ -2295,25 +2307,29 @@ qboolean Item_TextField_HandleKey( itemDef_t *item, int key ) {
 		if ( key & K_CHAR_FLAG ) {
 			key &= ~K_CHAR_FLAG;
 
-
 			if ( key == 'h' - 'a' + 1 ) {      // ctrl-h is backspace
 				if ( item->cursorPos > 0 ) {
-					memmove( &buff[item->cursorPos - 1], &buff[item->cursorPos], len + 1 - item->cursorPos );
-					item->cursorPos--;
+					int start = item->cursorPos - 1;
+					while ( start > 0 && ( buff[start] & 0xC0 ) == 0x80 ) {
+						start--;
+					}
+					memmove( &buff[start], &buff[item->cursorPos], len + 1 - item->cursorPos );
+					item->cursorPos = start;
 					if ( item->cursorPos < editPtr->paintOffset ) {
-						editPtr->paintOffset--;
+						editPtr->paintOffset = item->cursorPos;
 					}
 				}
 				DC->setCVar( item->cvar, buff );
 				return qtrue;
 			}
 
-
 			// 'valid filename' text entry.  so users can't try to save games like '!**$er' and stuff (from the menu)
 			if ( item->type == ITEM_TYPE_VALIDFILEFIELD ) {
-				if ( !Q_isforfilename( key ) ) {
+				if ( key < 0x80 && !Q_isforfilename( key ) ) {
 					return qtrue;
 				}
+				// Non-ASCII Unicode codepoints are allowed; filesystem safety
+				// is validated when the save is actually written.
 			}
 
 			//
@@ -2324,30 +2340,73 @@ qboolean Item_TextField_HandleKey( itemDef_t *item, int key ) {
 			}
 
 			if ( item->type == ITEM_TYPE_NUMERICFIELD ) {
-				if ( !Q_isnumeric( key ) ) {
+				if ( key >= 0x80 || !Q_isnumeric( key ) ) {
 					return qfalse;
 				}
 			}
 
-			if ( !DC->getOverstrikeMode() ) {
-				if ( ( len == MAX_EDITFIELD - 1 ) || ( editPtr->maxChars && len >= editPtr->maxChars ) ) {
-					return qtrue;
+			if ( key < 0x80 ) {
+				// ASCII character - single byte insert.
+				if ( !DC->getOverstrikeMode() ) {
+					if ( ( len == MAX_EDITFIELD - 1 ) || ( editPtr->maxChars && len >= editPtr->maxChars ) ) {
+						return qtrue;
+					}
+					memmove( &buff[item->cursorPos + 1], &buff[item->cursorPos], len + 1 - item->cursorPos );
+				} else {
+					if ( editPtr->maxChars && item->cursorPos >= editPtr->maxChars ) {
+						return qtrue;
+					}
 				}
-				memmove( &buff[item->cursorPos + 1], &buff[item->cursorPos], len + 1 - item->cursorPos );
+
+				buff[item->cursorPos] = key;
+
+				DC->setCVar( item->cvar, buff );
+
+				if ( item->cursorPos < len + 1 ) {
+					item->cursorPos++;
+					if ( editPtr->maxPaintChars && item->cursorPos > editPtr->maxPaintChars ) {
+						editPtr->paintOffset++;
+					}
+				}
 			} else {
-				if ( editPtr->maxChars && item->cursorPos >= editPtr->maxChars ) {
+				// Unicode codepoint - encode to UTF-8 and insert.
+				char utf8[8];
+				int utf8Len = Q_UTF8_WriteChar( utf8, key );
+				int i;
+
+				if ( utf8Len <= 0 ) {
 					return qtrue;
 				}
-			}
 
-			buff[item->cursorPos] = key;
+				if ( !DC->getOverstrikeMode() ) {
+					if ( ( len + utf8Len >= MAX_EDITFIELD ) || ( editPtr->maxChars && len + utf8Len > editPtr->maxChars ) ) {
+						return qtrue;
+					}
+					memmove( &buff[item->cursorPos + utf8Len], &buff[item->cursorPos], len + 1 - item->cursorPos );
+				} else {
+					int replaceLen = 0;
+					int tmp = item->cursorPos;
+					if ( tmp < len ) {
+						replaceLen = 1;
+						while ( tmp + replaceLen < len && ( buff[tmp + replaceLen] & 0xC0 ) == 0x80 ) {
+							replaceLen++;
+						}
+					}
+					if ( editPtr->maxChars && item->cursorPos + utf8Len > editPtr->maxChars ) {
+						return qtrue;
+					}
+					memmove( &buff[item->cursorPos + utf8Len], &buff[item->cursorPos + replaceLen], len + 1 - item->cursorPos - replaceLen );
+				}
 
-			DC->setCVar( item->cvar, buff );
+				for ( i = 0; i < utf8Len; i++ ) {
+					buff[item->cursorPos + i] = utf8[i];
+				}
 
-			if ( item->cursorPos < len + 1 ) {
-				item->cursorPos++;
+				DC->setCVar( item->cvar, buff );
+
+				item->cursorPos += utf8Len;
 				if ( editPtr->maxPaintChars && item->cursorPos > editPtr->maxPaintChars ) {
-					editPtr->paintOffset++;
+					editPtr->paintOffset += utf8Len;
 				}
 			}
 
@@ -2355,10 +2414,14 @@ qboolean Item_TextField_HandleKey( itemDef_t *item, int key ) {
 
 			if ( key == K_BACKSPACE ) {
 				if ( item->cursorPos > 0 ) {
-					memmove( &buff[item->cursorPos - 1], &buff[item->cursorPos], len + 1 - item->cursorPos );
-					item->cursorPos--;
+					int start = item->cursorPos - 1;
+					while ( start > 0 && ( buff[start] & 0xC0 ) == 0x80 ) {
+						start--;
+					}
+					memmove( &buff[start], &buff[item->cursorPos], len + 1 - item->cursorPos );
+					item->cursorPos = start;
 					if ( item->cursorPos < editPtr->paintOffset ) {
-						editPtr->paintOffset--;
+						editPtr->paintOffset = item->cursorPos;
 					}
 				}
 				DC->setCVar( item->cvar, buff );
@@ -2367,30 +2430,36 @@ qboolean Item_TextField_HandleKey( itemDef_t *item, int key ) {
 
 			if ( key == K_DEL || key == K_KP_DEL ) {
 				if ( item->cursorPos < len ) {
-					memmove( buff + item->cursorPos, buff + item->cursorPos + 1, len - item->cursorPos );
+					int end = item->cursorPos + 1;
+					while ( end < len && ( buff[end] & 0xC0 ) == 0x80 ) {
+						end++;
+					}
+					memmove( buff + item->cursorPos, buff + end, len + 1 - end );
 					DC->setCVar( item->cvar, buff );
 				}
 				return qtrue;
 			}
 
 			if ( key == K_RIGHTARROW || key == K_KP_RIGHTARROW ) {
-				if ( editPtr->maxPaintChars && item->cursorPos >= editPtr->maxPaintChars && item->cursorPos < len ) {
-					item->cursorPos++;
-					editPtr->paintOffset++;
-					return qtrue;
-				}
 				if ( item->cursorPos < len ) {
-					item->cursorPos++;
+					do {
+						item->cursorPos++;
+					} while ( item->cursorPos < len && ( buff[item->cursorPos] & 0xC0 ) == 0x80 );
+					if ( editPtr->maxPaintChars && item->cursorPos > editPtr->maxPaintChars ) {
+						editPtr->paintOffset = item->cursorPos - editPtr->maxPaintChars;
+					}
 				}
 				return qtrue;
 			}
 
 			if ( key == K_LEFTARROW || key == K_KP_LEFTARROW ) {
 				if ( item->cursorPos > 0 ) {
-					item->cursorPos--;
+					do {
+						item->cursorPos--;
+					} while ( item->cursorPos > 0 && ( buff[item->cursorPos] & 0xC0 ) == 0x80 );
 				}
 				if ( item->cursorPos < editPtr->paintOffset ) {
-					editPtr->paintOffset--;
+					editPtr->paintOffset = item->cursorPos;
 				}
 				return qtrue;
 			}

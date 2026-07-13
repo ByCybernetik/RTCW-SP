@@ -791,12 +791,8 @@ void IN_ProcessEvents( void ) {
             }
             
             case SDL_TEXTINPUT: {
-                // Handle text input for console
-                char *c = event.text.text;
-                while (*c) {
-                    CL_CharEvent(*c);
-                    c++;
-                }
+                // Handle UTF-8 text input for console, chat and UI fields.
+                CL_TextInput( event.text.text );
                 break;
             }
             

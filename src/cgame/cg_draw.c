@@ -97,9 +97,11 @@ int CG_Text_Width( const char *text, int font, float scale, int limit ) {
 				s += 2;
 				continue;
 			} else {
-				glyph = &fnt->glyphs[(int)*s];
+				int idx = 0;
+				int codepoint = Q_UTF8_ReadChar( s, &idx );
+				glyph = R_GetGlyph( fnt, codepoint );
 				out += glyph->xSkip;
-				s++;
+				s += idx;
 				count++;
 			}
 		}
@@ -142,11 +144,13 @@ int CG_Text_Height( const char *text, int font, float scale, int limit ) {
 				s += 2;
 				continue;
 			} else {
-				glyph = &fnt->glyphs[(int)*s];
+				int idx = 0;
+				int codepoint = Q_UTF8_ReadChar( s, &idx );
+				glyph = R_GetGlyph( fnt, codepoint );
 				if ( max < glyph->height ) {
 					max = glyph->height;
 				}
-				s++;
+				s += idx;
 				count++;
 			}
 		}
@@ -221,7 +225,8 @@ void CG_Text_Paint( float x, float y, int font, float scale, vec4_t color, const
 		cg_textBasePhysX = tmpX;
 		count = 0;
 		while ( s && *s && count < len ) {
-			glyph = &fnt->glyphs[(int)*s];
+			int idx = 0;
+			int codepoint;
 			//int yadj = Assets.textFont.glyphs[text[i]].bottom + Assets.textFont.glyphs[text[i]].top;
 			//float yadj = scale * (Assets.textFont.glyphs[text[i]].imageHeight - Assets.textFont.glyphs[text[i]].height);
 			if ( Q_IsColorString( s ) ) {
@@ -231,7 +236,10 @@ void CG_Text_Paint( float x, float y, int font, float scale, vec4_t color, const
 				s += 2;
 				continue;
 			} else {
-				float yadj = useScale * glyph->top;
+				float yadj;
+				codepoint = Q_UTF8_ReadChar( s, &idx );
+				glyph = R_GetGlyph( fnt, codepoint );
+				yadj = useScale * glyph->top;
 				if ( style == ITEM_TEXTSTYLE_SHADOWED || style == ITEM_TEXTSTYLE_SHADOWEDMORE ) {
 					int ofs = style == ITEM_TEXTSTYLE_SHADOWED ? 1 : 2;
 					colorBlack[3] = newColor[3];
@@ -259,7 +267,7 @@ void CG_Text_Paint( float x, float y, int font, float scale, vec4_t color, const
 								   glyph->glyph );
 				// CG_DrawPic(x, y - yadj, scale * cgDC.Assets.textFont.glyphs[text[i]].imageWidth, scale * cgDC.Assets.textFont.glyphs[text[i]].imageHeight, cgDC.Assets.textFont.glyphs[text[i]].glyph);
 				x += ( glyph->xSkip * useScale ) + adjust;
-				s++;
+				s += idx;
 				count++;
 			}
 		}

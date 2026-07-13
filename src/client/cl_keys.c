@@ -793,12 +793,154 @@ void Field_BigDraw( field_t *edit, int x, int y, int width, qboolean showCursor 
 
 /*
 ================
+Field_TextInput
+
+Inserts a UTF-8 string at the current cursor position.
+================
+*/
+void Field_TextInput( field_t *edit, const char *utf8 ) {
+	int len, inLen, i;
+
+	if ( !utf8 || !utf8[0] ) {
+		return;
+	}
+
+	len = strlen( edit->buffer );
+	inLen = strlen( utf8 );
+
+	if ( len + inLen >= MAX_EDIT_LINE ) {
+		return;
+	}
+
+	if ( key_overstrikeMode ) {
+		// Overstrike: replace the UTF-8 codepoint under the cursor,
+		// then append the rest of the input string.
+		int idx = 0;
+		int cp = Q_UTF8_ReadChar( edit->buffer + edit->cursor, &idx );
+		if ( cp == 0 ) {
+			idx = 0;
+		}
+		memmove( edit->buffer + edit->cursor + inLen,
+		         edit->buffer + edit->cursor + idx,
+		         len + 1 - edit->cursor - idx );
+		memcpy( edit->buffer + edit->cursor, utf8, inLen );
+		edit->cursor += inLen;
+	} else {
+		memmove( edit->buffer + edit->cursor + inLen,
+		         edit->buffer + edit->cursor, len + 1 - edit->cursor );
+		memcpy( edit->buffer + edit->cursor, utf8, inLen );
+		edit->cursor += inLen;
+	}
+
+	// Clamp scroll so the cursor stays visible.
+	for ( i = 0; i < edit->cursor - ( edit->scroll + edit->widthInChars - 1 ); i++ ) {
+		edit->scroll++;
+	}
+}
+
+/*
+================
+Field_Backspace
+
+Removes the UTF-8 codepoint before the cursor.
+================
+*/
+static void Field_Backspace( field_t *edit ) {
+	int len, start, idx;
+
+	if ( edit->cursor <= 0 ) {
+		return;
+	}
+
+	len = strlen( edit->buffer );
+
+	// Find the start of the codepoint that ends at the cursor.
+	start = edit->cursor - 1;
+	while ( start > 0 && ( edit->buffer[start] & 0xC0 ) == 0x80 ) {
+		start--;
+	}
+
+	idx = edit->cursor - start;
+	memmove( edit->buffer + start, edit->buffer + edit->cursor, len + 1 - edit->cursor );
+	edit->cursor = start;
+	if ( edit->cursor < edit->scroll ) {
+		edit->scroll--;
+	}
+}
+
+/*
+================
+Field_Delete
+
+Removes the UTF-8 codepoint after the cursor.
+================
+*/
+static void Field_Delete( field_t *edit ) {
+	int len, end, idx;
+
+	len = strlen( edit->buffer );
+	if ( edit->cursor >= len ) {
+		return;
+	}
+
+	// Find the end of the codepoint that starts at the cursor.
+	end = edit->cursor + 1;
+	while ( end < len && ( edit->buffer[end] & 0xC0 ) == 0x80 ) {
+		end++;
+	}
+
+	idx = end - edit->cursor;
+	memmove( edit->buffer + edit->cursor, edit->buffer + edit->cursor + idx, len + 1 - edit->cursor - idx );
+}
+
+/*
+================
+Field_CursorLeft
+
+Moves the cursor to the start of the previous UTF-8 codepoint.
+================
+*/
+static void Field_CursorLeft( field_t *edit ) {
+	if ( edit->cursor <= 0 ) {
+		return;
+	}
+
+	do {
+		edit->cursor--;
+	} while ( edit->cursor > 0 && ( edit->buffer[edit->cursor] & 0xC0 ) == 0x80 );
+
+	if ( edit->cursor < edit->scroll ) {
+		edit->scroll--;
+	}
+}
+
+/*
+================
+Field_CursorRight
+
+Moves the cursor to the start of the next UTF-8 codepoint.
+================
+*/
+static void Field_CursorRight( field_t *edit ) {
+	int len;
+
+	len = strlen( edit->buffer );
+	if ( edit->cursor >= len ) {
+		return;
+	}
+
+	do {
+		edit->cursor++;
+	} while ( edit->cursor < len && ( edit->buffer[edit->cursor] & 0xC0 ) == 0x80 );
+}
+
+/*
+================
 Field_Paste
 ================
 */
 void Field_Paste( field_t *edit ) {
 	char    *cbd;
-	int pasteLen, i;
 
 	cbd = Sys_GetClipboardData();
 
@@ -806,11 +948,7 @@ void Field_Paste( field_t *edit ) {
 		return;
 	}
 
-	// send as if typed, so insert / overstrike works properly
-	pasteLen = strlen( cbd );
-	for ( i = 0 ; i < pasteLen ; i++ ) {
-		Field_CharEvent( edit, cbd[i] );
-	}
+	Field_TextInput( edit, cbd );
 
 	free( cbd );
 }
@@ -837,29 +975,17 @@ void Field_KeyDownEvent( field_t *edit, int key ) {
 	len = strlen( edit->buffer );
 
 	if ( key == K_BACKSPACE ) {
-		if ( edit->cursor > 0 ) {
-			memmove( edit->buffer + edit->cursor - 1,
-					 edit->buffer + edit->cursor, len + 1 - edit->cursor );
-			edit->cursor--;
-			if ( edit->cursor < edit->scroll ) {
-				edit->scroll--;
-			}
-		}
+		Field_Backspace( edit );
 		return;
 	}
 
 	if ( key == K_DEL ) {
-		if ( edit->cursor < len ) {
-			memmove( edit->buffer + edit->cursor,
-					 edit->buffer + edit->cursor + 1, len - edit->cursor );
-		}
+		Field_Delete( edit );
 		return;
 	}
 
 	if ( key == K_RIGHTARROW ) {
-		if ( edit->cursor < len ) {
-			edit->cursor++;
-		}
+		Field_CursorRight( edit );
 
 		if ( edit->cursor >= edit->scroll + edit->widthInChars && edit->cursor <= len ) {
 			edit->scroll++;
@@ -868,12 +994,7 @@ void Field_KeyDownEvent( field_t *edit, int key ) {
 	}
 
 	if ( key == K_LEFTARROW ) {
-		if ( edit->cursor > 0 ) {
-			edit->cursor--;
-		}
-		if ( edit->cursor < edit->scroll ) {
-			edit->scroll--;
-		}
+		Field_CursorLeft( edit );
 		return;
 	}
 
@@ -1892,6 +2013,43 @@ void CL_CharEvent( int key ) {
 		Field_CharEvent( &chatField, key );
 	} else if ( cls.state == CA_DISCONNECTED )   {
 		Field_CharEvent( &g_consoleField, key );
+	}
+}
+
+/*
+===================
+CL_TextInput
+
+UTF-8 text input from the platform (SDL_TEXTINPUT, IME, etc).
+===================
+*/
+void CL_TextInput( const char *utf8 ) {
+	int idx, codepoint;
+
+	if ( !utf8 || !utf8[0] ) {
+		return;
+	}
+
+	// Distribute the whole UTF-8 string to the appropriate handler.
+	if ( cls.keyCatchers & KEYCATCH_CONSOLE ) {
+		Field_TextInput( &g_consoleField, utf8 );
+	} else if ( cls.keyCatchers & KEYCATCH_MESSAGE )   {
+		Field_TextInput( &chatField, utf8 );
+	} else if ( cls.keyCatchers & KEYCATCH_UI )   {
+		// UI expects a single codepoint with K_CHAR_FLAG per event.
+		idx = 0;
+		while ( utf8[idx] ) {
+			codepoint = Q_UTF8_ReadChar( utf8, &idx );
+			if ( codepoint == 0 ) {
+				break;
+			}
+			if ( codepoint == '`' || codepoint == '~' ) {
+				continue;
+			}
+			VM_Call( uivm, UI_KEY_EVENT, codepoint | K_CHAR_FLAG, qtrue );
+		}
+	} else if ( cls.state == CA_DISCONNECTED )   {
+		Field_TextInput( &g_consoleField, utf8 );
 	}
 }
 

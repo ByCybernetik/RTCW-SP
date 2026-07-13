@@ -2309,6 +2309,9 @@ S_StopBackgroundTrack
 */
 void S_StopBackgroundTrack( void ) {
 	S_StopStreamingSound( 0 );
+	// When the music is explicitly stopped, clear the current-music cvar so
+	// callers (e.g. the main menu) can tell that no track is playing.
+	Cvar_Set( "s_currentMusic", "" );
 }
 
 /*
