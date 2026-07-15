@@ -180,11 +180,11 @@ typedef struct {
 // this defines the layout of the mission stats
 // NOTE: these must match the stats sent in AICast_ScriptAction_ChangeLevel()
 static statsItem_t statsItems[] = {
-	{ "end_time",        168,    214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%02i:%02i:%02i",    348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  3 },
-	{ "end_objectives",  28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%i/%i",         348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  2 },
-	{ "end_secrets", 28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%i/%i",         348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  2 },
-	{ "end_treasure",    28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {0.62f, 0.56f,  0.0f,   1.0f},  "%i/%i",         348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  2 },
-	{ "end_attempts",    28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%i",                348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  1 },
+	{ "HUD_STATS_TIME",        168,    214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%02i:%02i:%02i",    348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  3 },
+	{ "HUD_STATS_OBJECTIVES",  28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%i/%i",         348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  2 },
+	{ "HUD_STATS_SECRETS",     28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%i/%i",         348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  2 },
+	{ "HUD_STATS_TREASURE",    28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {0.62f, 0.56f,  0.0f,   1.0f},  "%i/%i",         348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  2 },
+	{ "HUD_STATS_ATTEMPTS",    28,     214,        ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  "%i",                348,    ITEM_TEXTSTYLE_SHADOWEDMORE,    {1.0f,  1.0f,   1.0f,   1.0f},  1 },
 
 	{ NULL }
 };
@@ -361,21 +361,21 @@ void CG_DrawExitStats( void ) {
 	// title
 	color2[0] = color2[1] = color2[2] = 1;
 	color2[3] = color[3];
-//	CG_Text_Paint(280, 120, 2, 0.25f, color2, va("%s", CG_translateString("end_title")), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
+//	CG_Text_Paint(280, 120, 2, 0.25f, color2, va("%s", CG_translateString("HUD_STATS")), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
 	//----(SA)	scale change per MK
-	CG_Text_Paint( 270, 120, 2, 0.313f, color2, va( "%s", CG_translateString( "end_title" ) ), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
+	CG_Text_Paint( 270, 120, 2, 0.313f, color2, va( "%s", CG_translateString( "HUD_STATS" ) ), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
 
 	color2[0] = color2[1] = color2[2] = 1;
 	if ( cg.cursorHintIcon == HINT_NOEXIT ) {
 		// "exit not available"
-//		CG_Text_Paint(250, 320, 2, 0.3f, color2, va("%s", CG_translateString("end_noexit")), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
+//		CG_Text_Paint(250, 320, 2, 0.3f, color2, va("%s", CG_translateString("HUD_STATS_NOEXIT")), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
 		//----(SA)	scale change per MK
-		CG_Text_Paint( 260, 320, 2, 0.225f, color2, va( "%s", CG_translateString( "end_noexit" ) ), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
+		CG_Text_Paint( 260, 320, 2, 0.225f, color2, va( "%s", CG_translateString( "HUD_STATS_NOEXIT" ) ), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
 	} else {
 		// "forward to proceed"
-//		CG_Text_Paint(230, 320, 2, 0.3f, color2, va("%s", CG_translateString("end_exit")), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
+//		CG_Text_Paint(230, 320, 2, 0.3f, color2, va("%s", CG_translateString("HUD_STATS_EXIT")), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
 		//----(SA)	scale change per MK
-		CG_Text_Paint( 250, 320, 2, 0.225f, color2, va( "%s", CG_translateString( "end_exit" ) ), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
+		CG_Text_Paint( 250, 320, 2, 0.225f, color2, va( "%s", CG_translateString( "HUD_STATS_EXIT" ) ), 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
 	}
 
 	mstats = (char*)str + 2;    // add offset for 's='

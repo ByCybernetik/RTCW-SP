@@ -535,7 +535,7 @@ a newline.
 char *SkipWhitespace( char *data, qboolean *hasNewLines ) {
 	int c;
 
-	while ( ( c = *data ) <= ' ' ) {
+	while ( ( c = (unsigned char)*data ) <= ' ' ) {
 		if ( c == '\n' ) {
 			com_lines++;
 			*hasNewLines = qtrue;
@@ -640,7 +640,7 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks ) {
 			return com_token;
 		}
 
-		c = *data;
+		c = (unsigned char)*data;
 
 		// skip double slash comments
 		if ( c == '/' && data[1] == '/' ) {
@@ -670,7 +670,7 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks ) {
 		data++;
 		while ( 1 )
 		{
-			c = *data++;
+			c = (unsigned char)*data++;
 			if ( c == '\"' || !c ) {
 				com_token[len] = 0;
 				*data_p = ( char * ) data;
@@ -691,7 +691,7 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks ) {
 			len++;
 		}
 		data++;
-		c = *data;
+		c = (unsigned char)*data;
 		if ( c == '\n' ) {
 			com_lines++;
 		}

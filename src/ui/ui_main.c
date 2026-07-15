@@ -39,6 +39,7 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "ui_local.h"
+#include "../csf/csf_load.h"
 
 uiInfo_t uiInfo;
 
@@ -1110,39 +1111,29 @@ UI_LoadTranslationStrings
 */
 #define MAX_BUFFER          20000
 static void UI_LoadTranslationStrings( void ) {
-	char buffer[MAX_BUFFER];
-	char *text;
-	char filename[MAX_QPATH];
-	fileHandle_t f;
-	int len, i, numStrings;
-	char *token;
-
-	Com_sprintf( filename, MAX_QPATH, "text/strings.txt" );
-	len = trap_FS_FOpenFile( filename, &f, FS_READ );
-	if ( len <= 0 ) {
-//		CG_Printf( S_COLOR_RED "WARNING: string translation file (strings.txt not found in main/text)\n" );
-		return;
-	}
-	if ( len > MAX_BUFFER ) {
-//		CG_Error( "%s is too big, make it smaller (max = %i bytes)\n", filename, MAX_BUFFER );
-	}
-
-	// load the file into memory
-	trap_FS_Read( buffer, len, f );
-	buffer[len] = 0;
-	trap_FS_FCloseFile( f );
-	// parse the list
-	text = buffer;
+	// Free any previous translations before loading CSF.
+	int i, numStrings;
 
 	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
-
 	for ( i = 0; i < numStrings; i++ ) {
-		token = COM_ParseExt( &text, qtrue );
-		if ( !token[0] ) {
-			break;
+		if ( translateStrings[i].localname ) {
+			free( translateStrings[i].localname );
+			translateStrings[i].localname = NULL;
 		}
-		translateStrings[i].localname = malloc( strlen( token ) + 1 );
-		strcpy( translateStrings[i].localname, token );
+	}
+
+	if ( !CSF_Load( "text/rtcw.csf" ) ) {
+		// CSF is optional; fall back to the built-in English strings.
+		return;
+	}
+
+	// Pre-resolve built-in keys against the CSF table so existing code keeps working.
+	for ( i = 0; i < numStrings; i++ ) {
+		const char *translated = CSF_GetString( translateStrings[i].name );
+		if ( translated && translated[0] ) {
+			translateStrings[i].localname = malloc( strlen( translated ) + 1 );
+			strcpy( translateStrings[i].localname, translated );
+		}
 	}
 }
 
@@ -5735,7 +5726,19 @@ UI_translateString
 */
 static const char *UI_translateString( const char *inString ) {
 	int i, numStrings;
+	const char *csfText;
 
+	if ( !inString || !inString[0] ) {
+		return inString;
+	}
+
+	// First try the CSF table directly (supports arbitrary labels, not only built-in keys).
+	csfText = CSF_GetString( inString );
+	if ( csfText && csfText[0] ) {
+		return csfText;
+	}
+
+	// Fall back to the legacy built-in translateStrings table.
 	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
 
 	for ( i = 0; i < numStrings; i++ ) {

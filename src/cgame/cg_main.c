@@ -36,6 +36,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "cg_local.h"
 #include "../ui/ui_shared.h"
+#include "../csf/csf_load.h"
 
 displayContextDef_t cgDC;
 
@@ -789,39 +790,27 @@ static void CG_LoadPickupNames( void ) {
 
 // a straight dupe right now so I don't mess anything up while adding this
 static void CG_LoadTranslationStrings( void ) {
-	char buffer[MAX_BUFFER];
-	char *text;
-	char filename[MAX_QPATH];
-	fileHandle_t f;
-	int len, i, numStrings;
-	char *token;
-
-	Com_sprintf( filename, MAX_QPATH, "text/strings.txt" );
-	len = trap_FS_FOpenFile( filename, &f, FS_READ );
-	if ( len <= 0 ) {
-		CG_Printf( S_COLOR_RED "WARNING: string translation file (strings.txt not found in main/text)\n" );
-		return;
-	}
-	if ( len > MAX_BUFFER ) {
-		CG_Error( "%s is too big, make it smaller (max = %i bytes)\n", filename, MAX_BUFFER );
-	}
-
-	// load the file into memory
-	trap_FS_Read( buffer, len, f );
-	buffer[len] = 0;
-	trap_FS_FCloseFile( f );
-	// parse the list
-	text = buffer;
+	int i, numStrings;
 
 	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
+	for ( i = 0; i < numStrings; i++ ) {
+		if ( translateStrings[i].localname ) {
+			free( translateStrings[i].localname );
+			translateStrings[i].localname = NULL;
+		}
+	}
+
+	if ( !CSF_Load( "text/rtcw.csf" ) ) {
+		CG_Printf( S_COLOR_RED "WARNING: string translation file (text/rtcw.csf not found in main/text)\n" );
+		return;
+	}
 
 	for ( i = 0; i < numStrings; i++ ) {
-		token = COM_ParseExt( &text, qtrue );
-		if ( !token[0] ) {
-			break;
+		const char *translated = CSF_GetString( translateStrings[i].name );
+		if ( translated && translated[0] ) {
+			translateStrings[i].localname = malloc( strlen( translated ) + 1 );
+			strcpy( translateStrings[i].localname, translated );
 		}
-		translateStrings[i].localname = malloc( strlen( token ) + 1 );
-		strcpy( translateStrings[i].localname, token );
 	}
 }
 
@@ -2161,6 +2150,16 @@ CG_translateString
 */
 const char *CG_translateString( const char *str ) {
 	int i, numStrings;
+	const char *csfText;
+
+	if ( !str || !str[0] ) {
+		return str;
+	}
+
+	csfText = CSF_GetString( str );
+	if ( csfText && csfText[0] ) {
+		return csfText;
+	}
 
 	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
 

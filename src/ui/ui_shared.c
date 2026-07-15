@@ -91,20 +91,20 @@ static char memoryPool[MEM_POOL_SIZE];
 static int allocPoint, outOfMemory;
 
 
-// these are expected to be translated by the strings.txt file
+// these are expected to be translated by the text/rtcw.csf file
 translateString_t translateStrings[] = {
-	{"end_time"},                //	"Time"
-	{"end_objectives"},          //	"Objectives"
-	{"end_secrets"},         //	"Secret Areas"
-	{"end_treasure"},            //	"Treasure"
-	{"end_attempts"},            //	"Attempts"
+	{"HUD_STATS_TIME"},                //	"Time"
+	{"HUD_STATS_OBJECTIVES"},          //	"Objectives"
+	{"HUD_STATS_SECRETS"},         //	"Secret Areas"
+	{"HUD_STATS_TREASURE"},            //	"Treasure"
+	{"HUD_STATS_ATTEMPTS"},            //	"Attempts"
 
-	{"missionfail0"},            //	"Mission Failed"
-	{"secretarea"},              //	"You found a secret area"
+	{"HUD_MESSAGE_MFAIL"},            //	"Mission Failed"
+	{"HUD_MESSAGE_SECRET"},              //	"You found a secret area"
 	{"objectivesnotcomplete"},   //	"Objectives not complete"
-	{"drankwine"},               //	"You drank the wine"
+	{"HUD_MESSAGE_WINE"},               //	"You drank the wine"
 	{"noitem"},                  //	"No item to use"
-	{"gamesaved"},               //	"Game Saved"
+	{"HUD_MESSAGE_SAVE"},               //	"Game Saved"
 
 	{"missionfail1"},            //	"Mission Failed\nYou Killed a Civilian"
 	{"missionfail2"},            //	"Mission Failed\nYou Killed a Kreisau Agent"
@@ -122,9 +122,9 @@ translateString_t translateStrings[] = {
 	{"missionfail14"},           //	"fail 14"
 	{"missionfail15"},           //	"fail 15"
 	{"missionfail16"},           //	"fail 16"
-	{"end_title"},               //	"Mission Stats"
-	{"end_exit"},                //	"Proceed forward to exit..."
-	{"end_noexit"},              //	"Exit not yet available"
+	{"HUD_STATS"},               //	"Mission Stats"
+	{"HUD_STATS_EXIT"},                //	"Proceed forward to exit..."
+	{"HUD_STATS_NOEXIT"},              //	"Exit not yet available"
 
 	{"yes"},                 //
 	{"no"},                      //
@@ -4849,6 +4849,10 @@ qboolean ItemParse_focusSound( itemDef_t *item, int handle ) {
 qboolean ItemParse_text( itemDef_t *item, int handle ) {
 	if ( !PC_String_Parse( handle, &item->text ) ) {
 		return qfalse;
+	}
+	// Resolve through CSF/localization if a translation is available.
+	if ( DC->getTranslatedString ) {
+		item->text = DC->getTranslatedString( item->text );
 	}
 	return qtrue;
 }
