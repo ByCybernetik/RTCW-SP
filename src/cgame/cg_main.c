@@ -753,6 +753,7 @@ static void CG_LoadPickupNames( void ) {
 	fileHandle_t f;
 	int len, i;
 	char *token;
+	int untranslatedCount = 0;
 
 	Com_sprintf( filename, MAX_QPATH, "text/pickupnames.txt" );
 	len = trap_FS_FOpenFile( filename, &f, FS_READ );
@@ -760,7 +761,7 @@ static void CG_LoadPickupNames( void ) {
 		CG_Printf( S_COLOR_RED "WARNING: pickup name file (pickupnames.txt not found in main/text)\n" );
 		return;
 	}
-	if ( len > MAX_BUFFER ) {
+	if ( len >= MAX_BUFFER ) {
 		CG_Error( "%s is too big, make it smaller (max = %i bytes)\n", filename, MAX_BUFFER );
 	}
 
@@ -771,6 +772,8 @@ static void CG_LoadPickupNames( void ) {
 	// parse the list
 	text = buffer;
 
+	CG_Printf( "CG_LoadPickupNames: CSF loaded=%d, %d items to resolve\n", CSF_IsLoaded(), bg_numItems );
+
 	for ( i = 0; i < bg_numItems; i++ ) {
 		token = COM_ParseExt( &text, qtrue );
 		if ( !token[0] ) {
@@ -778,46 +781,70 @@ static void CG_LoadPickupNames( void ) {
 		}
 		if ( !Q_stricmp( token, "---" ) ) {   // no name.  use hardcoded value
 			if ( bg_itemlist[i].pickup_name && strlen( bg_itemlist[i].pickup_name ) ) {
-				Com_sprintf( cgs.itemPrintNames[i], MAX_QPATH, bg_itemlist[ i ].pickup_name );
+				Q_strncpyz( cgs.itemPrintNames[i], bg_itemlist[ i ].pickup_name, sizeof( cgs.itemPrintNames[i] ) );
 			} else {
 				cgs.itemPrintNames[i][0] = 0;
 			}
 		} else {
-			Com_sprintf( cgs.itemPrintNames[i], MAX_QPATH, token );
+			const char *translated = NULL;
+			if ( CSF_IsLoaded() ) {
+				translated = CSF_GetString( token );
+			}
+			if ( translated && translated[0] ) {
+				Q_strncpyz( cgs.itemPrintNames[i], translated, sizeof( cgs.itemPrintNames[i] ) );
+			} else {
+				Q_strncpyz( cgs.itemPrintNames[i], token, sizeof( cgs.itemPrintNames[i] ) );
+				if ( strstr( token, "HUD_" ) || strstr( token, "UI_" ) ) {
+					untranslatedCount++;
+					if ( untranslatedCount <= 10 ) {
+						CG_Printf( S_COLOR_YELLOW "WARNING: CG_LoadPickupNames[%d]: '%s' not translated (CSF loaded=%d)\n", i, token, CSF_IsLoaded() );
+					}
+				}
+			}
 		}
 	}
+	if ( untranslatedCount > 0 ) {
+		CG_Printf( S_COLOR_YELLOW "WARNING: CG_LoadPickupNames: %d untranslated HUD_/UI_ names\n", untranslatedCount );
+	}
+	CG_Printf( "CG_LoadPickupNames: finished\n" );
 }
 
 // a straight dupe right now so I don't mess anything up while adding this
 static void CG_LoadTranslationStrings( void ) {
-	int i, numStrings;
+	int i;
+	int resolved;
+	char lang[MAX_CVAR_VALUE_STRING];
 
-	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
-	for ( i = 0; i < numStrings; i++ ) {
-		if ( translateStrings[i].localname ) {
-			free( translateStrings[i].localname );
-			translateStrings[i].localname = NULL;
-		}
-	}
+	CG_Printf( "CG_LoadTranslationStrings: start\n" );
 
-	if ( !CSF_Load( "text/rtcw.csf" ) ) {
+	String_FreeTranslations();
+
+	trap_Cvar_VariableStringBuffer( "cl_language", lang, sizeof( lang ) );
+	CG_Printf( "CG_LoadTranslationStrings: cl_language='%s'\n", lang );
+
+	if ( !CSF_LoadForLanguage( lang ) ) {
 		CG_Printf( S_COLOR_RED "WARNING: string translation file (text/rtcw.csf not found in main/text)\n" );
 		return;
 	}
 
-	for ( i = 0; i < numStrings; i++ ) {
+	resolved = 0;
+	for ( i = 0; translateStrings[i].name && translateStrings[i].name[0]; i++ ) {
 		const char *translated = CSF_GetString( translateStrings[i].name );
 		if ( translated && translated[0] ) {
 			translateStrings[i].localname = malloc( strlen( translated ) + 1 );
-			strcpy( translateStrings[i].localname, translated );
+			if ( translateStrings[i].localname ) {
+				strcpy( translateStrings[i].localname, translated );
+				resolved++;
+			}
 		}
 	}
+	CG_Printf( "CG_LoadTranslationStrings: resolved %d built-in labels\n", resolved );
 }
 
 
 static void CG_LoadTranslateStrings( void ) {
+	CG_LoadTranslationStrings();    // load CSF first so pickup names can use it
 	CG_LoadPickupNames();
-	CG_LoadTranslationStrings();    // right now just centerprint
 }
 
 //----(SA)	end
@@ -2149,8 +2176,9 @@ CG_translateString
 ==============
 */
 const char *CG_translateString( const char *str ) {
-	int i, numStrings;
+	int i;
 	const char *csfText;
+	static int missCount = 0;
 
 	if ( !str || !str[0] ) {
 		return str;
@@ -2161,13 +2189,12 @@ const char *CG_translateString( const char *str ) {
 		return csfText;
 	}
 
-	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
+	if ( CSF_IsLoaded() && missCount < 20 ) {
+		missCount++;
+		CG_Printf( "CG_translateString: '%s' not found in CSF (loaded=%d)\n", str, CSF_IsLoaded() );
+	}
 
-	for ( i = 0; i < numStrings; i++ ) {
-		if ( !translateStrings[i].name || !strlen( translateStrings[i].name ) ) {
-			return str;
-		}
-
+	for ( i = 0; translateStrings[i].name && translateStrings[i].name[0]; i++ ) {
 		if ( !strcmp( str, translateStrings[i].name ) ) {
 			if ( translateStrings[i].localname && strlen( translateStrings[i].localname ) ) {
 				return translateStrings[i].localname;
@@ -2421,6 +2448,12 @@ Called before every level change or subsystem restart
 =================
 */
 void CG_Shutdown( void ) {
+
+	// free the CSF translation table; it is rebuilt on the next CG_Init
+	CSF_Shutdown();
+
+	// free built-in translation strings allocated during CG_LoadTranslationStrings
+	String_FreeTranslations();
 
 	// some mods may need to do cleanup work here,
 	// like closing files or archiving session data

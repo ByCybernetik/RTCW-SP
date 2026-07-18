@@ -101,53 +101,63 @@ translateString_t translateStrings[] = {
 
 	{"HUD_MESSAGE_MFAIL"},            //	"Mission Failed"
 	{"HUD_MESSAGE_SECRET"},              //	"You found a secret area"
-	{"objectivesnotcomplete"},   //	"Objectives not complete"
+	{"HUD_MESSAGE_ONC"},         //	"Objectives not complete"
 	{"HUD_MESSAGE_WINE"},               //	"You drank the wine"
-	{"noitem"},                  //	"No item to use"
+	{"HUD_MESSAGE_NOITEM"},      //	"No item to use"
 	{"HUD_MESSAGE_SAVE"},               //	"Game Saved"
 
-	{"missionfail1"},            //	"Mission Failed\nYou Killed a Civilian"
-	{"missionfail2"},            //	"Mission Failed\nYou Killed a Kreisau Agent"
-	{"missionfail3"},            //	"Mission Failed\nYou Killed Kessler"
-	{"missionfail4"},            //	"Mission Failed\nYou Killed Karl"
-	{"missionfail5"},            //	"Mission Failed\nYou Have Been Detected"
-	{"missionfail6"},            //	"Mission Failed\nRocket Launched"
-	{"missionfail7"},            //	"Mission Failed\nThe Scientist Has Been Killed"
-	{"missionfail8"},            //	"fail 8"
-	{"missionfail9"},            //	"fail 9"
-	{"missionfail10"},           //	"fail 10"
-	{"missionfail11"},           //	"fail 11"
-	{"missionfail12"},           //	"fail 12"
-	{"missionfail13"},           //	"fail 13"
-	{"missionfail14"},           //	"fail 14"
-	{"missionfail15"},           //	"fail 15"
-	{"missionfail16"},           //	"fail 16"
+	{"HUD_MESSAGE_MFAIL_CIVILIAN"},	//	"Mission Failed\nYou Killed a Civilian"
+	{"HUD_MESSAGE_MFAIL_KREISAU"},	//	"Mission Failed\nYou Killed a Kreisau Agent"
+	{"HUD_MESSAGE_MFAIL_KESSLER"},	//	"Mission Failed\nYou Killed Kessler"
+	{"HUD_MESSAGE_MFAIL_KARL"},		//	"Mission Failed\nYou Killed Karl"
+	{"HUD_MESSAGE_MFAIL_DETECTED"},	//	"Mission Failed\nYou Have Been Detected"
+	{"HUD_MESSAGE_MFAIL_ROCKET"},	//	"Mission Failed\nRocket Launched"
+	{"HUD_MESSAGE_MFAIL_SCIENTIST"},	//	"Mission Failed\nThe Scientist Has Been Killed"
 	{"HUD_STATS"},               //	"Mission Stats"
 	{"HUD_STATS_EXIT"},                //	"Proceed forward to exit..."
 	{"HUD_STATS_NOEXIT"},              //	"Exit not yet available"
 
-	{"yes"},                 //
-	{"no"},                      //
-	{"keywait"},             //	"Waiting for new key... Press ESCAPE to cancel"
-	{"keychange"},               //	"Press ENTER or CLICK to change, Press BACKSPACE to clear"
-	{"pleasewait"},              //	"Please Wait..."
-	{"dynamitetimer"},           //	"Dynamite timer set at"
-	{"second"},                  //
-	{"seconds"},             //
-	{"minute"},                  //
-	{"minutes"},             //
-	{"hour"},                    //
-	{"hours"},                   //
-	{"day"},                 //
-	{"days"},                    //
-	{"month"},                   //
-	{"months"},                  //
-	{"year"},                    //
-	{"years"},                   //
-	{"or"}                       //
+	{"UI_YES"},                  //
+	{"UI_NO"},                   //
+	{"UI_CONTROL_WAITING"},      //	"Waiting for new key... Press ESCAPE to cancel"
+	{"UI_CONTROL_KEYCHANGE"},    //	"Press ENTER or CLICK to change, Press BACKSPACE to clear"
+	{"UI_PLEASEWAIT"},           //	"Please Wait..."
+	{"HUD_MESSAGE_DTIMER"},      //	"Dynamite timer set at"
+	{"HUD_MESSAGE_SECOND"},      //
+	{"HUD_MESSAGE_SECONDS"},     //
+	{"HUD_MESSAGE_MINUTE"},      //
+	{"HUD_MESSAGE_MINUTES"},     //
+	{"HUD_MESSAGE_HOUR"},        //
+	{"HUD_MESSAGE_HOURS"},       //
+	{"HUD_MESSAGE_DAY"},         //
+	{"HUD_MESSAGE_DAYS"},        //
+	{"HUD_MESSAGE_MONTH"},       //
+	{"HUD_MESSAGE_MONTHS"},      //
+	{"HUD_MESSAGE_YEAR"},        //
+	{"HUD_MESSAGE_YEARS"},       //
+	{"UI_CONTROL_OR"},           //
+	{NULL}                       // terminator
 };
 
 //----(SA)	added
+/*
+===============
+String_FreeTranslations
+
+Free any previously allocated translated strings so shutdown paths don't leak.
+===============
+*/
+void String_FreeTranslations( void ) {
+	int i;
+
+	for ( i = 0; translateStrings[i].name && translateStrings[i].name[0]; i++ ) {
+		if ( translateStrings[i].localname ) {
+			free( translateStrings[i].localname );
+			translateStrings[i].localname = NULL;
+		}
+	}
+}
+
 /*
 ==============
 UI_RoQDone
@@ -3450,7 +3460,7 @@ void Item_YesNo_Paint( itemDef_t *item ) {
 	vec4_t newColor, lowLight;
 	float value;
 	menuDef_t *parent = (menuDef_t*)item->parent;
-	const char *yes_str = "yes", *no_str = "no";
+	const char *yes_str = "UI_YES", *no_str = "UI_NO";
 
 	value = ( item->cvar ) ? DC->getCVarValue( item->cvar ) : 0;
 
@@ -3491,6 +3501,9 @@ void Item_Multi_Paint( itemDef_t *item ) {
 	}
 
 	text = Item_Multi_Setting( item );
+	if ( DC->getTranslatedString ) {
+		text = DC->getTranslatedString( text );
+	}
 
 	if ( item->text ) {
 		Item_Text_Paint( item );
@@ -3779,7 +3792,7 @@ void BindingFromName( const char *cvar ) {
 			if ( b2 != -1 ) {
 				DC->keynumToStringBuf( b2, g_nameBind2, 32 );
 				Q_strupr( g_nameBind2 );
-				strcat( g_nameBind1, va( " %s ", DC->getTranslatedString( "or" ) ) );
+				strcat( g_nameBind1, va( " %s ", DC->getTranslatedString( "UI_CONTROL_OR" ) ) );
 				strcat( g_nameBind1, g_nameBind2 );
 			}
 			return;
@@ -4847,12 +4860,20 @@ qboolean ItemParse_focusSound( itemDef_t *item, int handle ) {
 
 // text <string>
 qboolean ItemParse_text( itemDef_t *item, int handle ) {
+	const char *translated;
+
 	if ( !PC_String_Parse( handle, &item->text ) ) {
 		return qfalse;
 	}
 	// Resolve through CSF/localization if a translation is available.
 	if ( DC->getTranslatedString ) {
-		item->text = DC->getTranslatedString( item->text );
+		translated = DC->getTranslatedString( item->text );
+		if ( translated && translated[0] ) {
+			// Copy the translated string into the UI string pool. The CSF table
+			// can be reloaded by other VM modules while this menu item is still
+			// in use, so we must not keep a raw pointer into CSF-owned memory.
+			item->text = String_Alloc( translated );
+		}
 	}
 	return qtrue;
 }

@@ -74,6 +74,7 @@ inc_dirs = include_directories(
     'src/splines',
     'src/renderer',
     'src/stb',
+    'src/csf',
 )
 
 # Common sources
@@ -128,6 +129,7 @@ client_sources = files(
     'src/client/snd_mem.c',
     'src/client/snd_mix.c',
     'src/client/snd_wavelet.c',
+    'src/csf/csf_load.c',
 )
 
 # Server sources
@@ -301,6 +303,7 @@ game_sources = files(
     'src/game/g_weapon.c',
     'src/game/q_math.c',
     'src/game/q_shared.c',
+    'src/csf/csf_load.c',
 )
 
 qagame = shared_library('qagame' + arch,
@@ -406,7 +409,7 @@ wolfsp_sources = [
 
 wolfsp = executable('wolfsp_' + arch,
     wolfsp_sources,
-    c_args: common_c_args,
+    c_args: common_c_args + ['-DRTCW_CLIENT'],
     include_directories: inc_dirs,
     link_with: wolfsp_link_with,
     dependencies: wolfsp_deps,
@@ -417,7 +420,7 @@ wolfsp = executable('wolfsp_' + arch,
 # Standalone KTX texture viewer
 subdir('tools/ktx_viewer')
 
-# Copy game .so files into build/main/
+# Copy game .so files into the build's main/ directory (used when running from build_meson/).
 main_dir = 'main'
 
 custom_target('copy-qagame',
@@ -438,6 +441,31 @@ custom_target('copy-ui',
     input: ui,
     output: 'ui_copy.stamp',
     command: ['sh', '-c', 'mkdir -p ' + main_dir + ' && cp @INPUT@ ' + main_dir + '/ui' + arch + '.so && touch @OUTPUT@'],
+    build_by_default: true,
+)
+
+# Also copy game DLLs into the project's main/ directory so the engine picks them up
+# regardless of whether it's run from the source root or from the build directory.
+project_main_dir = meson.project_source_root() / 'main'
+
+custom_target('copy-qagame-to-project-main',
+    input: qagame,
+    output: 'qagame_project_copy.stamp',
+    command: ['sh', '-c', 'mkdir -p ' + project_main_dir + ' && cp @INPUT@ ' + project_main_dir + '/qagame' + arch + '.so && touch @OUTPUT@'],
+    build_by_default: true,
+)
+
+custom_target('copy-cgame-to-project-main',
+    input: cgame,
+    output: 'cgame_project_copy.stamp',
+    command: ['sh', '-c', 'mkdir -p ' + project_main_dir + ' && cp @INPUT@ ' + project_main_dir + '/cgame' + arch + '.so && touch @OUTPUT@'],
+    build_by_default: true,
+)
+
+custom_target('copy-ui-to-project-main',
+    input: ui,
+    output: 'ui_project_copy.stamp',
+    command: ['sh', '-c', 'mkdir -p ' + project_main_dir + ' && cp @INPUT@ ' + project_main_dir + '/ui' + arch + '.so && touch @OUTPUT@'],
     build_by_default: true,
 )
 

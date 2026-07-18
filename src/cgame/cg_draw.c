@@ -1646,8 +1646,8 @@ static void CG_DrawPickupItem( void ) {
 			//----(SA)	trying smaller text
 			color[0] = color[1] = color[2] = 1.0;
 			color[3] = fadeColor[0];
-			CG_DrawStringExt2( ICON_SIZE + 16, 398, pickupText, color, qfalse, qtrue, 10, 10, 0 );
-//			CG_Text_Paint(ICON_SIZE + 16, 398, 2, 0.3f, color, pickupText, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
+			CG_Text_Paint( ICON_SIZE + 16, 398, UI_FONT_SMALL, 0.3f, color, pickupText, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
+//			CG_DrawStringExt2( ICON_SIZE + 16, 398, pickupText, color, qfalse, qtrue, 10, 10, 0 );
 
 
 			trap_R_SetColor( NULL );
@@ -2010,8 +2010,11 @@ CG_DrawCenterString
 static void CG_DrawCenterString( void ) {
 	char    *start;
 	int l;
-	int x, y, w;
+	float x, y;
 	float   *color;
+	const int font = UI_FONT_SMALL;
+	const float scale = 0.2f;
+	const float lineHeight = CG_Text_Height( "A", font, scale, 0 );
 
 	if ( !cg.centerPrintTime ) {
 		return;
@@ -2022,11 +2025,9 @@ static void CG_DrawCenterString( void ) {
 		return;
 	}
 
-	trap_R_SetColor( color );
-
 	start = cg.centerPrint;
 
-	y = cg.centerPrintY - cg.centerPrintLines * BIGCHAR_HEIGHT / 2;
+	y = cg.centerPrintY - cg.centerPrintLines * lineHeight / 2;
 
 	// Center-print text must stay grouped and uniformly centered on wide screens,
 	// not have individual characters snapped to the left/right screen edges.
@@ -2043,17 +2044,12 @@ static void CG_DrawCenterString( void ) {
 		}
 		linebuffer[l] = 0;
 
-		w = cg.centerPrintCharWidth * CG_DrawStrlen( linebuffer );
+		x = ( SCREEN_WIDTH - CG_Text_Width( linebuffer, font, scale, 0 ) ) / 2;
 
-		x = ( SCREEN_WIDTH - w ) / 2;
+		CG_Text_Paint( x, y, font, scale, color, linebuffer, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
 
-		CG_DrawStringExt( x, y, linebuffer, color, qfalse, qtrue, cg.centerPrintCharWidth, (int)( cg.centerPrintCharWidth * 1.5 ), 0 );
-//		CG_Text_Paint(x, y, 2, 0.3f, color, linebuffer, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE);
+		y += lineHeight * 1.5f;
 
-//		y += cg.centerPrintCharWidth * 1.5;
-		y += cg.centerPrintCharWidth * 2;
-
-//		while ( *start && ( *start != '\n' ) && !Q_strncmp(start, "\\n", 1) ) {
 		while ( *start && ( *start != '\n' ) ) {
 			if ( !Q_strncmp( start, "\\n", 1 ) ) {
 				start++;
@@ -2068,8 +2064,6 @@ static void CG_DrawCenterString( void ) {
 	}
 
 	cg_drawUniformCentered = qfalse;
-
-	trap_R_SetColor( NULL );
 }
 
 
@@ -3210,8 +3204,10 @@ CG_DrawObjectiveInfo
 
 void CG_ObjectivePrint( const char *str, int charWidth, int team ) {
 	char    *s;
+	char    translated[1024];
 
-	Q_strncpyz( cg.oidPrint, str, sizeof( cg.oidPrint ) );
+	Q_strncpyz( translated, CG_translateString( str ), sizeof( translated ) );
+	Q_strncpyz( cg.oidPrint, translated, sizeof( cg.oidPrint ) );
 
 	cg.oidPrintTime = cg.time;
 	cg.oidPrintY = OID_TOP;

@@ -28,6 +28,30 @@ If you have questions concerning this license or the applicable additional terms
 
 
 #include "server.h"
+#include "../csf/csf_load.h"
+
+/*
+===============
+SV_TranslateString
+
+Returns the CSF translation for a label if CSF is loaded and the label exists,
+otherwise returns the provided fallback string.
+===============
+*/
+static const char *SV_TranslateString( const char *label, const char *fallback ) {
+	const char *s;
+
+	if ( !fallback ) {
+		fallback = "";
+	}
+
+	s = CSF_GetString( label );
+	if ( s && s[0] ) {
+		return s;
+	}
+
+	return fallback;
+}
 
 /*
 ===============================================================================
@@ -177,7 +201,8 @@ static void SV_Map_f( void ) {
 
 		size = FS_ReadFile( savemap, NULL );
 		if ( size < 0 ) {
-			Com_Printf( "Can't find savegame %s\n", savemap );
+			Com_Printf( va( (char *)SV_TranslateString( "CONSOLE_CANT_FIND_SAVEGAME", "Can't find savegame %s" ), savemap ) );
+			Com_Printf( "\n" );
 			return;
 		}
 
@@ -194,9 +219,9 @@ static void SV_Map_f( void ) {
 				FS_Delete( "save/current.svg" );
 // TTimo
 #ifdef __linux__
-				Com_Error( ERR_DROP, "Unable to save game.\n\nPlease check that you have at least 5mb free of disk space in your home directory." );
+				Com_Error( ERR_DROP, SV_TranslateString( "CONSOLE_SAVEGAME_DISK_SPACE_LINUX", "Unable to save game.\n\nPlease check that you have at least 5mb free of disk space in your home directory." ) );
 #else
-				Com_Error( ERR_DROP, "Insufficient free disk space.\n\nPlease free at least 5mb of free space on game drive." );
+				Com_Error( ERR_DROP, SV_TranslateString( "CONSOLE_SAVEGAME_DISK_SPACE_WIN", "Insufficient free disk space.\n\nPlease free at least 5mb of free space on game drive." ) );
 #endif
 				return;
 			}
@@ -230,7 +255,8 @@ static void SV_Map_f( void ) {
 	// a typo at the server console won't end the game
 	Com_sprintf( expanded, sizeof( expanded ), "maps/%s.bsp", map );
 	if ( FS_ReadFile( expanded, NULL ) == -1 ) {
-		Com_Printf( "Can't find map %s\n", expanded );
+		Com_Printf( va( (char *)SV_TranslateString( "CONSOLE_CANT_FIND_MAP", "Can't find map %s" ), expanded ) );
+		Com_Printf( "\n" );
 		return;
 	}
 
@@ -315,7 +341,7 @@ static void SV_MapRestart_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 
@@ -343,7 +369,7 @@ static void SV_MapRestart_f( void ) {
 	if ( sv_maxclients->modified || sv_gametype->modified ) {
 		char mapname[MAX_QPATH];
 
-		Com_Printf( "variable change -- restarting.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_VARIABLE_CHANGE_RESTART", "variable change -- restarting.\n" ) );
 		// restart the map the slow way
 		Q_strncpyz( mapname, Cvar_VariableString( "mapname" ), sizeof( mapname ) );
 
@@ -360,7 +386,8 @@ static void SV_MapRestart_f( void ) {
 
 		size = FS_ReadFile( savemap, NULL );
 		if ( size < 0 ) {
-			Com_Printf( "Can't find savegame %s\n", savemap );
+			Com_Printf( va( (char *)SV_TranslateString( "CONSOLE_CANT_FIND_SAVEGAME", "Can't find savegame %s" ), savemap ) );
+			Com_Printf( "\n" );
 			return;
 		}
 
@@ -428,7 +455,8 @@ static void SV_MapRestart_f( void ) {
 			// this generally shouldn't happen, because the client
 			// was connected before the level change
 			SV_DropClient( client, denied );
-			Com_Printf( "SV_MapRestart_f(%d): dropped client %i - denied!\n", delay, i ); // bk010125
+			Com_Printf( va( (char *)SV_TranslateString( "CONSOLE_MAP_RESTART_DENIED", "SV_MapRestart_f(%d): dropped client %i - denied!" ), delay, i ) ); // bk010125
+			Com_Printf( "\n" );
 			continue;
 		}
 
@@ -464,7 +492,7 @@ void    SV_LoadGame_f( void ) {
 
 	Q_strncpyz( filename, Cmd_Argv( 1 ), sizeof( filename ) );
 	if ( !filename[0] ) {
-		Com_Printf( "You must specify a savegame to load\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SPECIFY_SAVEGAME", "You must specify a savegame to load\n" ) );
 		return;
 	}
 	if ( Q_strncmp( filename, "save/", 5 ) && Q_strncmp( filename, "save\\", 5 ) ) {
@@ -481,7 +509,8 @@ void    SV_LoadGame_f( void ) {
 
 	size = FS_ReadFile( filename, NULL );
 	if ( size < 0 ) {
-		Com_Printf( "Can't find savegame %s\n", filename );
+		Com_Printf( va( (char *)SV_TranslateString( "CONSOLE_CANT_FIND_SAVEGAME", "Can't find savegame %s" ), filename ) );
+		Com_Printf( "\n" );
 		return;
 	}
 
@@ -537,7 +566,7 @@ static void SV_Kick_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 
@@ -596,7 +625,7 @@ static void SV_Ban_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 
@@ -652,7 +681,7 @@ static void SV_BanNum_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 
@@ -705,7 +734,7 @@ static void SV_KickNum_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 
@@ -741,11 +770,12 @@ static void SV_Status_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 
-	Com_Printf( "map: %s\n", sv_mapname->string );
+	Com_Printf( va( (char *)SV_TranslateString( "CONSOLE_MAP_NAME", "map: %s" ), sv_mapname->string ) );
+	Com_Printf( "\n" );
 
 	Com_Printf( "num score ping name            lastmsg address               qport rate\n" );
 	Com_Printf( "--- ----- ---- --------------- ------- --------------------- ----- -----\n" );
@@ -801,7 +831,7 @@ static void SV_ConSay_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 
@@ -873,7 +903,7 @@ static void SV_DumpUser_f( void ) {
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
-		Com_Printf( "Server is not running.\n" );
+		Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_NOT_RUNNING", "Server is not running.\n" ) );
 		return;
 	}
 

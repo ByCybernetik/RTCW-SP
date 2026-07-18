@@ -369,7 +369,7 @@ static void CG_UseItem( centity_t *cent ) {
 	// print a message if the local player
 	if ( es->number == cg.snap->ps.clientNum ) {
 		if ( !itemNum ) {
-			CG_CenterPrint( CG_translateString( "noitem" ), SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH ); //----(SA)	modified
+			CG_CenterPrint( CG_translateString( "HUD_MESSAGE_NOITEM" ), SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH ); //----(SA)	modified
 		} else {
 			item = BG_FindItemForHoldable( itemNum );
 

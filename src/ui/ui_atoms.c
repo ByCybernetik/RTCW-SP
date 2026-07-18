@@ -34,6 +34,7 @@ If you have questions concerning this license or the applicable additional terms
 	User interface building blocks and support functions.
 **********************************************************************/
 #include "ui_local.h"
+#include "../csf/csf_load.h"
 
 uiStatic_t uis;
 qboolean m_entersound;              // after a frame, so caching won't disrupt the sound
@@ -401,6 +402,8 @@ UI_Shutdown
 =================
 */
 void UI_Shutdown( void ) {
+	// Empty in original RTCW-SP; the CSF table is managed per-VM init/shutdown
+	// through UI_LoadTranslationStrings / _UI_Init, not here.
 }
 
 /*

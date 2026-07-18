@@ -1930,7 +1930,7 @@ qboolean AICast_ScriptAction_MissionFailed( cast_state_t *cs, char *params ) {
 	if ( mof < 0 ) {
 		mof = 0;
 	}
-	trap_SendServerCommand( -1, va( "cp missionfail%d", mof ) );
+	trap_SendServerCommand( -1, va( "cp %s", G_MissionFailedLabel( mof ) ) );
 
 	// reload the current savegame, after a delay
 	trap_SetConfigstring( CS_SCREENFADE, va( "1 %i %i", level.time + 250, time * 1000 ) );
@@ -2340,7 +2340,7 @@ qboolean AICast_ScriptAction_ChangeLevel( cast_state_t *cs, char *params ) {
 		// check for missing objectives
 		for ( i = 0; i < level.numObjectives; i++ ) {
 			if ( !( player->missionObjectives & ( 1 << i ) ) ) {
-				trap_SendServerCommand( -1, "cp objectivesnotcomplete" );
+				trap_SendServerCommand( -1, "cp HUD_MESSAGE_ONC" );
 				return qtrue;
 			}
 		}
@@ -2389,7 +2389,7 @@ qboolean AICast_ScriptAction_FoundSecret( cast_state_t *cs, char *params ) {
 	gentity_t *player = AICast_FindEntityForName( "player" );
 //	level.numSecretsFound++;
 	player->numSecretsFound++;
-	trap_SendServerCommand( -1, "cp secretarea" );
+	trap_SendServerCommand( -1, "cp HUD_MESSAGE_SECRET" );
 	G_SendMissionStats();
 	return qtrue;
 }

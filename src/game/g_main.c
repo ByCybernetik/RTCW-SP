@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 
 
 #include "g_local.h"
+#include "../csf/csf_load.h"
 
 level_locals_t level;
 
@@ -1247,6 +1248,15 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 
 	G_InitWorldSession();
 
+	{
+		char lang[MAX_CVAR_VALUE_STRING];
+		trap_Cvar_VariableStringBuffer( "cl_language", lang, sizeof( lang ) );
+		G_Printf( "G_InitGame: cl_language='%s'\n", lang );
+		if ( !CSF_LoadForLanguage( lang ) ) {
+			G_Printf( "WARNING: Could not load text/rtcw.csf, server strings will use fallbacks\n" );
+		}
+	}
+
 	// initialize all entities for this game
 	memset( g_entities, 0, MAX_GENTITIES * sizeof( g_entities[0] ) );
 	level.gentities = g_entities;
@@ -1380,6 +1390,8 @@ void G_ShutdownGame( int restart ) {
 	if ( trap_Cvar_VariableIntegerValue( "bot_enable" ) ) {
 		BotAIShutdown( restart );
 	}
+
+	CSF_Shutdown();
 }
 
 

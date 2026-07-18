@@ -740,6 +740,29 @@ qboolean G_ScriptAction_Accum( gentity_t *ent, char *params ) {
 
 /*
 =================
+G_MissionFailedLabel
+
+Maps the "means of failure" number used by map scripts to a CSF label.
+=================
+*/
+const char *G_MissionFailedLabel( int mof ) {
+	const char *label;
+	switch ( mof ) {
+	case 1:     label = "HUD_MESSAGE_MFAIL_CIVILIAN"; break;
+	case 2:     label = "HUD_MESSAGE_MFAIL_KREISAU"; break;
+	case 3:     label = "HUD_MESSAGE_MFAIL_KESSLER"; break;
+	case 4:     label = "HUD_MESSAGE_MFAIL_KARL"; break;
+	case 5:     label = "HUD_MESSAGE_MFAIL_DETECTED"; break;
+	case 6:     label = "HUD_MESSAGE_MFAIL_ROCKET"; break;
+	case 7:     label = "HUD_MESSAGE_MFAIL_SCIENTIST"; break;
+	default:    label = "HUD_MESSAGE_MFAIL"; break;
+	}
+	G_Printf( "G_MissionFailedLabel: mof=%d -> '%s'\n", mof, label );
+	return label;
+}
+
+/*
+=================
 G_ScriptAction_MissionFailed
 
   syntax: missionfailed
@@ -770,7 +793,7 @@ qboolean G_ScriptAction_MissionFailed( gentity_t *ent, char *params ) {
 	if ( mof < 0 ) {
 		mof = 0;
 	}
-	trap_SendServerCommand( -1, va( "cp missionfail%d", mof ) );
+	trap_SendServerCommand( -1, va( "cp %s", G_MissionFailedLabel( mof ) ) );
 
 	// reload the current savegame, after a delay
 	trap_SetConfigstring( CS_SCREENFADE, va( "1 %i %i", level.time + 250, time * 1000 ) );

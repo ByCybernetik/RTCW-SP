@@ -1,0 +1,3801 @@
+#include "ui/menudef.h"
+{
+
+	assetGlobalDef {
+//		cursor "gfx/2d/usablehint.tga"			// cursor	
+	}
+
+
+
+menuDef {
+	name "notebook"
+   	visible 0
+   	fullscreen 0
+   	rect 0 0 640 480
+	focusColor 1 .75 0 1
+   	style 1
+   	border 1
+	onOpen { play "sound/notebook/book_open.wav"; hide debrief; hide "page*"; showpage 0 }	// showpage 0 - show currently active page
+	onESC { play "sound/notebook/book_close.wav" }
+
+
+//	BUTTONS	//
+
+itemDef {
+	name background
+//	rect 50 50 540 380	// centered
+	rect 20 30 600 420	// centered
+	style WINDOW_STYLE_SHADER
+	background "notebook1"
+	forecolor 0 0 0 1
+	visible 1
+	decoration
+	}
+
+
+
+itemDef {
+	name button_prev
+	type 1
+	textscale .25
+	group grpControlbutton
+	type ITEM_TYPE_BUTTON
+	style WINDOW_STYLE_SHADER
+	background "ui/assets/pageturn.tga"
+	rect 29 380 64 64
+	textalign 1
+	textalignx 22
+	textaligny 20
+	forecolor 1 1 1 1
+	backcolor .37 .1 .1 1
+	visible 1
+	action { play "sound/notebook/book_pageflip.wav"; hide debrief; showpage "-1" }	// go to previous available page
+	mouseEnter { setitemcolor button_prev backcolor .1 .37 .1 1 } 
+	mouseExit { setitemcolor button_prev backcolor .37 .1 .1 1 } 
+	}
+
+
+
+
+itemDef {
+	name button_last
+	text "UI_END"
+	type 1
+	textscale .25
+	group grpControlbutton
+	type ITEM_TYPE_BUTTON
+	style WINDOW_STYLE_SHADER
+	background "ui/assets/bookmark_cover.tga"
+	rect 400 0 64 34
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	action { play "sound/notebook/book_close.wav"; hide debrief; showpage 999 }
+	mouseEnter { setitemcolor button_last backcolor .1 .37 .1 1 } 
+	mouseExit { setitemcolor button_last backcolor .37 .1 .1 1 } 
+	}
+
+
+
+itemDef {
+	name button_close
+	text "UI_CLOSE"
+	type 1
+	textscale .25
+	group grpControlbutton
+	type ITEM_TYPE_BUTTON
+	style WINDOW_STYLE_SHADER
+	background "ui/assets/bookmark_back.tga"
+	rect 400 436 64 34
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	action { close notebook }
+	mouseEnter { setitemcolor button_close backcolor .1 .37 .1 1 } 
+	mouseExit { setitemcolor button_close backcolor .37 .1 .1 1 } 
+	}
+
+
+
+// next page arrow button
+
+itemDef {
+	name button_next
+	type 1
+	textscale .25
+	group grpControlbutton
+	type ITEM_TYPE_BUTTON
+	style WINDOW_STYLE_SHADER
+	background "ui/assets/pageturn2"
+	rect 543 375 64 64
+	textalign 1
+	textalignx 22
+	textaligny 20
+	forecolor 1 1 1 1
+	backcolor .37 .1 .1 1
+	visible 2
+	action { play "sound/notebook/book_pageflip.wav"; hide debrief; showpage 1}	// go to next available page
+	mouseEnter { setitemcolor button_next backcolor .1 .37 .1 1 } 
+	mouseExit { setitemcolor button_next backcolor .37 .1 .1 1 } 
+	}
+
+
+
+itemDef {
+	name cover
+	rect 90 370 245 360
+	group cover
+	text "UI_COVER"
+	textalign 1
+	textstyle 0
+	textscale .333
+	textalignx 160
+	textaligny 23
+	forecolor .1 .1 .1 .75
+	visible 1
+	decoration
+}
+
+
+
+
+
+
+
+/// PAGES  ////////////////////
+
+
+
+
+	itemDef {
+		name page1a
+		group page1
+		cvarTest "mapname"
+		showcvar { "escape1" }	// added current map rev
+		rect 60 70 240 380
+		text "MISSION_RUMORS_ESCAPE1_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		autowrapped
+		decoration
+	}
+
+///////////// test image ////////////////// 
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "map_e1"
+	cvarTest "mapname"
+	showcvar { "escape1" }	// added current map rev
+	rect 60 170 230 280
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 70 230 380
+		cvarTest "mapname"
+		showcvar { "escape1", "escape2", "tram" }	// added current map rev
+		text "MISSION_RUMORS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		cvarTest "mapname"
+		showcvar { "escape1" }	// added current map rev
+		text "MISSION_RUMORS_ESCAPE1"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		cvarTest "mapname"
+		showcvar { "escape1", "escape2", "tram" }	// added current map rev
+		text "MISSION_RUMORS_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "kessler"
+	cvarTest "mapname"
+	showcvar {"escape1" }	// added current map rev
+	rect 60 170 180 180
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 100 360 240 20
+		text "NOTEBOOK_KESSLER"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "escape1" }
+		autowrapped
+		decoration
+	   }
+
+	itemDef {
+		name page2b
+		group page2
+		rect 345 70 230 380
+		cvarTest "mapname"
+		showcvar { "escape1" }	// added current map rev
+//		textfile "text/EnglishUSA/m1_l1_br_p4.txt"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		autowrapped
+		decoration
+	}
+
+
+
+////////////// new pages ///////////////////////////////////////////////
+
+
+
+/////////////// m1l2 ///////////////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_RUMORS_ESCAPE2_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "escape2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 180 220 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_TRAM"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "escape2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 100 380 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "escape2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 120 280 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_MIDSTATION"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "escape2" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_escape2"
+	cvarTest "mapname"
+	showcvar { "escape2" }	// added current map rev
+	rect 80 140 240 240
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		cvarTest "mapname"
+		showcvar { "escape2" }	// added current map rev
+		text "MISSION_RUMORS_ESCAPE2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "kessler"
+	cvarTest "mapname"
+	showcvar {"escape2" }	// added current map rev
+	rect 60 170 180 180
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 100 360 240 20
+		text "NOTEBOOK_KESSLER"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "escape2" }
+		autowrapped
+		decoration
+	   }
+
+
+//////////////// m1l3 ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_RUMORS_TRAM_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "tram" }
+		autowrapped
+		decoration
+	   }
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_tram"
+	cvarTest "mapname"
+	showcvar { "tram" }	// added current map rev
+	rect 80 180 240 240
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_RUMORS_TRAM"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "tram" }
+		autowrapped
+		decoration
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 100 360 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "tram" }
+		autowrapped
+		decoration
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 130 295 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_MIDSTATION"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "tram" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "mid_station"
+	cvarTest "mapname"
+	showcvar { "tram" }	// added current map rev
+	rect 120 180 120 240
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 90 200 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_MIDSTATION"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "tram" }
+		autowrapped
+		decoration
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 60 245 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_GH"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "tram" }
+		autowrapped
+		decoration
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 200 335 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_PC"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "tram" }
+		autowrapped
+		decoration
+	   }
+
+
+
+
+//////////////// m2l4 ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DS_VILLAGE_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village1" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_village"
+	cvarTest "mapname"
+	showcvar { "village1" }	// added current map rev
+	rect 80 180 240 240
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .6
+	backcolor .3 .3 .3 1
+	visible 1
+}
+	itemDef {
+		name page1b
+		group page1
+		rect 345 70 230 380
+		cvarTest "mapname"
+		showcvar { "village1", "crypt1", "crypt1", "crypt2", "church", "boss1" }	// added current map rev
+		text "MISSION_DS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 150 200 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 150 400 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_CRYPT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DS_VILLAGE1"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DS_VILLAGE1_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village1" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "partisan_house"
+	cvarTest "mapname"
+	showcvar {"village1" }	// added current map rev
+	rect 70 70 200 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .9
+	backcolor .3 .3 .3 1
+	visible 1
+}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 120 290 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_PH"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village1" }
+		autowrapped
+		decoration
+	}
+
+
+//////////////// m2l5 ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DS_CRYPT1_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt1" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_crypt"
+	cvarTest "mapname"
+	showcvar { "crypt1" }	// added current map rev
+	rect 55 180 260 220
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 150 210 240 20
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 160 400 240 20
+		text "NOTEBOOK_CRYPT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 380 240 20
+		text "NOTEBOOK_CHURCH"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt1" }
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DS_CRYPT1"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DS_CRYPT_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt1" }
+		autowrapped
+		decoration
+	}
+	itemDef {
+		name page2a
+		group page2
+		cvarTest "mapname"
+		showcvar { "crypt1" }
+		rect 60 70 240 380
+		text "MISSION_DS_CRYPT1_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+//////////////// m2l6 ////////////
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DS_CRYPT2_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt2" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_crypt"
+	cvarTest "mapname"
+	showcvar { "crypt2" }	// added current map rev
+	rect 55 140 260 220
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 150 170 240 20
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 160 360 240 20
+		text "NOTEBOOK_CRYPT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 340 240 20
+		text "NOTEBOOK_CHURCH"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt2" }
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DS_CRYPT2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DS_CRYPT_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "crypt2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2b
+		group page2
+		rect 345 60 215 380
+		cvarTest "mapname"
+		showcvar { "crypt2" }
+		textfile "text/EnglishUSA/m2_l6_br_p4.txt"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+//////////////// m2l7 ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DS_CRURCH_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "church" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_church"
+	cvarTest "mapname"
+	showcvar { "church" }	// added current map rev
+	rect 55 180 260 220
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 130 380 240 20
+		text "NOTEBOOK_CRYPT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "church" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 300 240 20
+		text "NOTEBOOK_CHURCH"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "church" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DS_CHURCH"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "church", "boss1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DS_CHURCH_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "church", "boss1" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "helga"
+	cvarTest "mapname"
+	showcvar {"church" }	// added current map rev
+	rect 70 70 200 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .9
+	backcolor .3 .3 .3 1
+	visible 1
+}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 60 290 240 20
+//		textfile "text/EnglishUSA/m1_l2_br_p1.txt"
+		text "NOTEBOOK_HELGA"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "church" }
+		autowrapped
+		decoration
+	}
+
+
+//////////////// m2l8 ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DS_BOSS1_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "boss1" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_church"
+	cvarTest "mapname"
+	showcvar { "boss1" }	// added current map rev
+	rect 55 140 260 220
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 130 340 240 20
+		text "NOTEBOOK_CRYPT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "boss1" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 260 240 20
+		text "NOTEBOOK_CHURCH"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "boss1" }
+		autowrapped
+		decoration
+	}
+
+    itemDef {
+		name page2a
+		group page2
+		style WINDOW_STYLE_SHADER
+		background "dagger"
+		cvarTest "mapname"
+		showcvar {"boss1" }	// added current map rev
+		rect 60 60 260 130
+		textalign 1
+		textalignx 32
+		textaligny 30
+		forecolor 1 1 1 .9
+		backcolor .3 .3 .3 1
+		visible 1
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 120 160 240 20
+		text "NOTEBOOK_DAGGER"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "boss1" }
+		autowrapped
+		decoration
+	}
+
+//////////////// m3l9 ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_WOV_FOREST_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "forest_route"
+	cvarTest "mapname"
+	showcvar { "forest" }	// added current map rev
+	rect 110 255 210 170
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 70 340 240 20
+		text "towers"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 90 385 240 20
+		text "NOTEBOOK_HOUSE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 180 400 240 20
+		text "NOTEBOOK_CP"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .3 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 70 230 380
+		text "MISSION_WOV"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest", "rocket", "baseout", "assault" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_WOV_FOREST"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_WOV_FOREST_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "m_forest"
+	cvarTest "mapname"
+	showcvar { "forest" }	// added current map rev
+	rect 55 40 260 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 120 220 240 20
+		text "NOTEBOOK_FOREST"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 220 140 240 20
+		text "OUTER BASE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "forest" }
+		autowrapped
+		decoration
+	}
+
+//////////////// m3l10 ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_WOV_ROCKET_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_rocket"
+	cvarTest "mapname"
+	showcvar { "rocket" }	// added current map rev
+	rect 55 210 260 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 120 400 240 20
+		text "NOTEBOOK_FOREST"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 220 370 240 20
+		text "NOTEBOOK_OB"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+	itemDef {
+		name page1a
+		group page1
+		rect 120 230 240 20
+		text "NOTEBOOK_AIR"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 240 240 20
+		text "NOTEBOOK_ROCKET"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_WOV_ROCKET"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_WOV_ROCKET_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		style WINDOW_STYLE_SHADER
+		background "rocket"
+		cvarTest "mapname"
+		showcvar { "rocket" }	// added current map rev
+		rect 55 40 230 210
+		textalign 1
+		textalignx 32
+		textaligny 30
+		forecolor 1 1 1 .7
+		backcolor .3 .3 .3 1
+		visible 1
+	   }
+
+
+	itemDef {
+		name page2a
+		group page2
+		rect 75 250 240 20
+		text "NOTEBOOK_CHEMICAL"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "rocket" }
+		autowrapped
+		decoration
+	}
+
+//////////////// BASEOUT ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_WOV_ROCKET_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_rocket"
+	cvarTest "mapname"
+	showcvar { "baseout" }	// added current map rev
+	rect 55 160 260 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 120 350 240 20
+		text "NOTEBOOK_FOREST"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 220 320 240 20
+		text "NOTEBOOK_OB"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	}
+	itemDef {
+		name page1a
+		group page1
+		rect 120 180 240 20
+		text "NOTEBOOK_AIR"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 190 240 20
+		text "NOTEBOOK_ROCKET"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	}
+
+
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_WOV_BASEOUT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	    }
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_WOV_BASEOUT_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	    }
+
+
+itemDef {
+		name page2a
+		group page2
+		style WINDOW_STYLE_SHADER
+		background "radar"
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		rect 40 60 260 140
+		textalign 1
+		textalignx 32
+		textaligny 30
+		forecolor 1 1 1 .7
+		backcolor .3 .3 .3 1
+		visible 1
+	   }
+
+itemDef {
+		name page2a
+		group page2
+		style WINDOW_STYLE_SHADER
+		background "radar"
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		rect 40 60 260 140
+		textalign 1
+		textalignx 32
+		textaligny 30
+		forecolor 1 1 1 .7
+		backcolor .3 .3 .3 1
+		visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 190 100 240 20
+		text "NOTEBOOK_RADAR"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 185 145 240 20
+		text "NOTEBOOK_EHAD"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "baseout" }
+		autowrapped
+		decoration
+	}
+
+//////////////// ASSAULT ////////////
+
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_WOV_ASSAULT_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "assault" }
+		autowrapped
+		decoration
+	}
+
+    itemDef {
+	    name page1a
+	    group page1
+	    style WINDOW_STYLE_SHADER
+	    background "m_assault"
+	    cvarTest "mapname"
+	    showcvar { "assault" }	// added current map rev
+	    rect 65 200 260 200
+	    textalign 1
+	    textalignx 32
+	    textaligny 30
+	    forecolor 1 1 1 .7
+	    backcolor .3 .3 .3 1
+	    visible 1
+	}
+
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 220 410 240 20
+		text "NOTEBOOK_OB"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "assault" }
+		autowrapped
+		decoration
+	}
+	itemDef {
+		name page1a
+		group page1
+		rect 160 250 240 20
+		text "NOTEBOOK_AIR"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "assault" }
+		autowrapped
+		decoration
+	}
+
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_WOV_ASSAULT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "assault" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_WOV_ASSAULT_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "assault" }
+		autowrapped
+		decoration
+	}
+
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "natter"
+	cvarTest "mapname"
+	showcvar { "assault" }	// added current map rev
+	rect 65 60 240 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 160 270 240 20
+		text "NOTEBOOK_KOBRA"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "assault" }
+		autowrapped
+		decoration
+	}
+
+//////////////// SFM ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DD_SFM_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "tank"
+	cvarTest "mapname"
+	showcvar { "sfm" }	// added current map rev
+	rect 120 280 170 150
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 80 285 240 20
+		text "NOTEBOOK_TANK"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 70 230 380
+		text "MISSION_DD"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm", "factory", "trainyard", "swf" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DD_SFM"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DD_SFM_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 420 230 380
+		text "MISSION_DD_SWF_NOTE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm", "factory", "trainyard" }
+		autowrapped
+		decoration
+	}
+
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "m_sfm"
+	cvarTest "mapname"
+	showcvar { "sfm" }	// added current map rev
+	rect 50 170 260 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 120 190 240 20
+		text "NOTEBOOK_KUGELSTADT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm" }
+		autowrapped
+		decoration
+	}
+	itemDef {
+		name page2a
+		group page2
+		rect 240 350 240 20
+		text "NOTEBOOK_DEFECTION"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .2 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "sfm" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page2b
+		group page2
+		rect 345 70 215 380
+		cvarTest "mapname"
+		showcvar { "sfm" }
+		text "MISSION_DD_SFM_BRIEFING2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+//////////////// FACTORY ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DD_FACTORY_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "factory" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_factory"
+	cvarTest "mapname"
+	showcvar { "factory" }	// added current map rev
+	rect 70 170 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+	itemDef {
+		name page1a
+		group page1
+		rect 230 200 240 20
+		text "NOTEBOOK_TRAINYARDS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "factory" }
+		autowrapped
+		decoration
+	}
+	itemDef {
+		name page1a
+		group page1
+		rect 160 370 240 20
+		text "NOTEBOOK_FACTORYAREA"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "factory" }
+		autowrapped
+		decoration
+	}
+
+
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DD_FACTOTY"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "factory" }
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DD_FACTORY_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "factory" }
+		autowrapped
+		decoration
+	}
+
+
+
+//////////////// TRAINYARD ////////////
+
+	itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DD_TARAINYARD_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "trainyard" }
+		autowrapped
+		decoration
+	}
+
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_trainyard"
+	cvarTest "mapname"
+	showcvar { "trainyard" }	// added current map rev
+	rect 70 180 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .9
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DD_TRAINYARD"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "trainyard" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DD_TRAINYARD_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "trainyard" }
+		autowrapped
+		decoration
+	}
+
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "trainyard"
+	cvarTest "mapname"
+	showcvar { "trainyard" }	// added current map rev
+	rect 65 60 240 200
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 100 270 240 20
+		text "NOTEBOOK_SWF"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "trainyard" }
+		autowrapped
+		decoration
+	}
+
+//////////////// SWF ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text"MISSION_DD_SWF_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "swf" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DD_SWF"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "swf" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DD_SWF_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "swf" }
+		autowrapped
+		decoration
+	}
+
+//////////////// NORWAY ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DP_NORWAY_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "norway"
+	cvarTest "mapname"
+	showcvar { "norway" }	// added current map rev
+	rect 70 170 220 220
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+itemDef {
+		name page1a
+		group page1
+		rect 80 360 240 20
+		text "NOTEBOOK_OB"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .7 .7 .7 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 120 200 240 20
+		text "NOTEBOOK_ETB"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .7 .7 .7 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 180 320 240 20
+		text "NOTEBOOK_DOCK"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .7 .7 .7 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 230 280 240 20
+		text "NOTEBOOK_UBOAT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .7 .7 .7 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 70 230 380
+		text "MISSION_DP"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway", "xlabs", "boss2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DP_NORWAY"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DP_NORWAY_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "norway" }
+		autowrapped
+		decoration
+	}
+
+
+//////////////// XLABS ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DP_XLABS_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "xlabs" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_DP_XLABS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "xlabs" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_DP_XLABS_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "xlabs", "boss2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		cvarTest "mapname"
+		showcvar { "xlabs", "boss2" }
+		rect 60 70 240 380
+		text "MISSION_DP_XLABS_BRIEFING2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+//////////////// BOSS2 ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_DP_BOSS2_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "boss2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text"MISSION_DP_BOSS2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "boss2" }
+		autowrapped
+		decoration
+	}
+
+//////////////// DAM ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_RE_DAM_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_dam"
+	cvarTest "mapname"
+	showcvar { "dam" }	// added current map rev
+	rect 70 170 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 140 215 240 20
+		text "NOTEBOOK_DAMAREA"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 200 265 240 20
+		text "NOTEBOOK_WT"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .2 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 80 320 240 20
+		text "NOTEBOOK_CR"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .2 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 260 400 240 20
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 70 230 380
+		text "MISSION_RE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam", "village2", "chateau", "dark" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_RE_DAM"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_RE_DAM_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dam" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		cvarTest "mapname"
+		showcvar { "dam" }
+		rect 60 70 240 380
+		text "MISSION_RE_DAM_BRIEFING2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+//////////////// VILLAGE2 ////////////
+
+
+
+itemDef {
+		name page1a
+		group page1
+		rect 64 72 240 30
+		text "NOTEBOOK_MISSIONS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+
+
+itemDef {
+		name page1a
+		group page1
+		rect 96 100 240 30
+		text "NOTEBOOK_HOCHSTEDDER"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+itemDef {
+		name page1a
+		group page1
+		rect 96 140 240 30
+		text "NOTEBOOK_STAUFF"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+itemDef {
+		name page1a
+		group page1
+		rect 96 180 240 30
+		text "NOTEBOOK_STRACHE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+itemDef {
+		name page1a
+		group page1
+		rect 96 220 240 30
+		text "NOTEBOOK_BURKHALTER"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+itemDef {
+		name page1a
+		group page1
+		rect 96 260 240 30
+		text "NOTEBOOK_HAUPMAN"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+itemDef {
+		name page1a
+		group page1
+		rect 96 300 240 30
+		text "NOTEBOOK_ALARM"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+itemDef {
+		name page1a
+		group page1
+		rect 96 340 240 30
+		text "NOTEBOOK_SCHUFSTAFFEL"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "generals"
+	cvarTest "mapname"
+	showcvar { "village2" }	// added current map rev
+	rect 295 340 320 45
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_RE_VILLAGE2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_RE_VILLAGE2_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		cvarTest "mapname"
+		showcvar { "village2" }
+		rect 60 70 240 380
+		text "MISSION_RE_VILLAGE2_BRIEFING2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page2a
+	group page2
+	style WINDOW_STYLE_SHADER
+	background "m_village2"
+	cvarTest "mapname"
+	showcvar { "village2" }	// added current map rev
+	rect 70 180 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 100 265 240 20
+		text "NOTEBOOK_DAM"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 220 350 240 20
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		rect 270 285 240 20
+		text "NOTEBOOK_CHATEAU"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "village2" }
+		autowrapped
+		decoration
+	}
+
+//////////////// CHATEAU ////////////
+
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_RE_CHATEAU_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "chateau" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_chateau"
+	cvarTest "mapname"
+	showcvar { "chateau" }	// added current map rev
+	rect 70 180 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 180 180 240 20
+		text "NOTEBOOK_ADS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "chateau" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 190 410 240 20
+		text "NOTEBOOK_CHATEAU"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "chateau" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 65 330 240 20
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "chateau" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_RE_CHATEAU"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "chateau" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_RE_CHATEAU_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "chateau" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page2a
+		group page2
+		cvarTest "mapname"
+		showcvar { "chateau" }
+		rect 60 70 240 380
+		text "MISSION_RE_CHATEAU_BRIEFING2"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+//////////////// DARK ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_RE_DARK_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dark" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_chateau"
+	cvarTest "mapname"
+	showcvar { "dark" }	// added current map rev
+	rect 70 170 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+	itemDef {
+		name page1a
+		group page1
+		rect 180 180 240 20
+		text "NOTEBOOK_ADS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dark" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 190 410 240 20
+		text "NOTEBOOK_CHATEAU"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dark" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 65 330 240 20
+		text "NOTEBOOK_VILLAGE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dark" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_RE_DARK"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dark" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_RE_CHATEAU_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dark" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+		name page2a
+		group page2
+		style WINDOW_STYLE_SHADER
+		background "dark"
+		cvarTest "mapname"
+		showcvar { "dark" }	// added current map rev
+		rect 135 200 150 150
+		textalign 1
+		textalignx 32
+		textaligny 30
+		forecolor 1 1 1 .7
+		backcolor .3 .3 .3 1
+		visible 1
+	   }
+
+	itemDef {
+		name page2a
+		group page2
+		rect 180 360 340 20
+		text "NOTEBOOK_ADS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dark" }
+		autowrapped
+		decoration
+	}
+
+//////////////// DIG ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_OR_DIG_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dig" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_dig"
+	cvarTest "mapname"
+	showcvar { "dig" }	// added current map rev
+	rect 70 170 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+itemDef {
+		name page1a
+		group page1
+		rect 180 180 240 20
+		text "NOTEBOOK_RC"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dig" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 130 380 240 20
+		text "NOTEBOOK_DIGSITE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dig" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 150 330 240 20
+		text "NOTEBOOK_IC"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dig" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 70 230 380
+		text "MISSION_OR"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dig", "castle", "end" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_OR_DIG"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dig" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 110 230 380
+		text "MISSION_OR_BRIEFING"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "dig", "castle", "end" }
+		autowrapped
+		decoration
+	}
+
+//////////////// CASTLE ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		text "MISSION_OR_CASTLE_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "castle" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_castle"
+	cvarTest "mapname"
+	showcvar { "castle" }	// added current map rev
+	rect 70 170 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+itemDef {
+		name page1a
+		group page1
+		rect 100 180 240 20
+		text "NOTEBOOK_RC"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "castle" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 130 380 240 20
+		text "NOTEBOOK_DIGSITE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "castle" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 230 240 20
+		text "NOTEBOOK_MDS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "castle" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 120 300 240 20
+		text "NOTEBOOK_IC"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "castle" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_OR_CASTLE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "castle" }
+		autowrapped
+		decoration
+	}
+
+//////////////// END ////////////
+
+itemDef {
+		name page1a
+		group page1
+		rect 60 70 240 380
+		textfile "MISSION_OR_END_OBJECTIVES"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "end" }
+		autowrapped
+		decoration
+	}
+
+itemDef {
+	name page1a
+	group page1
+	style WINDOW_STYLE_SHADER
+	background "m_castle"
+	cvarTest "mapname"
+	showcvar { "end" }	// added current map rev
+	rect 70 170 230 230
+	textalign 1
+	textalignx 32
+	textaligny 30
+	forecolor 1 1 1 .7
+	backcolor .3 .3 .3 1
+	visible 1
+	   }
+
+
+
+itemDef {
+		name page1a
+		group page1
+		rect 100 180 240 20
+		text "NOTEBOOK_RC"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "end" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 130 380 240 20
+		text "NOTEBOOK_DIGSITE"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "end" }
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name page1a
+		group page1
+		rect 240 230 240 20
+		text "NOTEBOOK_MDS"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .7
+		visible 1
+		cvarTest "mapname"
+		showcvar { "end" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1a
+		group page1
+		rect 120 300 240 20
+		text "NOTEBOOK_IC"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .9
+		visible 1
+		cvarTest "mapname"
+		showcvar { "end" }
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name page1b
+		group page1
+		rect 345 90 230 380
+		text "MISSION_OR_END"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		cvarTest "mapname"
+		showcvar { "end" }
+		autowrapped
+		decoration
+	}
+
+// check boxes
+
+	itemDef {
+		name check1
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		group page1
+		background "ui/assets/checkmark.tga"
+		cvarTest "g_objective1"
+		showcvar { "1" }
+		rect 72 82 20 20
+		forecolor .1 .1 .1 .9
+		visible 1
+		decoration
+	}
+
+	itemDef {
+		name check2
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		group page1
+		background "ui/assets/checkmark.tga"
+		cvarTest "g_objective2"
+		showcvar { "1" }
+		rect 72 122 20 20
+		forecolor .1 .1 .1 .9
+		visible 1
+		decoration
+	}
+
+	itemDef {
+		name check3
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		group page1
+		background "ui/assets/checkmark.tga"
+		cvarTest "g_objective3"
+		showcvar { "1" }
+		rect 72 162 20 20
+		forecolor .1 .1 .1 .9
+		visible 1
+		decoration
+	}
+
+	itemDef {
+		name check4
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		group page1
+		background "ui/assets/checkmark.tga"
+		cvarTest "g_objective4"
+		showcvar { "1" }
+		rect 72 202 20 20
+		forecolor .1 .1 .1 .9
+		visible 1
+		decoration
+	}
+
+	itemDef {
+		name check5
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		group page1
+		background "ui/assets/checkmark.tga"
+		cvarTest "g_objective5"
+		showcvar { "1" }
+		rect 72 242 20 20
+		forecolor .1 .1 .1 .9
+		visible 1
+		decoration
+	}
+
+	itemDef {
+		name check6
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		group page1
+		background "ui/assets/checkmark.tga"
+		cvarTest "g_objective6"
+		showcvar { "1" }
+		rect 72 282 20 20
+		forecolor .1 .1 .1 .9
+		visible 1
+		decoration
+	}
+
+	itemDef {
+		name check7
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		group page1
+		background "ui/assets/checkmark.tga"
+		cvarTest "g_objective7"
+		showcvar { "1" }
+		rect 72 322 20 20
+		forecolor .1 .1 .1 .9
+		visible 1
+		decoration
+	}
+
+
+
+	
+
+/// DE-BRIEFING PAGES  //////////////////
+
+	itemDef {
+		group debrief
+		rect 70 70 220 360
+		name page501
+		text "DEBRIEFING_MISSION1"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+
+	}
+
+	itemDef {
+		group debrief
+		rect 70 70 220 360
+		name page502
+		text "DEBRIEFING_MISSION2"
+	//	textfile "text/EnglishUSA/mission1d.txt"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		group debrief
+		rect 70 70 220 360
+		name page503
+		text "DEBRIEFING_MISSION3"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		group debrief
+		rect 70 70 220 360
+		name page504
+		text "DEBRIEFING_MISSION4"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		group debrief
+		rect 70 70 220 360
+		name page505
+		text "DEBRIEFING_MISSION5"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		group debrief
+		rect 70 70 220 360
+		name page506
+		text "DEBRIEFING_MISSION6"
+		textfont UI_FONT_HANDWRITING
+		textscale .2
+		forecolor .1 .1 .1 .75
+		visible 1
+		autowrapped
+		decoration
+	}
+
+
+/// DE-BRIEFING TABS  //////////////////
+
+	itemDef {
+		name button_last
+		type 1
+		group grpControlbutton
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		background "ui/assets/tab.tga"
+		rect 8 250 20 40
+		forecolor 1 1 1 1
+		cvarTest "g_episode"
+		showcvar { "6" }
+		text "6"
+		textscale .2
+		textalignx 10
+		textaligny 25
+		backcolor .3 .3 .3 1
+		visible 1
+		action { play "sound/notebook/book_close.wav"; hide debrief; showpage 506 }
+		mouseEnter { setitemcolor button_last backcolor .1 .37 .1 1 }
+		mouseExit { setitemcolor button_last backcolor .37 .1 .1 1 }
+		}
+
+	itemDef {
+		name button_last
+		type 1
+		group grpControlbutton
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		background "ui/assets/tab.tga"
+		rect 8 210 20 40
+		forecolor 1 1 1 1
+		cvarTest "g_episode"
+		showcvar { "5"; "6" }
+		text "5"
+		textscale .2
+		textalignx 10
+		textaligny 25
+		backcolor .3 .3 .3 1
+		visible 1
+		action { play "sound/notebook/book_close.wav"; hide debrief; showpage 505 }
+		mouseEnter { setitemcolor button_last backcolor .1 .37 .1 1 }
+		mouseExit { setitemcolor button_last backcolor .37 .1 .1 1 }
+		}
+
+	itemDef {
+		name button_last
+		type 1
+		group grpControlbutton
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		background "ui/assets/tab.tga"
+		rect 8 170 20 40
+		forecolor 1 1 1 1
+		backcolor .3 .3 .3 1
+		cvarTest "g_episode"
+		showcvar { "4"; "5"; "6" }
+		text "4"
+		textalignx 10
+		textaligny 25
+		textscale .2
+		visible 1
+		action { play "sound/notebook/book_close.wav"; hide debrief; showpage 504 }
+		mouseEnter { setitemcolor button_last backcolor .1 .37 .1 1 }
+		mouseExit { setitemcolor button_last backcolor .37 .1 .1 1 }
+		}
+
+	itemDef {
+		name button_last
+		type 1
+		group grpControlbutton
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		background "ui/assets/tab.tga"
+		rect 8 130 20 40
+		forecolor 1 1 1 1
+		backcolor .3 .3 .3 1
+		cvarTest "g_episode"
+		text "3"
+		textalignx 10
+		textaligny 25
+		textscale .2
+		showcvar { "3"; "4"; "5"; "6" }
+		visible 1
+		action { play "sound/notebook/book_close.wav"; hide debrief; showpage 503 }
+		mouseEnter { setitemcolor button_last backcolor .1 .37 .1 1 }
+		mouseExit { setitemcolor button_last backcolor .37 .1 .1 1 }
+		}
+
+	itemDef {
+		name button_last
+		type 1
+		group grpControlbutton
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		background "ui/assets/tab.tga"
+		rect 8 90 20 40
+		forecolor 1 1 1 1
+		backcolor .3 .3 .3 1
+		cvarTest "g_episode"
+		showcvar { "2"; "3"; "4"; "5"; "6" }
+		text "2"
+		textalignx 10
+		textaligny 25
+		textscale .2
+		visible 1
+		action { play "sound/notebook/book_close.wav"; hide debrief; showpage 502 }
+		mouseEnter { setitemcolor button_last backcolor .1 .37 .1 1 }
+		mouseExit { setitemcolor button_last backcolor .37 .1 .1 1 }
+		}
+
+
+	itemDef {
+		name button_last
+		type 1
+		group grpControlbutton
+		type ITEM_TYPE_BUTTON
+		style WINDOW_STYLE_SHADER
+		background "ui/assets/tab.tga"
+		rect 8 50 20 40
+		forecolor 1 1 1 1
+		backcolor .3 .3 .3 1
+		cvarTest "g_episode"
+		showcvar { "1"; "2"; "3"; "4"; "5"; "6" }
+		text "1"
+		textscale .2
+		textalignx 10
+		textaligny 25
+		visible 1
+		action { play "sound/notebook/book_close.wav"; hide debrief; showpage 501 }
+		mouseEnter { setitemcolor button_last backcolor .1 .37 .1 1 }
+		mouseExit { setitemcolor button_last backcolor .37 .1 .1 1 }
+		}
+
+/// END DE-BRIEFING TABS //////////////////
+
+
+		}	// end menudef
+}	// end all
+
+

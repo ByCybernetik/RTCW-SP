@@ -827,7 +827,7 @@ static void CG_ServerCommand( void ) {
 
 	if ( !strcmp( cmd, "dp" ) ) {    // dynamite print (what a hack :(
 
-		CG_CenterPrint( va( "%s %d %s", CG_translateString( "dynamitetimer" ), atoi( CG_Argv( 1 ) ), CG_translateString( "seconds" ) ),
+		CG_CenterPrint( va( "%s %d %s", CG_translateString( "HUD_MESSAGE_DTIMER" ), atoi( CG_Argv( 1 ) ), CG_translateString( "HUD_MESSAGE_SECONDS" ) ),
 						SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH );
 		return;
 	}

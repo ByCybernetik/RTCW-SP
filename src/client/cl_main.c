@@ -29,7 +29,31 @@ If you have questions concerning this license or the applicable additional terms
 // cl_main.c  -- client main loop
 
 #include "client.h"
+#include "../csf/csf_load.h"
 #include <limits.h>
+
+/*
+===============
+CL_TranslateString
+
+Returns the CSF translation for a label if CSF is loaded and the label exists,
+otherwise returns the provided fallback string.
+===============
+*/
+static const char *CL_TranslateString( const char *label, const char *fallback ) {
+	const char *s;
+
+	if ( !fallback ) {
+		fallback = "";
+	}
+
+	s = CSF_GetString( label );
+	if ( s && s[0] ) {
+		return s;
+	}
+
+	return fallback;
+}
 
 cvar_t  *cl_nodelta;
 cvar_t  *cl_debugMove;
@@ -793,7 +817,7 @@ void CL_ForwardCommandToServer( const char *string ) {
 	}
 
 	if ( clc.demoplaying || cls.state < CA_CONNECTED || cmd[0] == '+' ) {
-		Com_Printf( "Unknown command \"%s\"\n", cmd );
+		Com_Printf( CL_TranslateString( "CONSOLE_UNKNOWN_CMD", "Unknown command \"%s\"\n" ), cmd );
 		return;
 	}
 
@@ -816,13 +840,13 @@ void CL_RequestMotd( void ) {
 	if ( !cl_motd->integer ) {
 		return;
 	}
-	Com_Printf( "Resolving %s\n", UPDATE_SERVER_NAME );
+	Com_Printf( CL_TranslateString( "CONSOLE_RESOLVING", "Resolving %s\n" ), UPDATE_SERVER_NAME );
 	if ( !NET_StringToAdr( UPDATE_SERVER_NAME, &cls.updateServer  ) ) {
-		Com_Printf( "Couldn't resolve address\n" );
+		Com_Printf( CL_TranslateString( "CONSOLE_COULDNT_RESOLVE", "Couldn't resolve address\n" ) );
 		return;
 	}
 	cls.updateServer.port = BigShort( PORT_UPDATE );
-	Com_Printf( "%s resolved to %i.%i.%i.%i:%i\n", UPDATE_SERVER_NAME,
+	Com_Printf( CL_TranslateString( "CONSOLE_RESOLVED_TO", "%s resolved to %i.%i.%i.%i:%i\n" ), UPDATE_SERVER_NAME,
 				cls.updateServer.ip[0], cls.updateServer.ip[1],
 				cls.updateServer.ip[2], cls.updateServer.ip[3],
 				BigShort( cls.updateServer.port ) );
@@ -2204,21 +2228,6 @@ static void CL_Cache_EndGather_f( void ) {
 
 /*
 ================
-CL_MapRestart_f
-================
-*/
-void CL_MapRestart_f( void ) {
-	if ( !com_cl_running ) {
-		return;
-	}
-	if ( !com_cl_running->integer ) {
-		return;
-	}
-	Com_Printf( "This command is no longer functional.\nUse \"loadgame current\" to load the current map." );
-}
-
-/*
-================
 CL_SetRecommended_f
 ================
 */
@@ -2470,6 +2479,53 @@ void CL_ShellExecute_URL_f( void ) {
 	Sys_OpenURL( Cmd_Argv( 2 ),doexit );
 }
 //----(SA) end
+
+/*
+==================
+CL_SetLanguage_f
+
+Sets cl_language and reloads CSF-dependent subsystems.
+usage: setlanguage <us|ru|fe|ge|it|sp>
+==================
+*/
+void CL_SetLanguage_f( void ) {
+	const char *lang;
+	const char *code;
+	qboolean loaded;
+
+	if ( Cmd_Argc() != 2 ) {
+		Com_Printf( "usage: setlanguage <us|ru|fe|ge|it|sp>\n" );
+		return;
+	}
+
+	lang = Cmd_Argv( 1 );
+	code = CSF_GetLanguageCode( lang );
+	Cvar_Set( "cl_language", lang );
+
+	Com_Printf( "Language set to %s. Reloading CSF...\n", code );
+
+	// Reload client-side CSF immediately so the engine itself uses the new labels.
+	CSF_Shutdown();
+	loaded = CSF_LoadForLanguage( cl_language->string );
+	if ( loaded ) {
+		Com_Printf( "Loaded CSF for language '%s'.\n", code );
+	} else {
+		Com_Printf( "WARNING: Could not load CSF for language '%s', using fallbacks.\n", code );
+	}
+
+	if ( com_sv_running && com_sv_running->integer ) {
+		// map_restart (handled by SV_MapRestart_f, which does not send a new
+		// gamestate) reloads only qagame. vid_restart reloads cgame and UI.
+		// Both are needed so every module picks up the new language.
+		Com_Printf( "Restarting map and video so game modules reload their CSF...\n" );
+		Cbuf_ExecuteText( EXEC_APPEND, "map_restart\nvid_restart\n" );
+	} else {
+		// In the menus restart the renderer so UI/cgame reload their CSF.
+		Com_Printf( "Restarting video so UI/cgame reload their CSF...\n" );
+		Cbuf_ExecuteText( EXEC_APPEND, "vid_restart\n" );
+	}
+}
+
 //===========================================================================================
 
 /*
@@ -2587,7 +2643,7 @@ void CL_Init( void ) {
 #endif
 
 	// NERVE - SMF - localization
-	cl_language = Cvar_Get( "cl_language", "0", CVAR_ARCHIVE );
+	cl_language = Cvar_Get( "cl_language", "us", CVAR_ARCHIVE );
 	cl_debugTranslation = Cvar_Get( "cl_debugTranslation", "0", 0 );
 	// -NERVE - SMF
 
@@ -2637,10 +2693,8 @@ void CL_Init( void ) {
 	Cmd_AddCommand( "shellExecute", CL_ShellExecute_URL_f );
 	//Cmd_AddCommand ( "shellExecute", CL_ShellExecute_f );	//----(SA) added (mainly for opening web pages from the menu)
 
-	// RF, prevent users from issuing a map_restart manually
-	Cmd_AddCommand( "map_restart", CL_MapRestart_f );
-
 	Cmd_AddCommand( "setRecommended", CL_SetRecommended_f );
+	Cmd_AddCommand( "setlanguage", CL_SetLanguage_f );
 
 	CL_InitRef();
 
@@ -2649,6 +2703,12 @@ void CL_Init( void ) {
 	Cbuf_Execute();
 
 	Cvar_Set( "cl_running", "1" );
+
+	Com_Printf( "CL_Init: cl_language='%s'\n", cl_language->string );
+
+	if ( !CSF_LoadForLanguage( cl_language->string ) ) {
+		Com_Printf( "WARNING: Could not load text/rtcw.csf, console strings will use fallbacks\n" );
+	}
 
 	Com_Printf( "----- Client Initialization Complete -----\n" );
 }
@@ -2706,9 +2766,12 @@ void CL_Shutdown( void ) {
 	Cmd_RemoveCommand( "cache_endgather" );
 
 	Cmd_RemoveCommand( "updatehunkusage" );
+	Cmd_RemoveCommand( "setlanguage" );
 	// done.
 
 	Cvar_Set( "cl_running", "0" );
+
+	CSF_Shutdown();
 
 	recursive = qfalse;
 

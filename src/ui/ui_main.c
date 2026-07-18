@@ -768,6 +768,12 @@ _UI_Shutdown
 */
 void _UI_Shutdown( void ) {
 	trap_LAN_SaveCachedServers();
+
+	// Do NOT free translation strings here. Old menu items from the previous
+	// VM instance (e.g. the briefing screen) may still be referenced during the
+	// shutdown/level-load window, and their item->text pointers would become
+	// dangling. The strings are freed and reloaded safely inside
+	// UI_LoadTranslationStrings at the start of the next _UI_Init.
 }
 
 char *defaultMenu = NULL;
@@ -1109,32 +1115,38 @@ void UI_LoadMenus( const char *menuFile, qboolean reset ) {
 UI_LoadTranslationStrings
 ==============
 */
-#define MAX_BUFFER          20000
 static void UI_LoadTranslationStrings( void ) {
 	// Free any previous translations before loading CSF.
-	int i, numStrings;
+	int i;
+	int resolved;
+	char lang[MAX_CVAR_VALUE_STRING];
 
-	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
-	for ( i = 0; i < numStrings; i++ ) {
-		if ( translateStrings[i].localname ) {
-			free( translateStrings[i].localname );
-			translateStrings[i].localname = NULL;
-		}
-	}
+	Com_Printf( "UI_LoadTranslationStrings: start\n" );
 
-	if ( !CSF_Load( "text/rtcw.csf" ) ) {
+	String_FreeTranslations();
+
+	trap_Cvar_VariableStringBuffer( "cl_language", lang, sizeof( lang ) );
+	Com_Printf( "UI_LoadTranslationStrings: cl_language='%s'\n", lang );
+
+	if ( !CSF_LoadForLanguage( lang ) ) {
 		// CSF is optional; fall back to the built-in English strings.
+		Com_Printf( "UI_LoadTranslationStrings: failed to load any CSF\n" );
 		return;
 	}
 
 	// Pre-resolve built-in keys against the CSF table so existing code keeps working.
-	for ( i = 0; i < numStrings; i++ ) {
+	resolved = 0;
+	for ( i = 0; translateStrings[i].name && translateStrings[i].name[0]; i++ ) {
 		const char *translated = CSF_GetString( translateStrings[i].name );
 		if ( translated && translated[0] ) {
 			translateStrings[i].localname = malloc( strlen( translated ) + 1 );
-			strcpy( translateStrings[i].localname, translated );
+			if ( translateStrings[i].localname ) {
+				strcpy( translateStrings[i].localname, translated );
+				resolved++;
+			}
 		}
 	}
+	Com_Printf( "UI_LoadTranslationStrings: resolved %d built-in labels\n", resolved );
 }
 
 
@@ -1636,7 +1648,7 @@ static void UI_DrawLoadStatus( rectDef_t *rect, vec4_t color, int align ) {
 		UI_FilledBar( rect->x, rect->y, rect->w, rect->h, color, NULL, NULL, percentDone, flags ); // flags (BAR_CENTER|BAR_VERT|BAR_LERP_COLOR)
 	} else {
 //		Text_Paint( rect->x, rect->y, UI_FONT_DEFAULT, 0.2f, color, "Please Wait...", 0, 0, 0);
-		Text_Paint( rect->x, rect->y, UI_FONT_DEFAULT, 0.2f, color, DC->getTranslatedString( "pleasewait" ), 0, 0, 0 );
+		Text_Paint( rect->x, rect->y, UI_FONT_DEFAULT, 0.2f, color, DC->getTranslatedString( "UI_PLEASEWAIT" ), 0, 0, 0 );
 	}
 
 }
@@ -2234,10 +2246,10 @@ static int UI_OwnerDrawWidth( int ownerDraw, int font, float scale ) {
 	case UI_KEYBINDSTATUS:
 		if ( Display_KeyBindPending() ) {
 //			s = "Waiting for new key... Press ESCAPE to cancel";
-			s = DC->getTranslatedString( "keywait" );
+			s = DC->getTranslatedString( "UI_CONTROL_WAITING" );
 		} else {
 //			s = "Press ENTER or CLICK to change, Press BACKSPACE to clear";
-			s = DC->getTranslatedString( "keychange" );
+			s = DC->getTranslatedString( "UI_CONTROL_KEYCHANGE" );
 		}
 		break;
 	case UI_SERVERREFRESHDATE:
@@ -2443,10 +2455,10 @@ static void UI_DrawKeyBindStatus( rectDef_t *rect, int font, float scale, vec4_t
 	//int ofs = 0; // TTimo: unused
 	if ( Display_KeyBindPending() ) {
 //		Text_Paint(rect->x, rect->y, font, scale, color, "Waiting for new key... Press ESCAPE to cancel", 0, 0, textStyle);
-		Text_Paint( rect->x, rect->y, font, scale, color, DC->getTranslatedString( "keywait" ), 0, 0, textStyle );
+		Text_Paint( rect->x, rect->y, font, scale, color, DC->getTranslatedString( "UI_CONTROL_WAITING" ), 0, 0, textStyle );
 	} else {
 //		Text_Paint(rect->x, rect->y, font, scale, color, "Press ENTER or CLICK to change, Press BACKSPACE to clear", 0, 0, textStyle);
-		Text_Paint( rect->x, rect->y, font, scale, color, DC->getTranslatedString( "keychange" ), 0, 0, textStyle );
+		Text_Paint( rect->x, rect->y, font, scale, color, DC->getTranslatedString( "UI_CONTROL_KEYCHANGE" ), 0, 0, textStyle );
 
 	}
 }
@@ -3608,13 +3620,52 @@ static void UI_DelSavegame() {
 
 /*
 ==============
+UI_LocalizeSavegameInfo
+
+Replace CSF labels inside the savegame info block with translated text.
+==============
+*/
+static void UI_LocalizeSavegameInfo( char *out, int outSize, const char *in ) {
+	const char *p = in;
+	int i = 0;
+
+	while ( *p && i < outSize - 1 ) {
+		if ( !Q_stricmpn( p, "UI_LOADGAME_LEVELTIME", 21 ) && ( p[21] == ':' || p[21] == '\0' || p[21] == '\n' ) ) {
+			const char *tr = ( DC && DC->getTranslatedString ) ? DC->getTranslatedString( "UI_LOADGAME_LEVELTIME" ) : NULL;
+			if ( !tr ) {
+				tr = "Leveltime";
+			}
+			Q_strncpyz( out + i, tr, outSize - i );
+			i += strlen( out + i );
+			p += 21;
+		} else if ( !Q_stricmpn( p, "UI_LOADGAME_HEALTH", 18 ) && ( p[18] == ':' || p[18] == '\0' || p[18] == '\n' ) ) {
+			const char *tr = ( DC && DC->getTranslatedString ) ? DC->getTranslatedString( "UI_LOADGAME_HEALTH" ) : NULL;
+			if ( !tr ) {
+				tr = "Health";
+			}
+			Q_strncpyz( out + i, tr, outSize - i );
+			i += strlen( out + i );
+			p += 18;
+		} else {
+			out[i++] = *p++;
+		}
+	}
+
+	out[i] = '\0';
+}
+
+/*
+==============
 UI_ParseSavegame
 ==============
 */
 
 static char *monthStr[12] =
 {
-	"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+	"UI_LOADGAME_JAN", "UI_LOADGAME_FEB", "UI_LOADGAME_MAR",
+	"UI_LOADGAME_APR", "UI_LOADGAME_MAY", "UI_LOADGAME_JUN",
+	"UI_LOADGAME_JUL", "UI_LOADGAME_AUG", "UI_LOADGAME_SEP",
+	"UI_LOADGAME_OCT", "UI_LOADGAME_NOV", "UI_LOADGAME_DEC"
 };
 
 /*
@@ -3645,10 +3696,12 @@ void UI_ParseSavegame( int index ) {
 
 	// if the version is wrong, just set some defaults and get out
 	if ( ver < 9 ) {  // don't try anything for really old savegames
+		char localized[SAVE_INFOSTRING_LENGTH];
 		trap_FS_FCloseFile( f );
 		uiInfo.savegameList[index].mapName          = "unknownmap";
 		uiInfo.savegameList[index].episode          = -1;
-		uiInfo.savegameList[index].savegameInfoText = "Gametime: (unknown)\nHealth: (unknown)\n(old savegame)";
+		UI_LocalizeSavegameInfo( localized, sizeof( localized ), "UI_LOADGAME_LEVELTIME: (unknown)\nUI_LOADGAME_HEALTH: (unknown)\n(old savegame)" );
+		uiInfo.savegameList[index].savegameInfoText = String_Alloc( localized );
 
 		uiInfo.savegameList[index].date = "temp_date";
 		uiInfo.savegameList[index].time = "(old savegame)";
@@ -3673,8 +3726,10 @@ void UI_ParseSavegame( int index ) {
 	uiInfo.savegameList[index].episode = i;
 
 	if ( ver < 12 ) {
+		char localized[SAVE_INFOSTRING_LENGTH];
 		trap_FS_FCloseFile( f );
-		uiInfo.savegameList[index].savegameInfoText = "Gametime: (unknown)\nHealth: (unknown)\n(old savegame)";
+		UI_LocalizeSavegameInfo( localized, sizeof( localized ), "UI_LOADGAME_LEVELTIME: (unknown)\nUI_LOADGAME_HEALTH: (unknown)\n(old savegame)" );
+		uiInfo.savegameList[index].savegameInfoText = String_Alloc( localized );
 		uiInfo.savegameList[index].date = "temp_date";
 		memset( &uiInfo.savegameList[index].tm, 0, sizeof( qtime_t ) );
 		uiInfo.savegameList[index].time = String_Alloc( va( "(old savegame ver: %d)", ver ) );
@@ -3687,7 +3742,11 @@ void UI_ParseSavegame( int index ) {
 	// read the info string
 	trap_FS_Read( buf, i, f );
 	buf[i] = '\0';        //DAJ made it a char
-	uiInfo.savegameList[index].savegameInfoText = String_Alloc( buf );
+	{
+		char localized[SAVE_INFOSTRING_LENGTH];
+		UI_LocalizeSavegameInfo( localized, sizeof( localized ), buf );
+		uiInfo.savegameList[index].savegameInfoText = String_Alloc( localized );
+	}
 
 	// time
 	if ( ver > 14 ) {
@@ -3701,7 +3760,14 @@ void UI_ParseSavegame( int index ) {
 		trap_FS_Read( &tm->tm_wday, sizeof( tm->tm_wday ), f );
 		trap_FS_Read( &tm->tm_yday, sizeof( tm->tm_yday ), f );        // days since jan1 (0-365)
 		trap_FS_Read( &tm->tm_isdst, sizeof( tm->tm_isdst ), f );
-		uiInfo.savegameList[index].time = String_Alloc( va( "%s %i, %i   %02i:%02i", monthStr[tm->tm_mon], tm->tm_mday, 1900 + tm->tm_year, tm->tm_hour, tm->tm_min ) );
+	{
+		const char *monthLabel = monthStr[tm->tm_mon];
+		const char *monthText  = ( DC && DC->getTranslatedString ) ? DC->getTranslatedString( monthLabel ) : monthLabel;
+		if ( !monthText ) {
+			monthText = monthLabel;
+		}
+		uiInfo.savegameList[index].time = String_Alloc( va( "%s %i, %i   %02i:%02i", monthText, tm->tm_mday, 1900 + tm->tm_year, tm->tm_hour, tm->tm_min ) );
+	}
 	} else {
 		memset( &uiInfo.savegameList[index].tm, 0, sizeof( qtime_t ) );
 		uiInfo.savegameList[index].time = String_Alloc( va( "(old save ver: %d)", ver ) );
@@ -5725,8 +5791,9 @@ UI_translateString
 ==============
 */
 static const char *UI_translateString( const char *inString ) {
-	int i, numStrings;
+	int i;
 	const char *csfText;
+	static int missCount = 0;
 
 	if ( !inString || !inString[0] ) {
 		return inString;
@@ -5738,14 +5805,13 @@ static const char *UI_translateString( const char *inString ) {
 		return csfText;
 	}
 
+	if ( CSF_IsLoaded() && missCount < 20 ) {
+		missCount++;
+		Com_Printf( "UI_translateString: '%s' not found in CSF (loaded=%d)\n", inString, CSF_IsLoaded() );
+	}
+
 	// Fall back to the legacy built-in translateStrings table.
-	numStrings = sizeof( translateStrings ) / sizeof( translateStrings[0] ) - 1;
-
-	for ( i = 0; i < numStrings; i++ ) {
-		if ( !translateStrings[i].name || !strlen( translateStrings[i].name ) ) {
-			return inString;
-		}
-
+	for ( i = 0; translateStrings[i].name && translateStrings[i].name[0]; i++ ) {
 		if ( !strcmp( inString, translateStrings[i].name ) ) {
 			if ( translateStrings[i].localname && strlen( translateStrings[i].localname ) ) {
 				return translateStrings[i].localname;
@@ -6939,6 +7005,12 @@ void _UI_SetActiveMenu( uiMenuCommand_t menu ) {
 //			return;
 
 		case UIMENU_BRIEFING:
+		{
+			char mapname[128];
+			DC->getCVarString( "mapname", mapname, sizeof( mapname ) );
+			Com_Printf( "_UI_SetActiveMenu(BRIEFING): mapname='%s' menuCount=%d\n",
+			            mapname, Menu_Count() );
+		}
 			Menus_CloseAll();
 			Menus_ActivateByName( "briefing" );
 			return;

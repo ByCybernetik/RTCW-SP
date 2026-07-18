@@ -27,6 +27,30 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "g_local.h"
+#include "../csf/csf_load.h"
+
+/*
+===============
+G_TranslateString
+
+Returns the CSF translation for a label if CSF is loaded and the label exists,
+otherwise returns the provided fallback string.
+===============
+*/
+static const char *G_TranslateString( const char *label, const char *fallback ) {
+	const char *s;
+
+	if ( !fallback ) {
+		fallback = "";
+	}
+
+	s = CSF_GetString( label );
+	if ( s && s[0] ) {
+		return s;
+	}
+
+	return fallback;
+}
 
 /*
 ==================
@@ -101,11 +125,11 @@ CheatsOk
 */
 qboolean    CheatsOk( gentity_t *ent ) {
 	if ( !g_cheats.integer ) {
-		trap_SendServerCommand( ent - g_entities, va( "print \"Cheats are not enabled on this server.\n\"" ) );
+		trap_SendServerCommand( ent - g_entities, va( "print \"%s\"", G_TranslateString( "CONSOLE_CHEATS_NOT_ENABLED", "Cheats are not enabled on this server.\n" ) ) );
 		return qfalse;
 	}
 	if ( ent->health <= 0 ) {
-		trap_SendServerCommand( ent - g_entities, va( "print \"You must be alive to use this command.\n\"" ) );
+		trap_SendServerCommand( ent - g_entities, va( "print \"%s\"", G_TranslateString( "CONSOLE_CHEATS_MUST_BE_ALIVE", "You must be alive to use this command.\n" ) ) );
 		return qfalse;
 	}
 	return qtrue;
@@ -180,18 +204,21 @@ int ClientNumberFromString( gentity_t *to, char *s ) {
 	int idnum;
 	char s2[MAX_STRING_CHARS];
 	char n2[MAX_STRING_CHARS];
+	const char *msg;
 
 	// numeric values are just slot numbers
 	if ( s[0] >= '0' && s[0] <= '9' ) {
 		idnum = atoi( s );
 		if ( idnum < 0 || idnum >= level.maxclients ) {
-			trap_SendServerCommand( to - g_entities, va( "print \"Bad client slot: %i\n\"", idnum ) );
+			msg = va( (char *)G_TranslateString( "CONSOLE_BAD_CLIENT_SLOT", "Bad client slot: %i" ), idnum );
+			trap_SendServerCommand( to - g_entities, va( "print \"%s\"", msg ) );
 			return -1;
 		}
 
 		cl = &level.clients[idnum];
 		if ( cl->pers.connected != CON_CONNECTED ) {
-			trap_SendServerCommand( to - g_entities, va( "print \"Client %i is not active\n\"", idnum ) );
+			msg = va( (char *)G_TranslateString( "CONSOLE_CLIENT_NOT_ACTIVE", "Client %i is not active" ), idnum );
+			trap_SendServerCommand( to - g_entities, va( "print \"%s\"", msg ) );
 			return -1;
 		}
 		return idnum;
@@ -209,7 +236,8 @@ int ClientNumberFromString( gentity_t *to, char *s ) {
 		}
 	}
 
-	trap_SendServerCommand( to - g_entities, va( "print \"User %s is not on the server\n\"", s ) );
+	msg = va( (char *)G_TranslateString( "CONSOLE_USER_NOT_ON_SERVER", "User %s is not on the server" ), s );
+	trap_SendServerCommand( to - g_entities, va( "print \"%s\"", msg ) );
 	return -1;
 }
 
@@ -402,7 +430,7 @@ argv(0) god
 ==================
 */
 void Cmd_God_f( gentity_t *ent ) {
-	char    *msg;
+	const char    *msg;
 
 	if ( !CheatsOk( ent ) ) {
 		return;
@@ -410,9 +438,9 @@ void Cmd_God_f( gentity_t *ent ) {
 
 	ent->flags ^= FL_GODMODE;
 	if ( !( ent->flags & FL_GODMODE ) ) {
-		msg = "godmode OFF\n";
+		msg = G_TranslateString( "CONSOLE_GODMODE_OFF", "godmode OFF\n" );
 	} else {
-		msg = "godmode ON\n";
+		msg = G_TranslateString( "CONSOLE_GODMODE_ON", "godmode ON\n" );
 	}
 
 	trap_SendServerCommand( ent - g_entities, va( "print \"%s\"", msg ) );
@@ -429,7 +457,7 @@ argv(0) nofatigue
 */
 
 void Cmd_Nofatigue_f( gentity_t *ent ) {
-	char    *msg;
+	const char    *msg;
 
 	if ( !CheatsOk( ent ) ) {
 		return;
@@ -437,9 +465,9 @@ void Cmd_Nofatigue_f( gentity_t *ent ) {
 
 	ent->flags ^= FL_NOFATIGUE;
 	if ( !( ent->flags & FL_NOFATIGUE ) ) {
-		msg = "nofatigue OFF\n";
+		msg = G_TranslateString( "CONSOLE_NOFATIGUE_OFF", "nofatigue OFF\n" );
 	} else {
-		msg = "nofatigue ON\n";
+		msg = G_TranslateString( "CONSOLE_NOFATIGUE_ON", "nofatigue ON\n" );
 	}
 
 	trap_SendServerCommand( ent - g_entities, va( "print \"%s\"", msg ) );
@@ -455,7 +483,7 @@ argv(0) notarget
 ==================
 */
 void Cmd_Notarget_f( gentity_t *ent ) {
-	char    *msg;
+	const char    *msg;
 
 	if ( !CheatsOk( ent ) ) {
 		return;
@@ -463,9 +491,9 @@ void Cmd_Notarget_f( gentity_t *ent ) {
 
 	ent->flags ^= FL_NOTARGET;
 	if ( !( ent->flags & FL_NOTARGET ) ) {
-		msg = "notarget OFF\n";
+		msg = G_TranslateString( "CONSOLE_NOTARGET_OFF", "notarget OFF\n" );
 	} else {
-		msg = "notarget ON\n";
+		msg = G_TranslateString( "CONSOLE_NOTARGET_ON", "notarget ON\n" );
 	}
 
 	trap_SendServerCommand( ent - g_entities, va( "print \"%s\"", msg ) );
@@ -480,16 +508,16 @@ argv(0) noclip
 ==================
 */
 void Cmd_Noclip_f( gentity_t *ent ) {
-	char    *msg;
+	const char    *msg;
 
 	if ( !CheatsOk( ent ) ) {
 		return;
 	}
 
 	if ( ent->client->noclip ) {
-		msg = "noclip OFF\n";
+		msg = G_TranslateString( "CONSOLE_NOCLIP_OFF", "noclip OFF\n" );
 	} else {
-		msg = "noclip ON\n";
+		msg = G_TranslateString( "CONSOLE_NOCLIP_ON", "noclip ON\n" );
 	}
 	ent->client->noclip = !ent->client->noclip;
 
@@ -515,7 +543,7 @@ void Cmd_LevelShot_f( gentity_t *ent ) {
 	// doesn't work in single player
 	if ( g_gametype.integer != 0 ) {
 		trap_SendServerCommand( ent - g_entities,
-								"print \"Must be in g_gametype 0 for levelshot\n\"" );
+								va( "print \"%s\"", G_TranslateString( "CONSOLE_LEVELSHOT_GAMETYPE", "Must be in g_gametype 0 for levelshot\n" ) ) );
 		return;
 	}
 
@@ -1082,7 +1110,7 @@ void Cmd_CallVote_f( gentity_t *ent ) {
 	char arg2[MAX_STRING_TOKENS];
 
 	if ( !g_allowVote.integer ) {
-		trap_SendServerCommand( ent - g_entities, "print \"Voting not allowed here.\n\"" );
+		trap_SendServerCommand( ent - g_entities, va( "print \"%s\"", G_TranslateString( "CONSOLE_VOTING_NOT_ALLOWED", "Voting not allowed here.\n" ) ) );
 		return;
 	}
 
@@ -1203,7 +1231,7 @@ void Cmd_SetViewpos_f( gentity_t *ent ) {
 		return;
 	}
 	if ( trap_Argc() != 5 ) {
-		trap_SendServerCommand( ent - g_entities, va( "print \"usage: setviewpos x y z yaw\n\"" ) );
+		trap_SendServerCommand( ent - g_entities, va( "print \"%s\"", G_TranslateString( "CONSOLE_SETVIEWPOS_USAGE", "usage: setviewpos x y z yaw\n" ) ) );
 		return;
 	}
 
@@ -1957,7 +1985,8 @@ void Cmd_EntityCount_f( gentity_t *ent ) {
 		return;
 	}
 
-	G_Printf( "entity count = %i\n", level.num_entities );
+	G_Printf( va( (char *)G_TranslateString( "CONSOLE_ENTITY_COUNT", "entity count = %i" ), level.num_entities ) );
+	G_Printf( "\n" );
 
 	{
 		int kills[2];
@@ -2003,7 +2032,8 @@ void Cmd_EntityCount_f( gentity_t *ent ) {
 				}
 			}
 		}
-		G_Printf( "kills %i/%i nazis %i/%i monsters %i/%i \n",kills[0], kills[1], nazis[0], nazis[1], monsters[0], monsters[1] );
+		G_Printf( va( (char *)G_TranslateString( "CONSOLE_KILL_COUNT", "kills %i/%i nazis %i/%i monsters %i/%i" ), kills[0], kills[1], nazis[0], nazis[1], monsters[0], monsters[1] ) );
+		G_Printf( "\n" );
 
 	}
 }
@@ -2142,6 +2172,7 @@ void ClientCommand( int clientNum ) {
 	} else if ( Q_stricmp( cmd, "setspawnpt" ) == 0 )  {
 		Cmd_SetSpawnPoint_f( ent );
 	} else {
-		trap_SendServerCommand( clientNum, va( "print \"unknown cmd %s\n\"", cmd ) );
+		const char *msg = va( (char *)G_TranslateString( "CONSOLE_UNKNOWN_CMD_SERVER", "unknown cmd %s" ), cmd );
+		trap_SendServerCommand( clientNum, va( "print \"%s\n\"", msg ) );
 	}
 }

@@ -27,6 +27,7 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "client.h"
+#include "../csf/csf_load.h"
 
 /*
 
@@ -705,12 +706,20 @@ void Field_VariableSizeDraw( field_t *edit, int x, int y, int width, int size, q
 	int len;
 	int drawLen;
 	int prestep;
-	int cursorChar;
 	char str[MAX_STRING_CHARS];
 	int i;
+	float cellWidth;
 
 	drawLen = edit->widthInChars;
 	len = strlen( edit->buffer ) + 1;
+
+	cellWidth = (float)size;
+	{
+		int maxDrawLen = (int)( width / cellWidth );
+		if ( drawLen > maxDrawLen ) {
+			drawLen = maxDrawLen;
+		}
+	}
 
 	// guarantee that cursor will be visible
 	if ( len <= drawLen ) {
@@ -747,39 +756,53 @@ void Field_VariableSizeDraw( field_t *edit, int x, int y, int width, int size, q
 
 	// draw it
 	if ( size == SMALLCHAR_WIDTH ) {
-		float color[4];
+		vec4_t color;
+		char before[MAX_STRING_CHARS];
+		char after[MAX_STRING_CHARS];
+		int beforeLen;
+		int afterLen;
+		float cursorX;
 
-		color[0] = color[1] = color[2] = color[3] = 1.0;
-		SCR_DrawSmallStringExt( x, y, str, color, qfalse );
+		color[0] = color[1] = color[2] = color[3] = 1.0f;
+
+		beforeLen = edit->cursor - prestep;
+		if ( beforeLen < 0 ) {
+			beforeLen = 0;
+		}
+		if ( beforeLen > drawLen ) {
+			beforeLen = drawLen;
+		}
+		afterLen = drawLen - beforeLen;
+
+		memcpy( before, str, beforeLen );
+		before[beforeLen] = 0;
+		memcpy( after, str + beforeLen, afterLen );
+		after[afterLen] = 0;
+
+		SCR_DrawConsoleStringChar( x, y, before, color );
+		cursorX = x + SCR_ConsoleStringWidth( before );
+
+		// draw the cursor
+		if ( showCursor && !( (int)( cls.realtime >> 8 ) & 1 ) ) {
+			SCR_DrawConsoleStringChar( cursorX, y, "|", color );
+		}
+
+		SCR_DrawConsoleStringChar( cursorX + SCR_ConsoleStringWidth( "|" ), y, after, color );
 	} else {
 		// draw big string with drop shadow
 		SCR_DrawBigString( x, y, str, 1.0 );
-	}
 
-	// draw the cursor
-	if ( !showCursor ) {
-		return;
-	}
+		// draw the cursor
+		if ( !showCursor ) {
+			return;
+		}
 
-	if ( (int)( cls.realtime >> 8 ) & 1 ) {
-		return;     // off blink
-	}
+		if ( (int)( cls.realtime >> 8 ) & 1 ) {
+			return;     // off blink
+		}
 
-	if ( key_overstrikeMode ) {
-		cursorChar = 11;
-	} else {
-		cursorChar = 10;
-	}
-
-	i = drawLen - ( Q_PrintStrlen( str ) + 1 );
-
-	if ( size == SMALLCHAR_WIDTH ) {
-		SCR_DrawSmallChar( x + ( edit->cursor - prestep - i ) * size, y, cursorChar );
-	} else {
-		str[0] = cursorChar;
-		str[1] = 0;
-		SCR_DrawBigString( x + ( edit->cursor - prestep - i ) * size, y, str, 1.0 );
-
+		i = drawLen - ( Q_PrintStrlen( str ) + 1 );
+		SCR_DrawBigString( x + ( edit->cursor - prestep - i ) * size, y, "|", 1.0 );
 	}
 }
 
@@ -1542,13 +1565,14 @@ char *Key_KeynumToString( int keynum, qboolean bTranslate ) {
 
 	kn = keynames;    //init to english
 	if ( bTranslate ) {
-		if ( cl_language->integer - 1 == LANGUAGE_FRENCH ) {
+		const char *lang = CSF_GetLanguageCode( cl_language->string );
+		if ( !Q_stricmp( lang, "fe" ) ) {
 			kn = keynames_f;  //use french
-		} else if ( cl_language->integer - 1 == LANGUAGE_GERMAN ) {
+		} else if ( !Q_stricmp( lang, "ge" ) ) {
 			kn = keynames_d;  //use german
-		} else if ( cl_language->integer - 1 == LANGUAGE_ITALIAN ) {
+		} else if ( !Q_stricmp( lang, "it" ) ) {
 			kn = keynames_i;  //use italian
-		} else if ( cl_language->integer - 1 == LANGUAGE_SPANISH ) {
+		} else if ( !Q_stricmp( lang, "sp" ) ) {
 			kn = keynames_s;  //use spanish
 		}
 	}

@@ -192,6 +192,291 @@ void SCR_DrawSmallChar( int x, int y, int ch ) {
 					   cls.charSetShader );
 }
 
+static fontInfo_t cl_consoleFont;
+static qboolean cl_consoleFontLoaded = qfalse;
+
+static void SCR_LoadConsoleFont( void ) {
+	if ( cl_consoleFontLoaded ) {
+		return;
+	}
+	re.RegisterFont( "fonts/impact.ttf", 12, &cl_consoleFont );
+	if ( cl_consoleFont.numRanges > 0 ) {
+		cl_consoleFontLoaded = qtrue;
+	}
+}
+
+/*
+==================
+SCR_ConsoleScale
+
+2D scaling factor matching cgame/UI: vidHeight / 480.
+==================
+*/
+static float SCR_ConsoleScale( void ) {
+	return cls.glconfig.vidHeight / 480.0f;
+}
+
+/*
+==================
+SCR_DrawConsoleGlyph
+
+x/y are native screen pixels. The glyph is scaled by vidHeight/480 to match
+the rest of the TTF text. y is the top of the console cell; baseline is
+derived internally. Returns horizontal advance in screen pixels.
+==================
+*/
+static float SCR_DrawConsoleGlyph( float x, float y, int codepoint, vec4_t color ) {
+	glyphInfo_t *glyph;
+	float scale;
+	float useScale;
+	float screenScale;
+	float w, h;
+	float yadj;
+	float baseline;
+
+	if ( !cl_consoleFontLoaded ) {
+		SCR_LoadConsoleFont();
+	}
+	if ( !cl_consoleFontLoaded ) {
+		return SMALLCHAR_WIDTH;
+	}
+
+	scale = 0.12f;
+	useScale = scale * cl_consoleFont.glyphScale;
+	screenScale = SCR_ConsoleScale();
+
+	if ( codepoint == ' ' ) {
+		glyph = R_GetGlyph( &cl_consoleFont, ' ' );
+		if ( glyph && glyph->glyph ) {
+			return glyph->xSkip * useScale * screenScale;
+		}
+		return SMALLCHAR_WIDTH * scale * screenScale;
+	}
+
+	glyph = R_GetGlyph( &cl_consoleFont, codepoint );
+	if ( !glyph || glyph->glyph == 0 ) {
+		return SMALLCHAR_WIDTH * scale * screenScale;
+	}
+
+	w = glyph->imageWidth * useScale * screenScale;
+	h = glyph->imageHeight * useScale * screenScale;
+	yadj = useScale * glyph->top * screenScale;
+	baseline = y + SMALLCHAR_HEIGHT * 0.8f;
+
+	re.SetColor( color );
+	re.DrawStretchPic( x, baseline - yadj, w, h, glyph->s, glyph->t, glyph->s2, glyph->t2, glyph->glyph );
+	return glyph->xSkip * useScale * screenScale;
+}
+
+/*
+==================
+SCR_DrawConsoleString
+
+Draws a console line stored as a short array (low byte = UTF-8 byte,
+high byte = color index). x/y and advance are native screen pixels.
+==================
+*/
+void SCR_DrawConsoleString( int x, int y, const short *text, int len ) {
+	int i;
+	int currentColor;
+	float cx;
+	vec4_t color;
+	char utf8buf[8];
+	int charLen;
+	int codepoint;
+	int idx;
+
+	if ( !cl_consoleFontLoaded ) {
+		SCR_LoadConsoleFont();
+	}
+	if ( !cl_consoleFontLoaded ) {
+		return;
+	}
+
+	currentColor = 7;
+	memcpy( color, g_color_table[currentColor], sizeof( vec4_t ) );
+	re.SetColor( color );
+
+	cx = x;
+	i = 0;
+	while ( i < len ) {
+		unsigned char b = text[i] & 0xff;
+
+		if ( b == ' ' ) {
+			cx += SCR_DrawConsoleGlyph( cx, y, ' ', color );
+			i++;
+			continue;
+		}
+
+		if ( ( b & 0x80 ) == 0 ) {
+			charLen = 1;
+		} else if ( ( b & 0xE0 ) == 0xC0 ) {
+			charLen = 2;
+		} else if ( ( b & 0xF0 ) == 0xE0 ) {
+			charLen = 3;
+		} else if ( ( b & 0xF8 ) == 0xF0 ) {
+			charLen = 4;
+		} else {
+			i++;
+			continue;
+		}
+		if ( i + charLen > len ) {
+			break;
+		}
+
+		if ( ( ( text[i] >> 8 ) & 7 ) != currentColor ) {
+			currentColor = ( text[i] >> 8 ) & 7;
+			memcpy( color, g_color_table[currentColor], sizeof( vec4_t ) );
+			re.SetColor( color );
+		}
+
+		for ( idx = 0; idx < charLen; idx++ ) {
+			utf8buf[idx] = text[i + idx] & 0xff;
+		}
+		utf8buf[charLen] = 0;
+		idx = 0;
+		codepoint = Q_UTF8_ReadChar( utf8buf, &idx );
+
+		cx += SCR_DrawConsoleGlyph( cx, y, codepoint, color );
+		i += charLen;
+	}
+
+	re.SetColor( NULL );
+}
+
+/*
+==================
+SCR_DrawConsoleStringChar
+
+Draws a plain UTF-8 char string with embedded color codes.
+x/y and advance are native screen pixels.
+==================
+*/
+void SCR_DrawConsoleStringChar( int x, int y, const char *text, vec4_t color ) {
+	const char *s;
+	float cx;
+	int idx;
+	int codepoint;
+
+	if ( !cl_consoleFontLoaded ) {
+		SCR_LoadConsoleFont();
+	}
+	if ( !cl_consoleFontLoaded ) {
+		return;
+	}
+
+	re.SetColor( color );
+	s = text;
+	cx = x;
+	while ( *s ) {
+		if ( Q_IsColorString( s ) ) {
+			memcpy( color, g_color_table[ColorIndex( *( s + 1 ) )], sizeof( vec4_t ) );
+			re.SetColor( color );
+			s += 2;
+			continue;
+		}
+		idx = 0;
+		codepoint = Q_UTF8_ReadChar( s, &idx );
+		cx += SCR_DrawConsoleGlyph( cx, y, codepoint, color );
+		s += idx;
+	}
+
+	re.SetColor( NULL );
+}
+
+/*
+==================
+SCR_DrawConsoleStringFixed
+
+Fixed-width console string for edit fields. Each glyph is forced into a
+SMALLCHAR_WIDTH * 0.12 * screenScale wide cell so the cursor math in
+Field_Draw stays valid.
+==================
+*/
+void SCR_DrawConsoleStringFixed( int x, int y, const char *text, vec4_t color ) {
+	const char *s;
+	float cx;
+	float cellWidth;
+	int idx;
+	int codepoint;
+
+	if ( !cl_consoleFontLoaded ) {
+		SCR_LoadConsoleFont();
+	}
+	if ( !cl_consoleFontLoaded ) {
+		return;
+	}
+
+	cellWidth = SMALLCHAR_WIDTH * SCR_ConsoleScale();
+
+	re.SetColor( color );
+	s = text;
+	cx = x;
+	while ( *s ) {
+		if ( Q_IsColorString( s ) ) {
+			memcpy( color, g_color_table[ColorIndex( *( s + 1 ) )], sizeof( vec4_t ) );
+			re.SetColor( color );
+			s += 2;
+			continue;
+		}
+		idx = 0;
+		codepoint = Q_UTF8_ReadChar( s, &idx );
+		SCR_DrawConsoleGlyph( cx, y, codepoint, color );
+		cx += cellWidth;
+		s += idx;
+	}
+
+	re.SetColor( NULL );
+}
+
+/*
+==================
+SCR_ConsoleStringWidth
+
+Returns the screen-pixel width of a UTF-8 string using the console font.
+==================
+*/
+float SCR_ConsoleStringWidth( const char *text ) {
+	const char *s;
+	float scale;
+	float useScale;
+	float screenScale;
+	float width;
+	int idx;
+	int codepoint;
+	glyphInfo_t *glyph;
+
+	if ( !cl_consoleFontLoaded ) {
+		SCR_LoadConsoleFont();
+	}
+	if ( !cl_consoleFontLoaded ) {
+		return strlen( text ) * SMALLCHAR_WIDTH;
+	}
+
+	scale = 0.12f;
+	useScale = scale * cl_consoleFont.glyphScale;
+	screenScale = SCR_ConsoleScale();
+	width = 0.0f;
+	s = text;
+	while ( *s ) {
+		if ( Q_IsColorString( s ) ) {
+			s += 2;
+			continue;
+		}
+		idx = 0;
+		codepoint = Q_UTF8_ReadChar( s, &idx );
+		glyph = R_GetGlyph( &cl_consoleFont, codepoint );
+		if ( glyph && glyph->glyph ) {
+			width += glyph->xSkip * useScale * screenScale;
+		} else {
+			width += SMALLCHAR_WIDTH * scale * screenScale;
+		}
+		s += idx;
+	}
+
+	return width;
+}
+
 
 /*
 ==================

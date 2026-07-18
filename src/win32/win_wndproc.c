@@ -28,6 +28,7 @@ If you have questions concerning this license or the applicable additional terms
 
 
 #include "../client/client.h"
+#include "../csf/csf_load.h"
 #include "win_local.h"
 
 WinVars_t g_wv;
@@ -250,14 +251,17 @@ static int MapKey( int key ) {
 	}
 
 	result = s_scantokey[modified];
-	if ( cl_language->integer - 1 == LANGUAGE_FRENCH ) {
-		result = s_scantokey_french[modified];
-	} else if ( cl_language->integer - 1 == LANGUAGE_GERMAN ) {
-		result = s_scantokey_german[modified];
-	} else if ( cl_language->integer - 1 == LANGUAGE_ITALIAN ) {
-		result = s_scantokey_italian[modified];
-	} else if ( cl_language->integer - 1 == LANGUAGE_SPANISH ) {
-		result = s_scantokey_spanish[modified];
+	{
+		const char *lang = CSF_GetLanguageCode( cl_language->string );
+		if ( !Q_stricmp( lang, "fe" ) ) {
+			result = s_scantokey_french[modified];
+		} else if ( !Q_stricmp( lang, "ge" ) ) {
+			result = s_scantokey_german[modified];
+		} else if ( !Q_stricmp( lang, "it" ) ) {
+			result = s_scantokey_italian[modified];
+		} else if ( !Q_stricmp( lang, "sp" ) ) {
+			result = s_scantokey_spanish[modified];
+		}
 	}
 
 	if ( !is_extended ) {

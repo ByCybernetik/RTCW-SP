@@ -34,6 +34,30 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "server.h"
+#include "../csf/csf_load.h"
+
+/*
+===============
+SV_TranslateString
+
+Returns the CSF translation for a label if CSF is loaded and the label exists,
+otherwise returns the provided fallback string.
+===============
+*/
+static const char *SV_TranslateString( const char *label, const char *fallback ) {
+	const char *s;
+
+	if ( !fallback ) {
+		fallback = "";
+	}
+
+	s = CSF_GetString( label );
+	if ( s && s[0] ) {
+		return s;
+	}
+
+	return fallback;
+}
 
 /*
 ===============
@@ -676,8 +700,9 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	// shut down the existing game if it is running
 	SV_ShutdownGameProgs();
 
-	Com_Printf( "------ Server Initialization ------\n" );
-	Com_Printf( "Server: %s\n",server );
+	Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_INIT", "------ Server Initialization ------\n" ) );
+	Com_Printf( va( (char *)SV_TranslateString( "CONSOLE_SERVER_NAME", "Server: %s" ), server ) );
+	Com_Printf( "\n" );
 
 	// if not running a dedicated server CL_MapLoading will connect the client to the server
 	// also print some status stuff
@@ -834,7 +859,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 		p = FS_LoadedPakChecksums();
 		Cvar_Set( "sv_paks", p );
 		if ( strlen( p ) == 0 ) {
-			Com_Printf( "WARNING: sv_pure set but no PK3 files loaded\n" );
+			Com_Printf( "%s", SV_TranslateString( "CONSOLE_PURE_NO_PK3", "WARNING: sv_pure set but no PK3 files loaded\n" ) );
 		}
 		p = FS_LoadedPakNames();
 		Cvar_Set( "sv_pakNames", p );
@@ -873,7 +898,7 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 
 	Hunk_SetMark();
 
-	Com_Printf( "-----------------------------------\n" );
+	Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_INIT_DONE", "-----------------------------------\n" ) );
 
 	/* MrE: 2000-09-13: now called in CL_DownloadsComplete
 	// don't call when running dedicated
@@ -1009,7 +1034,7 @@ void SV_Shutdown( char *finalmsg ) {
 		return;
 	}
 
-	Com_Printf( "----- Server Shutdown -----\n" );
+	Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_SHUTDOWN", "----- Server Shutdown -----\n" ) );
 
 	if ( svs.clients && !com_errorEntered ) {
 		SV_FinalMessage( finalmsg );
@@ -1031,7 +1056,7 @@ void SV_Shutdown( char *finalmsg ) {
 
 	Cvar_Set( "sv_running", "0" );
 
-	Com_Printf( "---------------------------\n" );
+	Com_Printf( "%s", SV_TranslateString( "CONSOLE_SERVER_SHUTDOWN_DONE", "---------------------------\n" ) );
 
 	// disconnect any local clients
 	CL_Disconnect( qfalse );

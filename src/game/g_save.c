@@ -1215,12 +1215,12 @@ qboolean G_SaveGame( char *username ) {
 
 	trap_Cvar_VariableStringBuffer( "svg_timestring", leveltime, sizeof( leveltime ) );
 	if ( !strlen( leveltime ) ) {
-		Com_sprintf( leveltime, sizeof( leveltime ), "Leveltime" );
+		Com_sprintf( leveltime, sizeof( leveltime ), "UI_LOADGAME_LEVELTIME" );
 	}
 
 	trap_Cvar_VariableStringBuffer( "svg_healthstring", healthstr, sizeof( healthstr ) );
 	if ( !strlen( healthstr ) ) {
-		Com_sprintf( healthstr, sizeof( healthstr ), "Health" );
+		Com_sprintf( healthstr, sizeof( healthstr ), "UI_LOADGAME_HEALTH" );
 	}
 
 

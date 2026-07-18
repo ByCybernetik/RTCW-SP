@@ -466,7 +466,7 @@ qboolean    ConsoleCommand( void ) {
 			}
 
 			if ( G_SaveGame( cmd ) ) {
-				trap_SendServerCommand( -1, "cp gamesaved" );  // deletedgame
+				trap_SendServerCommand( -1, "cp HUD_MESSAGE_SAVE" );  // deletedgame
 			} else {
 				G_Printf( "Unable to save game.\n" );
 			}

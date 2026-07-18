@@ -521,9 +521,11 @@ void Con_DrawInput( void ) {
 
 	y = con.vislines - ( SMALLCHAR_HEIGHT * 2 );
 
-	re.SetColor( con.color );
-
-	SCR_DrawSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH, y, ']' );
+	{
+		vec4_t inputColor;
+		inputColor[0] = inputColor[1] = inputColor[2] = inputColor[3] = 1.0f;
+		SCR_DrawConsoleStringFixed( con.xadjust + 1 * SMALLCHAR_WIDTH, y, "]", inputColor );
+	}
 
 	Field_Draw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH, y,
 				SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, qtrue );
@@ -538,16 +540,16 @@ Draws the last few lines of output transparently over the game top
 ================
 */
 void Con_DrawNotify( void ) {
-	int x, v;
+	int v;
 	short   *text;
 	int i;
 	int time;
 	int skip;
-	int currentColor;
+	float screenScale;
+	int lineHeight;
 
-	currentColor = 7;
-	re.SetColor( g_color_table[currentColor] );
-
+	screenScale = cls.glconfig.vidHeight / 480.0f;
+	lineHeight = SMALLCHAR_HEIGHT;
 	v = 0;
 	for ( i = con.current - NUM_CON_TIMES + 1 ; i <= con.current ; i++ )
 	{
@@ -568,21 +570,10 @@ void Con_DrawNotify( void ) {
 			continue;
 		}
 
-		for ( x = 0 ; x < con.linewidth ; x++ ) {
-			if ( ( text[x] & 0xff ) == ' ' ) {
-				continue;
-			}
-			if ( ( ( text[x] >> 8 ) & 7 ) != currentColor ) {
-				currentColor = ( text[x] >> 8 ) & 7;
-				re.SetColor( g_color_table[currentColor] );
-			}
-			SCR_DrawSmallChar( cl_conXOffset->integer + con.xadjust + ( x + 1 ) * SMALLCHAR_WIDTH, v, text[x] & 0xff );
-		}
+		SCR_DrawConsoleString( cl_conXOffset->integer + con.xadjust + SMALLCHAR_WIDTH, v, text, con.linewidth );
 
-		v += SMALLCHAR_HEIGHT;
+		v += lineHeight;
 	}
-
-	re.SetColor( NULL );
 
 	if ( cls.keyCatchers & ( KEYCATCH_UI | KEYCATCH_CGAME ) ) {
 		return;
@@ -616,14 +607,15 @@ Draws the console with the solid background
 */
 
 void Con_DrawSolidConsole( float frac ) {
-	int i, x, y;
+	int i, y;
 	int rows;
 	short           *text;
 	int row;
 	int lines;
 //	qhandle_t		conShader;
-	int currentColor;
 	vec4_t color;
+	float screenScale;
+	int lineHeight;
 
 	lines = cls.glconfig.vidHeight * frac;
 	if ( lines <= 0 ) {
@@ -633,6 +625,9 @@ void Con_DrawSolidConsole( float frac ) {
 	if ( lines > cls.glconfig.vidHeight ) {
 		lines = cls.glconfig.vidHeight;
 	}
+
+	screenScale = cls.glconfig.vidHeight / 480.0f;
+	lineHeight = SMALLCHAR_HEIGHT;
 
 	// on wide screens, we will center the text
 	con.xadjust = 0;
@@ -663,33 +658,43 @@ void Con_DrawSolidConsole( float frac ) {
 	SCR_FillRect( 0, y, SCREEN_WIDTH, 2, color );
 
 	// draw the version number
-
-	re.SetColor( g_color_table[ColorIndex( COLNSOLE_COLOR )] );
-
-	i = strlen( Q3_VERSION );
-
-	for ( x = 0 ; x < i ; x++ ) {
-
-		SCR_DrawSmallChar( cls.glconfig.vidWidth - ( i - x ) * SMALLCHAR_WIDTH,
-
-						   ( lines - ( SMALLCHAR_HEIGHT + SMALLCHAR_HEIGHT / 2 ) ), Q3_VERSION[x] );
-
+	{
+		vec4_t versionColor;
+		float versionWidth;
+		memcpy( versionColor, g_color_table[ColorIndex( COLNSOLE_COLOR )], sizeof( vec4_t ) );
+		versionWidth = strlen( Q3_VERSION ) * SMALLCHAR_WIDTH * 0.12f * screenScale;
+		SCR_DrawConsoleStringChar( cls.glconfig.vidWidth - versionWidth,
+								   lines - ( SMALLCHAR_HEIGHT + SMALLCHAR_HEIGHT / 2 ), Q3_VERSION, versionColor );
 	}
-
 
 	// draw the text
 	con.vislines = lines;
-	rows = ( lines - SMALLCHAR_WIDTH ) / SMALLCHAR_WIDTH;     // rows of text to draw
+	rows = ( lines - lineHeight ) / lineHeight;     // rows of text to draw
 
-	y = lines - ( SMALLCHAR_HEIGHT * 3 );
+	y = lines - ( lineHeight * 3 );
 
 	// draw from the bottom up
 	if ( con.display != con.current ) {
 		// draw arrows to show the buffer is backscrolled
-		re.SetColor( g_color_table[ColorIndex( COLOR_WHITE )] );
-		for ( x = 0 ; x < con.linewidth ; x += 4 )
-			SCR_DrawSmallChar( con.xadjust + ( x + 1 ) * SMALLCHAR_WIDTH, y, '^' );
-		y -= SMALLCHAR_HEIGHT;
+		{
+			int ax;
+			char arrowBuf[128];
+			vec4_t arrowColor;
+			int arrowCount = (int)( ( cls.glconfig.vidWidth - con.xadjust * 2 ) / ( SMALLCHAR_WIDTH * screenScale * 0.12f * 4 ) );
+			if ( arrowCount > sizeof( arrowBuf ) - 1 ) {
+				arrowCount = sizeof( arrowBuf ) - 1;
+			}
+			if ( arrowCount < 1 ) {
+				arrowCount = 1;
+			}
+			for ( ax = 0; ax < arrowCount; ax++ ) {
+				arrowBuf[ax] = '^';
+			}
+			arrowBuf[ax] = 0;
+			memcpy( arrowColor, g_color_table[ColorIndex( COLOR_WHITE )], sizeof( vec4_t ) );
+			SCR_DrawConsoleStringChar( con.xadjust + SMALLCHAR_WIDTH, y, arrowBuf, arrowColor );
+		}
+		y -= lineHeight;
 		rows--;
 	}
 
@@ -699,10 +704,7 @@ void Con_DrawSolidConsole( float frac ) {
 		row--;
 	}
 
-	currentColor = 7;
-	re.SetColor( g_color_table[currentColor] );
-
-	for ( i = 0 ; i < rows ; i++, y -= SMALLCHAR_HEIGHT, row-- )
+	for ( i = 0 ; i < rows ; i++, y -= lineHeight, row-- )
 	{
 		if ( row < 0 ) {
 			break;
@@ -714,17 +716,7 @@ void Con_DrawSolidConsole( float frac ) {
 
 		text = con.text + ( row % con.totallines ) * con.linewidth;
 
-		for ( x = 0 ; x < con.linewidth ; x++ ) {
-			if ( ( text[x] & 0xff ) == ' ' ) {
-				continue;
-			}
-
-			if ( ( ( text[x] >> 8 ) & 7 ) != currentColor ) {
-				currentColor = ( text[x] >> 8 ) & 7;
-				re.SetColor( g_color_table[currentColor] );
-			}
-			SCR_DrawSmallChar(  con.xadjust + ( x + 1 ) * SMALLCHAR_WIDTH, y, text[x] & 0xff );
-		}
+		SCR_DrawConsoleString( con.xadjust + SMALLCHAR_WIDTH, y, text, con.linewidth );
 	}
 
 	// draw the input prompt, user text, and cursor if desired

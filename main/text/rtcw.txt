@@ -1,0 +1,804 @@
+# RTCW-SP CSF source file (UTF-8)
+# Place generated rtcw.csf next to this file in main/text/
+
+# UI NEW GAME
+UI_MAIN_PLAY=PLAY
+UI_MAIN_LOAD=LOAD GAME
+UI_MAIN_OPTIONS=OPTIONS
+UI_MAIN_MULTIPLAYER=MULTIPLAYER
+UI_MAIN_CREDITS=CREDITS
+UI_MAIN_QUIT=QUIT
+
+UI_SKILL=SELECT A SKILL LEVEL
+UI_SKILL_LOW=Don't hurt me.
+UI_SKILL_NORMAL=Bring'em on!
+UI_SKILL_HIGH=I am Death incarnate!
+
+# UI LOAD GAME
+UI_LOADGAME=LOAD GAME
+UI_LOADGAME_NAME=Name
+UI_LOADGAME_DATA=Date
+UI_LOADGAME_AUTOSAVES=Show Autosaves...
+UI_LOADGAME_AUTOSAVES2=Autosaved Games
+UI_LOADGAME_SAVES=Show Savegames...
+UI_LOADGAME_SAVES2=Manual Saved Games
+UI_LOADGAME_LOAD=LOAD
+UI_LOADGAME_LOAD2=Load
+UI_LOADGAME_ACTIVATE=ACTIVATE TO SHOW AUTOSAVED GAMES
+UI_LOADGAME_ACTIVATE2=ACTIVATE TO SHOW MANUAL SAVEGAMES
+UI_LOADGAME_SELECT=SELECT SAVE GAME TO LOAD
+UI_LOADGAME_SELECT2=SELECT TO PLAY LEVEL
+UI_LOADGAME_DELETE=Delete...
+UI_LOADGAME_DELETE_MESSAGE=Delete Selected Savegame?
+UI_LOADGAME_SAVE=Save
+UI_LOADGAME_SAVEAS=Save As:
+UI_LOADGAME_OVERWRITE=Overwrite existing file?
+UI_LOADGAME_FILENAME=You must specify a filename!
+UI_LOADGAME_JAN=JAN
+UI_LOADGAME_FEB=FEB
+UI_LOADGAME_MAR=MAR
+UI_LOADGAME_APR=APR
+UI_LOADGAME_MAY=MAY
+UI_LOADGAME_JUN=JUN
+UI_LOADGAME_JUL=JUL
+UI_LOADGAME_AUG=AUG
+UI_LOADGAME_SEP=SEP
+UI_LOADGAME_OCT=OCT
+UI_LOADGAME_NOV=NOV
+UI_LOADGAME_DEC=DEC
+UI_LOADGAME_LEVELTIME=Leveltime
+UI_LOADGAME_HEALTH=Health
+
+
+# UI OPTIONS
+UI_OPTIONS_CONTROL=CONTROLS
+UI_OPTIONS_CONTROL_MESSAGE=Select to Edit Game Controls
+UI_OPTIONS_SYSTEM=SYSTEM
+UI_OPTIONS_SYSTEM_MESSAGE=Edit System Settings
+UI_OPTIONS_GAME=GAME OPTIONS
+UI_OPTIONS_GAME_MESSAGE=Edit Game Options
+UI_OPTIONS_DEFAULT=DEFAULTS
+UI_OPTIONS_DEFAULT_MESSAGE=Reset to Default Settings
+UI_OPTIONS_RV=Refresh Video
+UI_OPTIONS_SELECT=Selection Isn't Implemented
+UI_OPTIONS_VIEW=Select to Edit View Controls
+UI_OPTIONS_MOVE=Select to Edit Movement Controls
+UI_OPTIONS_WEAPON=Select to Edit Firing and Weapon Selection
+UI_OPTIONS_MOUSE=Select to Edit Chat and Mouse Functions
+UI_OPTIONS_CINE=This will play the intro Cinematic
+UI_OPTIONS_ZERO=Clear High Scores to Zero
+UI_OPTIONS_MODS=MODS
+
+# UI CONTROL
+
+# UI CONTROL LOOK
+UI_CONTROL_LOOK=Look
+UI_CONTROL_LOOKUP=Lookup:
+UI_CONTROL_LOOKDOWN=Look Down:
+UI_CONTROL_MOUSELOOK=Mouse Look:
+UI_CONTROL_CENTERVIEW=Centerview:
+UI_CONTROL_BINOCALS=Binoculars:
+UI_CONTROL_ZOOMIN=Zoom In:
+UI_CONTROL_ZOOMOUT=Zoom Out:
+UI_CONTROL_FL=Free Look:
+
+# UI CONTROL MOVE
+UI_CONTROL_MOVE=Move
+UI_CONTROL_ALWAYSRUN=Always Run:
+UI_CONTROL_RUNWALK=Run / Walk:
+UI_CONTROL_SPRINT=Sprint:
+UI_CONTROL_FORWARD=Forward:
+UI_CONTROL_BACKPEDAL=Backpedal:
+UI_CONTROL_MOVELEFT=Move Left:
+UI_CONTROL_MOVERIGHT=Move Right:
+UI_CONTROL_LEANLEFT=Lean Left:
+UI_CONTROL_LEANRIGHT=Lean Right:
+UI_CONTROL_JUMP=Jump:
+UI_CONTROL_CROUCH=Crouch:
+UI_CONTROL_TURNLEFT=Turn Left:
+UI_CONTROL_TURNRIGHT=Turn Right:
+UI_CONTROL_STRAFE=Strafe:
+
+# UI CONTROL SHOOT
+UI_CONTROL_SHOOT=Shoot
+UI_CONTROL_ATTACK=Attack:
+UI_CONTROL_RELOAD=Reload Weapon:
+UI_CONTROL_NEXTW=Next Weapon:
+UI_CONTROL_PREVIOUSW=Previous Weapon:
+UI_CONTROL_STA=Switch to Alternate:
+UI_CONTROL_AUTOSWITCH=Autoswitch:
+UI_CONTROL_AUTOSWITCH_1=Always Switch
+UI_CONTROL_AUTOSWITCH_2=If New
+UI_CONTROL_AUTOSWITCH_3=If Better
+UI_CONTROL_AUTOSWITCH_4=New or Better
+UI_CONTROL_AUTOSWITCH_5=New and Better
+UI_CONTROL_KNIFE=Knife:
+UI_CONTROL_PISTOLS=Pistols:
+UI_CONTROL_MACHINEGUNS=Machineguns:
+UI_CONTROL_RIFLES=Rifles:
+UI_CONTROL_AR=Assault Rifles:
+UI_CONTROL_GRENADES=Grenades:
+UI_CONTROL_ROCKETS=Rockets:
+UI_CONTROL_VENOM=Venom:
+UI_CONTROL_FLAMETHROWER=Flamethrower:
+UI_CONTROL_TESLA=Tesla:
+
+# UI CONTROL ADVANCED
+UI_CONTROL_ADVANCED=Advanced...
+UI_CONTROL_LWU=Last Weap Used:
+UI_CONTROL_LWIB=Next Weapon In Bank:
+UI_CONTROL_PWIB=Previous Wpn In Bank:
+UI_CONTROL_UWC=Use Weapon Cycle
+UI_CONTROL_FZ=For Zooming:
+UI_CONTROL_FZ1=On (normal)
+UI_CONTROL_FZ2=On (reverse)
+
+# UI CONTROL MISC
+UI_CONTROL_MISC=Misc
+UI_CONTROL_CYANIDE=Cyanide(kill player):
+UI_CONTROL_KICK=Kick:
+UI_CONTROL_NOTEBOOK=Toggle Notebook:
+UI_CONTROL_AIP=Auto Item Pickup:
+UI_CONTROL_ACTIVATE=Activate:
+UI_CONTROL_UITEM=Use Item:
+UI_CONTROL_NITEM=Next Item:
+UI_CONTROL_PITEM=Previous Item:
+UI_CONTROL_IMOUSE=Invert Mouse:
+UI_CONTROL_SMOUSE=Smooth Mouse:
+UI_CONTROL_QSAVE=Quicksave:
+UI_CONTROL_QLOAD=Quickload:
+UI_CONTROL_MOUSES=Mouse Sensitivity:
+UI_CONTROL_YMESSAGE=Select the Item to Toggle to Yes or No
+UI_CONTROL_SMESSAGE=Drag the Slider to Increase and Decrease
+UI_CONTROL_OR=or
+UI_CONTROL_KEYCHANGE=Press ENTER or CLICK to change, Press BACKSPACE to clear
+UI_CONTROL_WAITING=Waiting for new key... Press ESCAPE to cancel
+
+# UI SYSTEM GRAPHICS
+UI_GRAPHICS=Graphics
+UI_GRAPHICS_SR=Set Recommended
+UI_GRAPHICS_QUALITY=Quality:
+UI_GRAPHICS_RECOMMENDED=Quality:  Recommended
+UI_GRAPHICS_GLE=GL Extensions:
+UI_GRAPHICS_VIDEOMODE=Video Mode:
+UI_GRAPHICS_CD=Color Depth:
+UI_GRAPHICS_16B=16-bit
+UI_GRAPHICS_32B=32-bit
+UI_GRAPHICS_FULLSCREEN=Fullscreen:
+UI_GRAPHICS_LIGHTING=Lighting:
+UI_GRAPHICS_LIGHTMAP=Light Map (high)
+UI_GRAPHICS_VERTEX=Vertex (low)
+UI_GRAPHICS_GEOMETRIC=Geometric Detail:
+UI_GRAPHICS_CHARACTER=Character Textures:
+UI_GRAPHICS_TEXTURES=General Textures:
+UI_GRAPHICS_FTEXTURES=Texture Filter:
+UI_GRAPHICS_BILINEAR=Bilinear
+UI_GRAPHICS_TRILINEAR=Trilinear
+UI_GRAPHICS_CTEXTURS=Compress Textures:
+UI_GRAPHICS_BTEXTURES=Texture Quality:
+UI_GRAPHICS_BRIGHTNESS=Brightness:
+UI_GRAPHICS_NVFOG=Nvidia Distance Fog:
+UI_GRAPHICS_ATITRUEFORM=ATI Truform:
+UI_GRAPHICS_APPLY=This will apply video
+UI_GRAPHICS_REC=This will Set
+UI_GRAPHICS_REC2=recommended video settings
+UI_GRAPHICS_REC3=and return to the Main Menu.
+
+UI_GPUINFO=Driver info
+
+# UI GAME PERFOMANCE
+UI_PERFOMANSE=Performance
+UI_PERFOMANSE_WML=Wall Mark Lifetime:
+UI_PERFOMANSE_EB=Ejecting Brass:
+UI_PERFOMANSE_DL=Dynamic Lights:
+UI_PERFOMANSE_LQS=Low Quality Sky:
+UI_PERFOMANSE_DPS=Draw Portal Skies:
+UI_PERFOMANSE_SEF=Sync Every Frame:
+UI_PERFOMANSE_CD=Corona Dist:
+UI_PERFOMANSE_PARTICLES=Particles:
+UI_PERFOMANSE_PARTICLES2=Particle Dist:
+UI_PERFOMANSE_NVFT=Nvidia fog type:
+UI_PERFOMANSE_NVFTR=NV Radial
+UI_PERFOMANSE_NVFTP=NV Plane
+UI_PERFOMANSE_ATI=truform tess value:
+UI_PERFOMANSE_GOOD=good
+UI_PERFOMANSE_BETTER=better
+UI_PERFOMANSE_BEST=best
+
+# UI SYSTEM SOUND
+UI_SOUND=Sound
+UI_SOUND_EVOLUME=Effects Volume:
+UI_SOUND_MVOLUME=Music Volume:
+UI_SOUND_QUALITY=Sound Quality:
+UI_SOUND_22KZ=22 khz (high)
+UI_SOUND_11KZ=11 khz (low)
+UI_SOUND_APPLY=This will apply sound
+
+# UI GAME VIEW
+UI_VIEW=View
+UI_VIEW_CH=Cursor Hints:
+UI_VIEW_SP=strobe pulse
+UI_VIEW_AP=alpha pulse
+UI_VIEW_S=solid
+UI_VIEW_SIZEPULSE=size pulse
+UI_VIEW_CZ=Crosshair Size:
+UI_VIEW_CA=Crosshair Alpha:
+UI_VIEW_HUDA=HUD Alpha:
+UI_VIEW_SS=Screen Size:
+UI_VIEW_C=Crosshair:
+UI_VIEW_SM=Drag the Slider to Increase and Decrease
+
+# UI MISC
+UI_APPLY=Apply
+UI_APPLY2=settings and return
+UI_APPLY3=to the Main Menu.
+UI_APPLY4=to the Game.
+UI_BACK=BACK
+UI_BACK_MESSAGE=EXIT TO MAIN MENU
+UI_END=End
+UI_CLOSE=Close
+UI_COVER=Cover
+UI_ERROR=Error:
+UI_VHIGH=Very High
+UI_HIGH=High
+UI_MEDIUM=Medium
+UI_LOW=Low
+UI_CUSTOM=Custom
+UI_DEFAULTS=Default
+UI_SHORT=Short
+UI_LONG=Long
+UI_TINY=Tiny
+UI_LARGE=Large
+UI_SMALL=Small
+UI_YES=YES
+UI_NO=NO
+UI_OK=OK
+UI_RUN=RUN
+UI_OFF=Off
+UI_YES2=Yes
+UI_NO2=No
+UI_FAR=Far
+UI_YC=you crazy
+UI_NEAR=near
+UI_PLEASEWAIT=Please Wait...
+
+# UI MODS
+UI_MODS_MESSAGE=Select MOD name to Launch
+
+# UI DEFAULT
+UI_DEFAULT_M1=This will set your Controls,
+UI_DEFAULT_M2=Graphics and game Options
+UI_DEFAULT_M3=Are you sure?
+UI_DEFAULT_M4=Your settings are now set
+UI_DEFAULT_M5=to their original default values.
+
+# UI MULTIPLAYER
+UI_MULTIPLAYER_MESSAGE=Go to Multiplayer mode?
+
+# UI QUIT
+UI_QUIT_MESSAGE=Chickening out already?
+
+# UI INGAME
+UI_IG_SAVE=SAVE
+UI_IG_LOAD=LOAD
+UI_IG_EXIT=EXIT
+UI_VERSION=Version:
+
+UI_LEAVE=Exit Menu
+UI_LEAVE2=Main Menu
+UI_LEAVE3=Quit
+UI_LEAVE4=Exit to
+UI_LEAVE5=Main Menu?
+UI_LEAVE6=Want to
+UI_LEAVE7=Restart the map?
+UI_LEAVE8=Quit Game?
+
+# HUD MISSION STATS
+HUD_STATS=Mission Stats
+HUD_STATS_TIME=Time
+HUD_STATS_OBJECTIVES=Objectives
+HUD_STATS_SECRETS=Secret Areas
+HUD_STATS_TREASURE=Treasure
+HUD_STATS_ATTEMPTS=Attempts
+HUD_STATS_EXIT=Proceed forward to exit...
+HUD_STATS_NOEXIT=Exit not yet available
+
+# HUD MESSAGE
+HUD_MESSAGE_MFAIL=Mission Failed
+HUD_MESSAGE_MFAIL_KESSLER=Mission Failed\nYou Killed Kessler
+HUD_MESSAGE_MFAIL_CIVILIAN=Mission Failed\nYou Killed a Civilian
+HUD_MESSAGE_MFAIL_KARL=Mission Failed\nYou Killed Karl
+HUD_MESSAGE_MFAIL_KREISAU=Mission Failed\nYou Killed a Kreisau Agent
+HUD_MESSAGE_MFAIL_DETECTED=Mission Failed\nYou Have Been Detected
+HUD_MESSAGE_MFAIL_ROCKET=Mission Failed\nRocket Launched
+HUD_MESSAGE_MFAIL_SCIENTIST=Mission Failed\nThe Scientist Has Been Killed
+HUD_MESSAGE_MFAIL_TANK=Mission Failed\nTank Destroyed
+HUD_MESSAGE_MFAIL_BASE=Mission Failed\nYou Failed to Enter\nthe Rocket Base
+HUD_MESSAGE_SECRET=You found a secret area
+HUD_MESSAGE_WINE=You drank the wine
+HUD_MESSAGE_SAVE=Game Saved
+HUD_MESSAGE_NOITEM=No item to use
+HUD_MESSAGE_ONC=Objectives not complete
+HUD_MESSAGE_DTIMER=Dynamite timer set at
+HUD_MESSAGE_SECOND=second
+HUD_MESSAGE_SECONDS=seconds
+HUD_MESSAGE_MINUTE=minute
+HUD_MESSAGE_MINUTES=minutes
+HUD_MESSAGE_HOUR=hour
+HUD_MESSAGE_HOURS=hours
+HUD_MESSAGE_DAY=day
+HUD_MESSAGE_DAYS=days
+HUD_MESSAGE_MONTH=month
+HUD_MESSAGE_MONTHS=months
+HUD_MESSAGE_YEAR=year
+HUD_MESSAGE_YEARS=years
+
+# HUD WEAPONS
+HUD_WEAPONS_KNIFE=Knife
+HUD_WEAPONS_LUGER=Luger
+HUD_WEAPONS_SLUGER=Silencer
+HUD_WEAPONS_COLT=Colt
+HUD_WEAPONS_2COLT=Dual Colts
+HUD_WEAPONS_MP40=MP40
+HUD_WEAPONS_THOMPSON=Thompson
+HUD_WEAPONS_STEN=Sten
+HUD_WEAPONS_MAUSER=Mauser Rifle
+HUD_WEAPONS_SMAUSER=Sniper Scope
+HUD_WEAPONS_SR=Snooper Rifle
+HUD_WEAPONS_FG42=FG42 Paratroop Rifle
+HUD_WEAPONS_GRENADE=Grenade
+HUD_WEAPONS_PINEAPPLE=Pineapple
+HUD_WEAPONS_PANZER=Panzerfaust
+HUD_WEAPONS_VENOM=Venom
+HUD_WEAPONS_FLAMETHROWER=Flamethrower
+HUD_WEAPONS_TESLA=Tesla Gun
+
+# HUD AMMO
+HUD_AMMO_9MM=9mm Rounds
+HUD_AMMO_9MM2=9mm
+HUD_AMMO_9MM3=9mm Box
+HUD_AMMO_45CAL=.45cal Rounds
+HUD_AMMO_45CAL2=.45cal
+HUD_AMMO_45CAL3=.45cal Box
+HUD_AMMO_92MM=7.92mm Rounds
+HUD_AMMO_92MM2=7.92mm
+HUD_AMMO_92MM3=7.92mm Box
+HUD_AMMO_30CAL=.30cal Rounds
+HUD_AMMO_30CAL2=.30cal
+HUD_AMMO_30CAL3=.30cal Box
+HUD_AMMO_7MM=12.7mm
+HUD_AMMO_GRENADERS=Grenades
+HUD_AMMO_PINEAPPLES=Pineapples
+HUD_AMMO_DYNAMITE=Dynamite
+HUD_AMMO_CELL=Cell
+HUD_AMMO_FUEL=Fuel
+HUD_AMMO_ROCKETS=Rockets
+
+# HUD ITEMS
+HUD_ITEM_LATOUR=1938 Latour
+HUD_ITEM_ENDURANCE=Endurance
+HUD_ITEM_BOOKV=Venom Tech Manual
+HUD_ITEM_BOOKP=Project Book
+HUD_ITEM_BOOKZ=Dr. Zemph's Journal
+HUD_ITEM_RF=Red Flag
+HUD_ITEM_BF=Blue Flag
+HUD_ITEM_BINOCALS=Binoculars
+HUD_ITEM_TREASURE=Treasure Item
+HUD_ITEM_HEALTH=Health
+HUD_ITEM_HEALTHS=Small Health
+HUD_ITEM_HEALTHM=Med Health
+HUD_ITEM_HEALTHL=Large Health
+HUD_ITEM_HOTMEAL=Hot Meal
+HUD_ITEM_COLDMEAL=Cold Meal
+HUD_ITEM_STAMINA=Stamina
+HUD_ITEM_JACKET=Flak Jacket
+HUD_ITEM_HELMET=Armored Helmet
+
+# MISSIONS
+
+# MISSION 1: OMINOUS RUMORS
+
+MISSION_RUMORS=MISSION 1: OMINOUS RUMORS
+MISSION_RUMORS_ESCAPE1=Part 1: Escape!
+MISSION_RUMORS_ESCAPE2=Part 2: Castle Keep
+MISSION_RUMORS_TRAM=Part 3: Tram Ride
+
+
+MISSION_RUMORS_BRIEFING=Orders are as follows: Infiltrate Castle Wolfenstein and investigate increase in activity from SS Paranormal Division.  Gather any intelligence information you may find regarding said SS division and their activities in the area.\n\nKessler, your contact, is a member of a German resistance group called the Kreisau Circle.  He has managed to partially infiltrate the SS Paranormal Division's temporary headquarters and has valuable information regarding their activities.  Meet Kessler in the village near the archaeological dig site.  He will have further information regarding your mission.\n\nRemember: If you or Agent One are captured, escape at all costs.  Standing Order #71 remains in effect: If you are placed in a compromising position where you might divulge information regarding your mission or the OSA, take your own life by ingesting your cyanide tablet.  As always, the OSA will disavow any knowledge of your identity and mission if you are compromised.\n\nGood luck.
+
+
+MISSION_RUMORS_ESCAPE1_OBJECTIVES=MISSION OBJECTIVES:\n\n     Escape the dungeon by any\n     means necessary\n\n     Locate the exit to the lower\n     keep
+
+MISSION_RUMORS_ESCAPE2_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate tram entrance
+
+MISSION_RUMORS_TRAM_OBJECTIVES=MISSION OBJECTIVES:\n\n     Restore power to the tram\n\n     Escape from Castle Wolfenstein\n\n     Meet Kessler in the village of\n     Wulfburg
+
+
+
+# MISSION 2: DARK SECRET
+
+MISSION_DS=MISSION 2: DARK SECRET
+MISSION_DS_VILLAGE1=Part 1: Village
+MISSION_DS_CRYPT1=Part 2: Catacombs
+MISSION_DS_CRYPT2=Part 3: Crypt
+MISSION_DS_CHURCH=Part 4:The Defiled Church
+
+
+MISSION_DS_VILLAGE1_BRIEFING=From OSA via Kreisau Circle contact Kessler: Learned of your capture and subsequent escape from Castle Wolfenstein; Agent One's death a tragedy, but unavoidable.\n\nHimmler's SS Paranormal Division, headed by Helga von Bulow, is staging a massive archaeological dig near the outskirts of the village.  OSA recently intercepted fragments of high-level encoded messages coming from the site directly to Himmler himself, but up to this point we have been unable to fully decode any of the messages.\n\nKarl Villigut, a member of the Kreisau Circle, is in the village with an important item for you.  If possible, locate him and obtain the item, then proceed as per Kessler's instructions to archaeological dig and investigate the situation.  Remember to gather any intelligence information you may find along the way. You will receive new orders once you reach the dig site.
+
+MISSION_DS_CRYPT_BRIEFING=According to Kreisau Circle members from Wulfburg, these catacombs run a great distance under the village, ultimately leading to an ancient church that is no longer accessible by normal means.  Helga von Bulow is reported to be there now, with a large contingent of her "Elite Guard" and a team of scientists from the SS Paranormal Division.\n\nYour orders are to navigate the catacombs and locate the church.  Gather any artifacts that you may find along the way for future analysis.  Kreisau Circle reports "supernatural" activities are taking place in the catacombs; these are most likely unfounded rumors, but they are from a reliable source and must be heeded.
+
+MISSION_DS_CRYPT1_BRIEFING=Kreisau informants have also revealed that Professor Zemph often carries a journal into the dig site. The journal may provide important insight into his activities at Castle Wolfenstein.
+
+MISSION_DS_CHURCH_BRIEFING=Residents of Wulfburg call this "The Defiled Church".  It apparently has a rather sordid history dating back 1000 years.  Over the ages it has been rumored to have been used for a number of occult ceremonies.  Rumors aside, we do know that Helga von Bulow and her SS Paranormal Division team are there now.  We do not know what they are planning, so it is imperative that you investigate and recover as much intelligence information as possible.\n\nA word of caution; the Kreisau Circle has reported that Helga von Bulow's "Elite Guard" is made up of a small group of extremely capable women who have been trained to an exceptionally high level, both physically and with small arms.  They are also reportedly bound together as part of a witch's coven.
+
+
+MISSION_DS_VILLAGE_OBJECTIVES=MISSION OBJECTIVES:\n\n     Infiltrate the village\n\n     Locate the SS Paranormal Division's\n     archaeological dig site
+
+MISSION_DS_CRYPT1_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate Professor Zemph's Journal\n\n     Pursue SS Paranormal personnel\n     through the catacombs
+
+MISSION_DS_CRYPT2_OBJECTIVES=MISSION OBJECTIVES:\n\n     Navigate the catacombs to the\n     Wulfburg Church entrance
+
+MISSION_DS_CHURCH_OBJECTIVES=MISSION OBJECTIVES:\n\n     Infiltrate Wulfburg Church\n\n     Pursue Helga von Bulow to the\n     ruined cathedral\n\n     Eliminate all of von Bulow's\n     personal "Elite guards"
+
+MISSION_DS_BOSS1_OBJECTIVES=MISSION OBJECTIVES:\n\n     Eliminate Helga von Bulow\n\n     Retrieve the "Dagger Of Warding"\n     for further study
+
+
+
+# MISSION 3: WEAPONS OF VENGEANCE
+
+MISSION_WOV=MISSION 3: WEAPONS OF VENGEANCE
+MISSION_WOV_FOREST=Part 1: Forest Compound
+MISSION_WOV_ROCKET=Part 2: Rocket Base
+MISSION_WOV_BASEOUT=Part 3: Radar Installation
+MISSION_WOV_ASSAULT=Part 4: Air Base Assault
+
+
+MISSION_WOV_FOREST_BRIEFING=Deathshead has been tracked to a remote rocket base located near the Baltic Coast, where he intends to fire a V2 rocket at London fitted with some kind of new chemical warhead.  Your only viable method of infiltration is to stow away aboard a supply truck bound for the base.  You will parachute into the outlying forest area armed only with your knife and silenced Sten.\n\nThe rest of your gear will be deployed separately in two drop containers.  In one of them you will find the new OSA M1S "Snooper" rifle which has been shown to be highly effective for long range, covert "wet work".  Due to the fact that this weapon uses very specialized ammunition, we can only issue you with a limited amount. Also, due to its experimental nature, it is imperative that you recover this item lest it fall into enemy hands.\n\nThe area is lightly guarded, but there are alarm stations scattered throughout.  If any alarms are sounded the base will be alerted and the mission will be scrubbed.  If you encounter any enemies, eliminate them before they can sound an alarm.  Remember: Do not eliminate the final guard who controls access into the compound; if you do, the supply truck will not be able to get inside the rocket base.
+
+MISSION_WOV_ROCKET_BRIEFING=German resistance informs us that the rocket Deathshead intends to fire at London carries some kind of new chemical warhead, the total destructiveness of which is currently unknown.\n\nGerman resistance also informs us that all of these rockets have a "self-destruct" switch, usually located in the main rocket control room.  Unfortunately, we know virtually nothing of the interior layout of the base.  It will be up to you to determine the best means of reaching the main control room so that you can destroy the rocket before it reaches London.\n\nAfter destroying the rocket it is likely that the base will be on full alert.  Use all means available to exit the base and proceed to the outer compound.
+
+MISSION_WOV_BASEOUT_BRIEFING=Proceed through the outer compound en route to the X-Airbase where you will find the Bachem 317 "Kobra" rocket plane.  It is certain that after the destruction of the rocket base the outer compound will also be on full alert, so once again use all means at your disposal in eliminating all resistance along the way.\n\nAlso, the outer compound contains a new MVX-mk1 radar installation.  Your orders are to destroy the radar installation before proceeding to the X-Airbase.  German resistance also reports that some of Himmler's "Black Guard" soldiers may be stationed near the base.
+
+MISSION_WOV_ASSAULT_BRIEFING=Enter the experimental aircraft test facility via the outer compound of the rocket base.  The airbase houses the latest Bachem Ba317 "Kobra" experimental rocket plane in a hangar at the northern perimeter.  Upon infiltration of the airbase, eliminate any resistance and proceed to the "Kobra" launch hangar.\n\nYou will need to prep the "Kobra" for launch, so look for launch procedure documentation in the facility.  Once you have appropriated the "Kobra" and are airborne, proceed immediately back to the OSA airbase in Malta.  The Ba317 is reported to travel at speeds in excess of 500 knots, so enemy air defenses should offer no problem.  Contact OSA immediately upon touchdown in Malta for debriefing and further orders.\n\nGood luck.
+
+
+MISSION_WOV_FOREST_OBJECTIVES=MISSION OBJECTIVES:\n\n     Infiltrate supply compound\n\n     Stowaway aboard supply truck\n     bound for rocket base\n\n     Ensure that no alarms are sounded\n\n     Recover OSA M1S "SNOOPER" rifle
+
+MISSION_WOV_ROCKET_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate Main Control Room\n\n     Terminate launch of V2 rocket\n\n     Locate exit and proceed to the\n     Outer Compound
+
+MISSION_WOV_BASEOUT_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate and destroy MVX-mk1 \n     radar array\n\n     Locate entrance to X-Aircraft\n     facility
+
+MISSION_WOV_ASSAULT_OBJECTIVES=MISSION OBJECTIVES:\n\n     Gain access to "Kobra\n\n     Prep "Kobra" for launch\n\n     Capture "Kobra" and fly to\n     OSA airbase in Malta
+
+
+
+# MISSION 4: DEADLY DESIGNS
+
+MISSION_DD=MISSION 4: DEADLY DESIGNS
+MISSION_DD_SFM=Part 1: Kugelstadt
+MISSION_DD_FACTOTY=Part 2: The Bombed Factory
+MISSION_DD_TRAINYARD=Part 3: The Trainyards
+MISSION_DD_SWF=Part 4: Secret Weapons Facility
+
+MISSION_DD_SWF_NOTE=Note: SWF = Secret Weapons Facility
+
+
+MISSION_DD_SFM_BRIEFING=Deathshead has been tracked to what we believe is his Secret Weapons Facility (SWF).  This is an industrial complex located near Kugelstadt, a city that has undergone intensive aerial bombardment by the Allies for the past 48 hours.  Deathshead's connection to the events at Castle Wolfenstein are becoming more clear, but it is imperative that we learn more about what his "Special Projects Division" is up to. The OSA has wanted to investigate the SWF since learning of its existence a few months ago, but we have been unable to pinpoint its exact location or gain entry.\nThe Kreisau Circle has also informed us that a top scientist from the SWF wishes to defect.
+
+MISSION_DD_SFM_BRIEFING2=They have commandeered a Panzer tank near the entrance to the complex and will be able to assist you in gaining entry to the facility. Once you link up with the resistance members afford them any help they might need in securing the safe defection of the scientist. Preliminary reports have come to us from the defecting scientist through our Kreisau Circle contacts.  These reports state the existence of a project book that fully discloses information on Deathshead's experimental "Venom Gun".
+
+MISSION_DD_FACTORY_BRIEFING=The first part of the SWF industrial complex is the weapons factory.  Various aircraft and heavy weapons were being manufactured here before the bombing raid.  Intelligence has learned that this was also to be one of the manufacturing points for the Nazi's new "Venom" machine gun.  This weapon has been rumored to have an incredible rate of fire, and if it is half as powerful as reports would indicate could pose a serious threat to the Allies.\n\nThe defecting scientist has confirmed  the reports that there is a "Venom Gun" project book located somewhere in the factory which contains all of that weapon's technical information and specifications.  The procurement of this "Venom Gun" project book would be a major stroke of good fortune for the Allies; it is imperative that you find it before proceeding.
+
+MISSION_DD_TRAINYARD_BRIEFING=The second part of the SWF industrial complex is the Trainyards/Freight Depot.  Aerial Recon reports that this area appears to have been less damaged than the factory.  The real strategic importance of this area is that it is the only entrance into the Secret Weapons Facility itself, which lies underground and out of reach of Allied bombers.\n\nUnfortunately, our tactical knowledge of this area is minimal at best, so you must discover on your own which building contains the SWF entrance.
+
+MISSION_DD_SWF_BRIEFING=Besides advanced weapons research and development, the OSA has very little information on what goes on inside the SWF.  Kreisau Circle intelligence does suggest that the SWF contains a U-boat pen that may be used as a debarkation point for another of Deathshead's secret research projects, although we have no idea what that might be at this time.\n\nThe bombing raid has made a mess of communications topside, so you should be able to enter the facility without their knowledge.
+
+
+MISSION_DD_SFM_OBJECTIVES=MISSION OBJECTIVES:\n\n     Eliminate panzergrenadier team\n\n     Escort the captured Panzer safely\n     to the SWF complex\n\n     Aid Kreisau Circle in safe\n\n     defection of SWF scientist\n\n     Gain access to SWF Complex
+
+MISSION_DD_FACTORY_OBJECTIVES=MISSION OBJECTIVES:\n\n     Infiltrate the Kugelstadt \n     weapons factory\n\n     Obtain "Venom Gun" Project Book
+
+MISSION_DD_TARAINYARD_OBJECTIVES=MISSION OBJECTIVES:\n\n     Gain access to the main \n     warehouse complex\n\n     Locate the primary lift\n     and proceed to the SWF
+
+MISSION_DD_SWF_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate Deathshead's U-boat pen\n\n     Obtain information on Deathshead's\n     destination
+
+
+
+# MISSION 5: DEATHSHEAD'S PLAYGROUND
+
+MISSION_DP=MISSION 5: DEATHSHEAD'S PLAYGROUND
+MISSION_DP_NORWAY=Part 1: Ice Station Norway
+MISSION_DP_XLABS=Part 2: X-labs
+MISSION_DP_BOSS2=Part 3: Super Soldier
+
+
+MISSION_DP_NORWAY_BRIEFING=Your interrogation of the officer in the SWF has yielded the location of Deathshead's "X-Labs" in occupied Norway.  Our defecting SWF scientist has also revealed the nature of what is taking place at the "X-Labs"; project Uber Soldat, or Super Soldier.  This is Deathshead's most advanced technology project, apparently combining robotic and biological engineering to create the "ultimate killing machine".  By itself this Super Soldier could pose a considerable threat to the Allies, but it appears that this project may have some other connection to the SS Paranormal Division.\n\nIn any event, the "X-Labs" must be infiltrated at all costs; we must know what Deathshead's ultimate goal is for these Super Soldiers, and, if possible, what their connection is to the SS Paranormal Division.
+
+MISSION_DP_XLABS_BRIEFING=There is very little information about the "X-Labs" themselves.  Our defecting scientist worked in weapons research, and although he is aware of the existence of the "X-Labs" he has never been there.  He has however, informed us that the "X-Labs" do make extensive use of "Tesla" technology to create powerful, guided electrical fields.  These are apparently used for everything from security gating to local power generation.  It is also rumored that this technology is what drives the nervous systems of what our scientist calls the "X-creatures".
+
+MISSION_DP_XLABS_BRIEFING2=This last statement indicates that you will probably engage more of the "Lopers" that you first encountered at the Secret Weapons Facility, as well as other unknown types of "X-Creatures".  You should proceed with caution into any new areas until you can ascertain what it is you are dealing with.  Your ultimate mission is to discover exactly what Project "Uber Soldat" (Super Soldier) is and what Deathshead's ultimate plans for said project are.  Be on the lookout for any documentation linking Deathshead's activities with Operation: Resurrection.
+
+MISSION_DP_NORWAY_OBJECTIVES=MISSION OBJECTIVES:\n\n     Breach "X-Labs" outer compound\n\n     Gain access to main secure\n     lab area
+
+MISSION_DP_XLABS_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate and procure any documents\n     related to Operation Resurrection\n\n     Locate entrance to main\n     "Uber Soldat" gestation area
+
+MISSION_DP_BOSS2_OBJECTIVES=MISSION OBJECTIVES:\n\n     Pursue Deathshead to the\n     "Uber Soldat" Test Lab\n\n     Eliminate Deathshead's "Uber Soldat"\n\n     Locate exit and proceed to\n     the surface
+
+
+
+# MISSION 6: RETURN ENGAGEMENT
+
+MISSION_RE=MISSION 6: RETURN ENGAGEMENT
+MISSION_RE_DAM=Part 1: Bramburg Dam
+MISSION_RE_VILLAGE2=Part 2: Paderborn Village
+MISSION_RE_CHATEAU=Part 3: Chateau Schufstaffel
+MISSION_RE_DARK=Part 4: Unhallowed Ground
+
+
+MISSION_RE_DAM_BRIEFING=The mission to the "X-Labs" had the effect of driving Deathshead into hiding; at this time his whereabouts are unknown.  However, it is now known that he was only a supporting character in Himmler's ultimate goal; to resurrect Heinrich I.  It appears that three of Deathshead's Super Soldiers will be "anointed" by Marianna Blavatsky in a ceremony to be held near Chateau Shufstaffel in the village of Paderborn.  They will then be brought to the grave of Heinrich I located near Castle Wolfenstein for the "Resurrection".  While many in the OSA remain skeptical of this ceremony, recent events have shown that nothing can be ruled out.
+
+MISSION_RE_DAM_BRIEFING2=Your mission is to infiltrate Chateau Shufstaffel and stop this ceremony at all costs.  To reduce the chances of alerting the enemy, you will be air dropped near a dam two kilometers from Paderborn. You must cross the dam to reach Paderborn, and from there gain access to the chateau.  A silent approach is your best option.  Once in Paderborn you are to assassinate the Paranormal Division officers and discover the exact location of the ceremonies. Should you arrive too late, proceed with all speed to Castle Wolfenstein and ensure the "Resurrection" does not take place.
+
+MISSION_RE_VILLAGE2_BRIEFING=Paderborn, home to many of Germany's leading occultists, is currently hosting the elite of the SS Paranormal Division. As learned in recently decoded SS transmissions, Marianna Blavatsky will perform a ritual termed "Anointing of the Dark Knights".\n\nThe ceremony is scheduled to take place somewhere near Chateau Schufstaffel. Resistance Intelligence tells us the only viable route into the chateau is through the village, as it is the least guarded path. However, there is a General Alarm somewhere in the village near the chateau. If the alarm is raised there will be no chance of getting inside.
+
+MISSION_RE_VILLAGE2_BRIEFING2=You must, therefore, proceed through the village as quietly as possible, using your silenced weapons.\n\nAlso, with the "Anointing Ceremony" about to take place at the chateau, there are five key SS Paranormal Operatives residing in the Village.  This presents a unique opportunity to deliver a crippling blow to the SS Paranormal's chain of command. Therefore, these SS Operatives must be eliminated before proceeding.
+
+MISSION_RE_CHATEAU_BRIEFING=The "Anointing Ceremony" for the Super Soldiers is reported to be taking place somewhere near the chateau.  According to the Operation: Resurrection project book recovered from the "X-Labs", the three Super Soldiers are to be "anointed" by Marianna Blavatsky whereby they will be transformed into "Dark Knights".  According to the project book the presence of these "Dark Knights" is necessary for the final phase of their plan; to raise Heinrich I from his 1000 year old burial site.\n\nYou must, if possible, stop the ceremony before it begins and destroy the Super Soldiers before their transformation.  If their transformation does take place there will be no way of judging how much more powerful they will be, or if it will even be possible to stop them.
+
+MISSION_RE_CHATEAU_BRIEFING2=Also, there will still be a number of SS Paranormal Operatives in the chateau; ensure that you eliminate them.
+
+
+MISSION_RE_DAM_OBJECTIVES=MISSION OBJECTIVES:\n\n     Get across the Bramburg Dam\n\n     Locate the road to Paderborn
+
+MISSION_RE_VILLAGE2_OBJECTIVES=MISSION OBJECTIVES:\n\n     Eliminate five key SS Paranormal\n     operatives\n\n     Ensure alarm is not sounded\n\n     Gain access to Chateau Schufstaffel
+
+MISSION_RE_CHATEAU_OBJECTIVES=MISSION OBJECTIVES:\n\n     Eliminate General von Shurber\n\n     Ocate rear exit of  the chateau
+
+MISSION_RE_DARK_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate Site of "Anointing Ceremony"\n\n     Destroy all Super Soldiers
+
+
+
+# MISSION 7: OPERATION RESURRECTION
+
+MISSION_OR=MISSION 7: OPERATION RESURRECTION
+MISSION_OR_DIG=Part 1: The Dig
+MISSION_OR_CASTLE=Part 2: Return To Castle Wolfenstein
+MISSION_OR_END=Part 3: Heinrich
+
+
+MISSION_OR_BRIEFING=We have virtually no information for you at this time regarding your mission.  You are in uncharted territory, so it will be up to you to determine the best possible course of action.\nIf you were unable to disrupt the ceremony and prevent the Super Soldiers from being transformed into "Dark Knights", then you will ultimately have to stop Blavatsky and the resurrection ritual.  How you accomplish this task must be left up to you.\n\nThe fate of the free world now rests on your shoulders Agent Blazkowicz.  Failure is not an option.
+
+MISSION_OR_DIG_OBJECTIVES=MISSION OBJECTIVES:\n\n     Pursue SS Paranormal Division\n     Operatives through the dig site\n\n     Locate alternate entrance to\n     Castle Wolfenstein
+
+MISSION_OR_CASTLE_OBJECTIVES=MISSION OBJECTIVES:\n\n     Locate the entrance to the\n     main dig site.
+
+MISSION_OR_END_OBJECTIVES=MISSION OBJECTIVES:\n\n     Destroy Heinrich I
+
+NOTEBOOK_KESSLER=Partisan contact named Kessler
+NOTEBOOK_TRAM=Tram
+NOTEBOOK_VILLAGE=Village
+NOTEBOOK_MIDSTATION=Midstation
+NOTEBOOK_GH=Guard house
+NOTEBOOK_PC=power cutoff
+NOTEBOOK_CRYPT=Crypt
+NOTEBOOK_PH=Partisan safe house
+NOTEBOOK_CHURCH=Church
+NOTEBOOK_HELGA=Helga von Bulow of the SS Paranormal Division
+NOTEBOOK_DAGGER=Unholy dagger
+NOTEBOOK_TOWERS=towers
+NOTEBOOK_HOUSE=farm house
+NOTEBOOK_CP=covert path
+NOTEBOOK_FOREST=Forest
+NOTEBOOK_OB=Outer base
+NOTEBOOK_AIR=Airbase
+NOTEBOOK_ROCKET=Rocket base
+NOTEBOOK_CHEMICAL=Chemical warhead experimental v-rocket
+NOTEBOOK_RADAR=MVX MK1 Radar system
+NOTEBOOK_EHAD=enter here and destroy
+NOTEBOOK_KOBRA=Kobra experimental plane
+NOTEBOOK_TANK=Partisan commandeered panzer tank
+NOTEBOOK_KUGELSTADT=Kugelstadt
+NOTEBOOK_DEFECTION=Defection site
+NOTEBOOK_TRAINYARDS=Trainyards
+NOTEBOOK_FACTORYAREA=Factory area
+NOTEBOOK_SWF=Possible entrance to the SWF
+NOTEBOOK_ETB=Entrance to base
+NOTEBOOK_DOCK=Dock
+NOTEBOOK_UBOAT=Uboat
+NOTEBOOK_DAMAREA=Dam area
+NOTEBOOK_WT=Watch towers
+NOTEBOOK_CR=Covert route
+NOTEBOOK_MISSIONS=MISSION OBJECTIVES
+NOTEBOOK_HOCHSTEDDER=Eliminate Major Hochstedder
+NOTEBOOK_STAUFF=Eliminate General von Stauff
+NOTEBOOK_STRACHE=Eliminate Colonel Strache
+NOTEBOOK_BURKHALTER=Eliminate General Burkhalter
+NOTEBOOK_HAUPMAN=Eliminate General Haupman
+NOTEBOOK_ALARM=Ensure Alarm is not sounded
+NOTEBOOK_SCHUFSTAFFEL=Gain access to Chateau Schufstaffel
+NOTEBOOK_DAM=Dam
+NOTEBOOK_CHATEAU=Chateau
+NOTEBOOK_ADS=Archeological dig site
+NOTEBOOK_RC=Ruined castle
+NOTEBOOK_DIGSITE=Dig site
+NOTEBOOK_IC=Inner core
+NOTEBOOK_MDS=Main dig site
+
+# DEBRIEFING MISSIONS
+
+DEBRIEFING_MISSION1=Mission 1 Debriefing\n\nCLASSIFIED\n\nThings went sour after Agent One and I infiltrated the area.  Unable to meet our Kreisau Circle contacts, we were captured and taken to Castle Wolfenstein.  Agent One was tortured and killed, but revealed no information.  Overpowered guard and managed to escape.  Only way to Village was via Castle Wolfenstein Tram.  In Tram Station I finally managed to meet up with Kessler, who was badly wounded in a battle with Nazi guards.  Kessler spoke with High Command in Village, they all believe I am dead.  Proceeding on into Village with Kessler.
+
+DEBRIEFING_MISSION2=Mission 2 Debriefing\n\nCLASSIFIED\n\nEntered Village with Kessler, learned of ancient "in-human" remains discovered in an excavation site.  Found a network of crypts running below the village. Undead creatures everywhere killing everything in sight, including Krauts. Located the "Defiled Church" just as Zemph and Helga completed their "life essence" from the corpse of a "Dark Knight". What does concern the OSA is Zemph's mention of an Operation: Resurrection and how Deathshead and perhaps Himmler himself are involved.
+
+DEBRIEFING_MISSION3=Mission 3 Debriefing\n\nCLASSIFIED\n\nDebriefed Jack Stone at OSA by coded radio at Malta.   Airdropped in forest near SS rocket base at Katamarunde where I infiltrated the V2 Rocket Base through means of stealth approach.  Once inside base destroyed V2 with "dirty water" warhead aimed for London.  Fought through heavy resistance on way out to reach Experimental Aircraft Facility.  Successfully infiltrated Aircraft Facility, located launch directives and "appropriated" experimental Bachem-317 Kobra Rocket Plane.  Flew without incident back to Malta to turn over Kobra to OSA scientists.
+
+DEBRIEFING_MISSION4=Mission 4 Debriefing\n\nCLASSIFIED\n\nMet up with German resistance (Kreisau Circle) members at outskirts of Kugelstadt, which had just undergone intensive allied bombing.  Orders to infiltrate SS Secret Weapons Facility (SWF).  Kreisau agents used captured Panzer to break into facility. Entered SWF and obtained detailed plans and working prototype of new Venom Gun.  Encountered strange, mutated loping creature inside SWF.  Apparently a test subject for Venom Gun firing rates.  Necessary to exterminate all encountered as they posed serious physical threat to self.  Unable to find Deathshead, but was able to learn location of his "X-Labs" in occupied Norway.
+
+DEBRIEFING_MISSION5=Mission 5 Debriefing\n\nCLASSIFIED\n\nAirdropped in occupied Norway near X-Labs.  Encountered U-Boat which was seen leaving SWF.  Medium resistance encountered along approach to X-Labs entrance.  Necessary to blow through security doors, signaling my arrival to X-Labs security forces.  Encountered more "Lopers" inside facility, as well as a new class of "X-Creature" termed "Proto-Soldier".  Seven feet tall, heavily armored and very irritable, these creatures required a serious amount of firepower to bring down.  Located Deathshead's inner sanctum where I was introduced to what he called ".the pinnacle of his research".  This was the Super Soldier, a much more robust variant of the Proto-Soldier.  After considerable effort the Super Soldier was defeated, but Deathshead managed to escape.
+
+DEBRIEFING_MISSION6=Mission 6 Debriefing\n\nCLASSIFIED\n\nOSA learned of Deathshead's remaining "Super Soldiers" being sent to area of Castle Wolfenstein for occult ceremony presided over by Marianna Blavatsky, codename "High Priestess".  Crossed Bramburg Dam and infiltrated Village of Paderborn. "Eliminated" five high ranking SS Paranormal operatives.  Infiltrated Chateau Shufstaffel.  Encountered heavy resistance from Elite Guard.  "Anointing Ceremony" took place on what Kreisau termed "Unhallowed Ground" near the chateau.  Missed ceremony.  Encountered two Super Soldiers and more Elite Guards.  Three "Anointed" Super Soldiers, now "Dark Knights", taken to the burial ground of Heinrich I.  Blavatsky attempting to "resurrect" Heinrich and apparently needs Dark Knights for this.  Passage to burial ground blocked, but located subterranean route through another of the Krauts' archaeological digs.  Will attempt to locate site of resurrection and stop it.
+
+# BOOKS
+BOOK_ZEMPH=March 9, 1943  9pm\nWhat an amazing day this has been.  I can still hardly believe it.  The remains of the last Dark Knight have finally been discovered.  After all these years I feel totally vindicated.  What will Strasse and the other skeptics have to say now, I wonder?  Otto and I will be joining the advance team at the dig site.  We leave tomorrow morning on the first train.  With any luck we should be ready to begin the Life Essence Extraction by this time next week.  I must remember to pack an extra wool scarf.\n\nMarch 11, 1943  11pm\nArrived this afternoon.  Travelling for two days straight. Everything finally unpacked.  Wave-guide on Number 2 Reduction Set damaged in transit.  Will have to cannibalize spare.  Colder than I expected, even for this time of year.\n\nMarch 13, 1943 9pm\nConditions here are impossible.  Generators are unreliable and decent voltage regulation is non-existent.  Two days wasted on constant recalibrations.  I Hope we can make up the lost time.  Going to be close.  I feel my Bronchitis acting up.
+
+BOOK_ZEMPH2=March 14,  1943 7pm\nVery upset with how things are progressing. The work is getting sloppy.  Everyone in too much of a rush.  Ignoring precautions.  Certain corners just cannot be cut.  Those old mystics were far too clever for that.  Helga is the worst offender of all.  And she is supposed to be overseeing us!  Doesn't she remember 1939?  Does she want another disaster like the Holstein dig?  I think this place is affecting her.  I know it's affecting me and I don't just mean the weather.\n\nMarch 16, 1943 5pm\nTotal disaster!  Just as I feared.  A premature breech of the outer seal.  All Hell has literally broken loose!  It's 1939 all over again, maybe even worse.  Three team members missing - including Otto.  I don't hold out much hope for them.  Also, I just heard two spies were captured.  Can things possibly get any worse?  I feel awful.\n\nMarch 17, 1943 3pm\nUnbelievable!  We just barely contain one disaster and now she speaks of going after the "Dagger of Warding".  This, of course, means breaking the
+
+BOOK_ZEMPH3=inner seal beyond the crypt chamber and unleashing God only knows what.  This is completely outside the scope of our mission and jeopardizes everything.  I plan to make a full report of her conduct to our superiors.  Is this woman really a disciple of the great Marianna Blavatsky?  Too bad none of the high priestess' wisdom rubbed off on her.  We are scheduled to begin in six hours.  I'll be happy when it's all over.   I think my cold is getting better.
+
+BOOK_VENOM=TECHNICAL OVERVIEW\nGP-VG MK2\n\nNomenclature:\nGP-VG MK2 (Venom Gun)\n\nCaliber:\n7.92 mm (Saboted light armor piercing rounds\nrequired for proper feed)\n\nOperation:\nElectrically operated, locked breech system\nwith six barrels and bolts; rotating bolt\nheads with dual locking surfaces.\n\nFeed Mechanism:\nGear driven feeder/delinker with two-piece\nhinged hatch with standard GPMG\ndisintegrating links.\n\nCyclic Rate:\n2,000 RPM.
+
+BOOK_VENOM2=Operational Specifics:\n\nThe GP-VG MK2 Venom Gun is electrically operated and utilizes a locking-breech system with six barrels and six bolts. The barrels rotate counter clockwise and fire in turn when they reach the 12' o-clock position. The breech mechanism features a rotating bolt head with two locking surfaces (similar to MG34 GPMG).\n\nThe bolt subassembly features a helical tang on the bolt head which mates with a helical groove on bolt body. Rotation into the battery is clockwise with the bolt rotating around the firing pin holding entire bolt assembly together.\n\nThe bolt head itself locks into recesses in the rotor (the main structural component of the gun) while the barrel interfaces with the front of the rotor. A roller on top of the bolt subassembly, moving in an elliptical cam path in the receiver housing, drives the bolt forward.
+
+BOOK_VENOM3=A flat dwell profile in the cam path holds the bolt locked briefly until the bullet has traveled past the muzzle and the pressure has dropped to a safe level.\n\nPins in the bolt head interface with the cam surfaces on the firing pin and cause the striker to rotate with the head.\n\nAfter the extraction and ejection, the bolt has completed a 360-degree cycle and is positioned to pick up another round. All six bolts repeat this identical process in sequence.\n\nOriginal Design Problems and Construction Notes:\n\nThe six barrels are held to the front of the rotor by an integral interrupted flange on one side of each barrel that requires a 180-degree turn for retention All of the barrels are prevented from rotating out of their retained positions by a barrel clamp which mates with four flanges on the front of each barrel. This clamp is held in place by a single bolt.
+
+BOOK_VENOM4=Originally a 1/4 inch steel bolt was threaded to a self-locking nut. This nut all too frequently wore so badly that the clamp was shot off the gun. We now use a 5/16 inch bolt screwed into a castellated nut, locked in place by a cotter pin.\n\nOff-center firing pin strikes were also a major problem in the beginning. As the bolt head moves forward into battery, just prior to rotation it looses all alignment guidance, which was provided by machined lobes on the rotor. This allowed the bolt head to wander off-center, resulting in off-center firing pin strikes. We have recently manufactured a new rotor which holds it's tolerances much closer than encountered on the original version.\n\nThe feeder/delinker represented the single greatest problem in the original design. Whenever a belt restriction occurred (a rather common event) the belt would slew sideways while entering the delinker and one of the stripper teeth would literally pierce the
+
+BOOK_VENOM5=cartridge case, resulting in massive stoppage. As the feeder/delinker components were encased in a solid outer housing, only by removing the feeder/delinker system from the gun and disassembling it, using a pry bar to force the gears around, could clear the stoppage. This was a major project that took at least 20 minutes.\n\nTo alleviate the situation we have installed a hinged hatch on the feeder/delinker housing for easier access. Since it's a two piece unit, the hatch also permits placing the belt by hand into the proper position for firing, just like a standard belt fed machine gun's top cover (in fact, the hinged locking latch on the hatch was taken directly from the American's .50 caliber Browning machine gun's top cover).\n\nFinal Analysis:\n\nWe have recently completed 3 separate 100,000 round tests with the improved GP-VG MK2 Venom Gun. The results were phenomenal. There was only one stoppage, which was cleared in a matter of seconds. As directed, the Venom Gun is ready for deployment and is the most precisely directed and most devastating small arm weapon currently available anywhere in the world.
+
+BOOK_PROJECT=OPERATION RESURRECTION\n\nPhase I:  Extraction\n\nOfficer in charge: Oberst Helga von Bulow.\n\n\nBackground - See Appendix\n\n   Note: For further background regarding\n the historical significance of Heinrich I,\n the Dark  Knights and related subjects,\n see SS Paranormal documents  #SQ001773,\n #SQ001774 and #SQ001777, also Volume II,\n chapter 7 of "A Spiritual History of the\n Third Reich" by Dr Carl Bohren.  For\n details regarding excavation of the first\n and second Dark Knights see SS Paranormal\n briefings #SB02188 and #SB03714.\n\nWith the discovery of the elusive third Dark\nKnight, Operation Resurrection is once again\nactive following a 4-year hiatus.
+
+BOOK_PROJECT_DSC=\n\n\n\n\nHer again?  I thought they put that crackpot\naway years ago.
+
+BOOK_PROJECT2=OPERATION RESURRECTION\n\nPhase I:  Extraction\n\nExcavation shall commence at the first\nfavorable lunar cycle.  The team - under\nthe direct supervision of Oberfuhrer von\nBulow - shall, at all times, maintain\nstrict adherence to established rituals of\ntalismanic removal and residual purification.\n\n\nUpon completion of the excavation, the\nExtraction Team - headed by Professor\nZemph - shall perform the most delicate\nstep in the entire procedure - a life\nessence disengagement of the heart and all\nessential dormant, organic materials.\n\n Note:  The Reflex Interferomoscope must\n undergo a 36-hour burn in session prior\n to the extraction.
+
+BOOK_PROJECT_DSC2=\n\n\n\n\n\n\n\n\n\n\nUtter rubbish\n\n\n\n\n\n\n\n\n\n\n\nHard to believe someone of Zemph's caliber\nwould involve himself in this foolishness.
+
+BOOK_PROJECT3=OPERATION RESURRECTION\n\nPhase I:  Extraction\n\nFollowing a successful extraction, all\nmaterials are to be delivered to the\nnearest field lab for further processing.\n\nOnce processing is completed, the\nresulting distillate compound will be\nsent to SS Paranormal headquarters where\nit will remain until the completion of\nPhase II.
+
+BOOK_PROJECT4=OPERATION RESURRECTION\n\nPhase II:  Creation\n\nSS Special Projects Acting Administrator\n\n\nBackground - As early as 1938, it was\nconcluded that Operation Resurrection\nwould require the development of an\nadvanced synthetic, humanoid host.  A\nhost with specifications at the extreme\ncutting edge of our present robotic and\nbiological sciences.  Fortunately, and\nquite coincidentally, such development\nwas already well underway by the SS\nSpecial Projects Division.  This was to\nbe the major component of their Project\nUber Soldat.  Due to our overriding\npriority, the project was immediately\ntransferred to our jurisdiction.  Work\n
+
+BOOK_PROJECT_DSC3=\n\n\n\n\n\n    Is that how they refer to me?
+
+BOOK_PROJECT5=OPERATION RESURRECTION\n\nPhase II:  Creation\n\nwas then rapidly resumed with the\n enthusiastic cooperation of all Special\nProjects personnel.\n\nAll existing production is to be converted\nfrom the Stage VII Proto Soldat to the\nnew Type II Uber Soldat.\n\n  Note: This primarily involves replacing\n the old style titanium armour with latest\n ultra-light, carbon resin plate.\n\n\nDue to our accelerated timetable, allscheduled trials are to be pushed ahead\nsix weeks and cut back to no more than
+
+BOOK_PROJECT_DSC4=\n\n\n\n\n\n\n\n Ha!\n\n\n\n\n\n\n\n\n        Done
+
+BOOK_PROJECT6=OPERATION RESURRECTION\n\nPhase II:  Creation\n\n45 days total.  Results are to be\npublished immediately thereafter.\n\n\n\n\n\n\n\nThe recent discovery of new Meteorillium\n317 deposits in our Baltic territories has\nnow enabled us to meet our original\nproduction targets (see note)\n\n Note: Meteorillium 317, the rarest form\n of Meteorillium, is found only in certain\n meteor fragments that are believed to\n have originated at the core of our galaxy.\n It is essential in the manufacture of the\n Imbuement Vessel, the key component of the\n Live Essence Annointment Ritual.\n
+
+BOOK_PROJECT_DSC5=\n\n\n\n\n\n\nResults exceeded all expectations.  What a\nweapon this could be if used as intended.\nAll my arguments fall on deaf ears.  Too\nfixated on their fairytales to see reason.\nThese fools will be the ruin of us all.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n A complete waste of time and resources
+
+BOOK_PROJECT7=OPERATION RESURRECTION\n\nPhase II:  Creation\n\nSix complete Type II hosts must be ready\nfor delivery by no later than two weeks\nbefore the commencement of Phase III.
+
+BOOK_PROJECT_DSC6=\n\n\n\n\n\n\n\nThey'll have to make do with 5.  I'm\nkeeping one for further testing.  I didn't\nsacrifice 6 years of my life for nothing!\nI'm sure Himmler will be out for my blood\nonce he gets wind of this.  No matter.\nI'm ready to confront the Fuhrer himself\nover this.
+
+BOOK_PROJECT8=OPERATION RESURRECTION\n\nPhase III:  Resurrection\n\nOfficer in charge:  SS Oberfuhrer,\nHigh Priestess Adept Marianna Blavatsky\n\n\n\nBackground - This final phase represents\nthe culmination of over ten years of\narduous work and painstaking research.  It\nis the realization of a dream that began\neven earlier.   All of our efforts thus\nfar were to achieve this one end: The\nresurrection of Heinrich I, Master of the\nDark Hosts, Wielder of the powers of Earth\nand Fire, and spiritual ancestor of our\nglorious Reichsfuhrer SS.\n
+
+BOOK_PROJECT_DSC7=\n\n\n\n\n\n\n   Good Lord, is she still alive?\n\n\n\n\n\n\n\n\n\n\n\n\n I don't know whether to laugh or cry.
+
+BOOK_PROJECT9=OPERATION RESURRECTION\n\nPhase III:  Resurrection\n\nThe ceremony is to take place at our\n
+holiest site during the most favorable\nalignment of Saturn and Mars.\n\nA minimum of three Hosts shall be prepared\nas described in the ancient texts (seenote).\n\nNote - For the sake of redundancy, six\n was agreed upon as the optimal number of hosts.\n\nThe presiding Mystic Adept, Madame\nBlavatsky, shall open the ceremony with\n an encantation as the Life Essence Elixer\nis absorbed into the bodies of the\ninitiates. Shortly thereafter she shall\n utter the 'Annointment Invocation',\n imbueing each host in its turn with\n the Dark Life Essence.\n
+
+BOOK_PROJECT10=OPERATION RESURRECTION\n\nPhase III:  Resurrection\n\nOnce imbued, the hosts will undergo a\n'perfect transfiguration', becoming, in\nsubstance, True Dark Knights.\n\nNext comes the most crucial portion of the\nceremony.  Forming a circle with the newly\nannointed Dark Knights, Madame Blavatsky\nshall recite the most ancient 'Words of\nRaising'.  These words, and the resulting\nmeta-psychic link, shall open a rift in\nthe earth, preparing the way for the\nrebirth of The Master.\n
+
+BOOK_PROJECT_DSC8=\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis drivel is unworthy of any further\ncomment.  Can Germany afford such fools\nguiding her destiny?
+
+BOOK_PROJECT_HISTORY=OPERATION RESURRECTION\n\nAppendix\n\nThe following is an expert from A Spiritual History of The Third Reich by Dr. Carl Bohren, reprinted here with the author's permission.\n\n\nFollowing Charlemagne's conquest of Saxony in 804, and the subsequent conversion of the pagan Saxons, the so-called "Dark Teachings" were largely suppressed.  As a result, little of consequence, relating to the Thulian Mystery Cults, occurred over the next century.  Then, in 918 the Saxon prince, Heinrich I, displayed a renewed interest in these teachings as he set out to forge an independent Germanic kingdom, separate from the powerful Frankish dynasty.\n\nAccording to legend, Heinrich acquired knowledge of the most ancient and arcane Thulian texts.  Texts purported to hold the secrets of the dark forces which bind the earth and all that which is contained within.
+
+BOOK_PROJECT_HISTORY2=OPERATION RESURRECTION\n\nAppendix\n\nArmed with this great power, Heinrich set about raising an army such as the world had never seen, an army of the undead.  At the core of Heinrich's army were his three most trusted vassals, the legendary Dark Knights.  In exchange for their loyalty, Heinrich imbued his Dark Knights with enormous power by means of an obscure Thulian ritual.  Through this ritual, Heinrich and his companions became, themselves, living conduits of the dark forces, masters of the nether regions between life and death.\n\nIn 933 Heinrich unleashed his irresistible army against the invading Magyars, inflicting a crushing defeat upon them at Riade.  Next he turned his eyes west, intent upon overthrowing his Frankish overlords.  It is difficult to imagine what the extent of his conquests might have been were it not for one fateful encounter.
+
+BOOK_PROJECT_HISTORY3=OPERATION RESURRECTION\n\nAppendix\n\nHis unlikely opponent was the enigmatic Simon the Wanderer.  A former Benedictine monk, Simon left the order to form his own mysterious sect.  With his chosen followers he traveled incessantly throughout Europe, Asia Minor, and The Far East, collecting countless items of mystical knowledge from all the ancient cultures of The Old World.  No doubt the channeling of raw fundamental, destructive forces as practiced by Heinrich would have seemed an anathema to someone of Simon's reflective and meditative nature.\n\nThe confrontation occurred - so the legend says - in 943.  After a prolonged, cataclysmic struggle, Simon and his followers, by means never revealed, managed to neutralize and slay the Dark Knights.  Their remains were entombed in undisclosed locations, painstakingly sealed against future violation.
+
+BOOK_PROJECT_HISTORY4=OPERATION RESURRECTION\n\nAppendix\n\nAs for the fate of Heinrich, the sources are even more vague.  Some say he was also slain.  Others state that he could not be destroyed.  That he was trapped in a state of spiritual stasis.  Sealed in the very earth that was the source of his power.
+
+# CLIPBOARDS
+
+CLIPBOARD_MESAGE=no 'popup' or bad 'popup' specified in the entity
+
+CLIPBOARD_MESAGE2=there is no script set for this clipboard
+
+CLIPBOARD_ZEE=Interrogation Report - March 17, 1943\n\nSubject: Unknown\nInterrogator: Doctor Zee\n\nVery little information was divulged by this subject.  He was subjected to 77% standard current before expiring.  We did discover a cyanide tablet hidden in a compartment of the subjects boot.  This discovery leads us to believe that he and his accomplice are allied spies, although we have not determined at this time which agency they may be working for.\n\nI believe that I will achieve better results from his accomplice.\n\nSubject time of death: 15:35
+
+CLIPBOARD_AS=To: All watch personnel\nFrom: Major Jurgen\nSubject: Alert Status\n\nAs you are all aware, the SS Paranormal Division has had tremendous success in their recent archeological efforts near the village.  However, Oberst Helga von Bulow is extremely displeased with the level of security at Castle Wolfenstein and the village near the excavation sites.  I cannot stress how important this operation is to the Reich.\n\nTwo spies were recently discovered attempting to infiltrate the castle.  With this in mind I caution you; any breaches in security determined to be caused by watch personnel will be dealt with in the harshest manner possible.\n\nRegards,\nMajor Wilhelm Jurgen\nSecurity Officer, Castle Wolfenstein
+
+CLIPBOARD_BULOW=To: SS Oberfuhrer Blavatsky\nFrom: Oberst von Bulow\n\nCompleted preliminary survey of excavation site.  Evidence strongly suggests Dark Knight entombment.  Request immediate dispatch of extraction team.  Will await your orders before proceeding further.\n\nRegards,\nOberst Helga von Bulow, SS Paranormal Division
+
+CLIPBOARD_TRAM=To: All Tram Car Maintenance Supervisors\nFrom: Deputy Reichsminister Ungeschickt\n\nA recent investigation into the causes of tram car fatalities has uncovered a typographical error in the Quarterly Cable Tension Adjustment Procedure.  The following line, AN ALLOWABLE ERROR OF + OR - 500KG should now read AN ALLOWABLE ERROR OF + OR - 0.5KG.  It is believed that this correction will lead to a significant improvement in the future safety record of all military tram cars.\n\nWolfgang Ungeschickt\nDeputy Reichsminister, Office of Industrial Safety, Berlin
+
+CLIPBOARD_ZEMPH=March 14, 1943\n\nFrom: Professor Zemph\nTo: SS Oberfuhrer Marianna Blavatsky\n\nDear Madame Blavatsky,\nAll the early indications are positive.  The talismanic seals and bindings are identical to those found in the Dark Knight tomb at Holstein.  If I were to venture a guess at this juncture it would be that we have definitely uncovered number three.  Finally, after all these years, we may be very close to concluding phase one.\n\nConditions here are far less than favorable.  Already we have lost precious hours to technical mishaps.  It's going to be difficult meeting our timetable while exercising necessary precautions.  I will keep you informed as necessary.\n\nSincerely,\nA. Zemph
+
+CLIPBOARD_ROCKET=To: Shipping and Receiving\nFrom: Oberst Steiner\n\n\nThe replacement V2 liquid fuel rocket motor is expected to arrive shortly. It is essential for this shipment to be fully staged and delivered to Component Integration immediately upon receipt.  Because of last Thursday's unfortunate incident, time is now extremely critical and delays will no longer be tolerated.\n\nOberst Walter Steiner\nCommanding Officer, Reich Special Projects, NW District
+
+CLIPBOARD_STRASSE=To: Reichsfuhrer SS Himmler\nFrom:  SS Oberfuhrer Strasse\nSubj:  Report on V Weapon Readiness\n\nWe have just completed the final testing of our Series III V Weapon.  I am pleased to report that the A9 rocket has proven more than sufficient for the delivery of a biological payload to London.  A shipment of the latest generation, mutated Bothrax D virus from my Germ Warfare Team in Norway is expected to arrive within four days.  Steiner assures me of full operational readiness by no later than the second week of April.\n\nRespectfully yours\nSS Oberfuhrer Wilhelm Strasse, \nCommanding Officer, Reich Special Projects
+
+CLIPBOARD_HIMMLER=To:   SS-Oberfuhrer Wilhelm (Deathshead) Strasse\nFrom: Reichsfuhrer SS Heinrich Himmler\n\nMy Dear Willy,\nMy compliments on the amazing work achieved by your Advanced "V" Weapons Division.  Clearly, the success of this project has exceeded all expectations.  Also, I've just read the latest test reports on the "Kobra" rocket plane.  Suffice to say, I couldn't be more pleased with the results.\n\nUnfortunately, I am not nearly as pleased with your performance on another project.  Make no mistake; OPERATION RESURRECTION is currently the Reich's single most important undertaking.  This is especially true following the Extraction Team's successfully recovery of the third Dark Knight.  I expect no less than a maximum effort from you at all times.  I sincerely hope it will never become necessary for me to remind you of this again.\n\nYours fondly\nH. Himmler
+
+CLIPBOARD_RADAR=To: All Radar Watch Commanders\nFrom: Deputy Reichsminister Ungeschickt\nSubj: Radar Operations Safety Report\n\nAn exhaustive study undertaken by the Ministry of Safety's Radiology Department has shown no correlation between moderate doses of microwave radiation and increased incidence of skin and blood disease.  Also, all rumors attributing vomiting, diarrhea, and hair-loss to such exposures have proven to be completely unfounded.\n\nIt is the opinion of the ministry that current procedures in effect for radar operators are well within acceptable safety limits.  We do not, at this time, recommend any changes.\n\nWolfgang Ungeschickt\nDeputy Reichsminister, Office of Industrial Safety, Berlin
+
+CLIPBOARD_BACKUP=To: All Control Room Watch Commanders\nFrom: Oberst Steiner\nSubject: Backup Launch Tower Operator\n\nDue to the failure of our maintenance department to successfully resolve the reliability issues, which continue to plague the Remote Tower Door Actuator, it will still be necessary to employ a Backup Launch Tower Operator during all launch operations.\n\nTo prevent a repeat of last weeks unfortunate incident, I am issuing the following standing order: The Backup Launch Tower Operator shall - at all times - carry a functioning communications set and shall not - under any circumstances - leave the vicinity of the Tower Door Manual Override.  Hopefully, this situation will be corrected shortly and will not prove to be beyond the capabilities of our existing maintenance personnel.\n\nOberst Walter Steiner\nCommanding Officer, Reich Special Projects, NW District
+
+CLIPBOARD_COFFEE=To: All Maintenance Personnel\nFrom: Major Vorsichtig\nSubject: Unauthorized use of equipment\n\nEffective immediately, the practice of brewing coffee in the MkII Sequential Fuel Purifier is strictly forbidden.  As anyone who witnessed the events of last Thursday can attest, the presence of even the slightest impurities within the condenser vessel can lead to a violent chemical reaction.\n\nAnyone found in violation of this policy will be dealt with in the harshest manner imaginable.\n\nMajor B. Vorsichtig\nActing Safety Officer\nReich Special Projects, Maintenance Div.
+
+CLIPBOARD_KOBRA=Kobra Experimental Rocket Plane - Prelaunch Checklist:\nThe following procedure must be completed prior to initiating launch sequence.  It is the responsibility of the Control Room Watch Commander to ensure these steps are performed without deviation.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nOnly after verifying the successful completion of these steps will the Watch Commander - with proper authority - initiate a launch sequence.
+
+CLIPBOARD_KOBRA2=1) Elevation - the Platform Operator will elevate the rocket to the fueling position.\n\n\n2) Fueling - Upon completion of elevation, the Fueling Operator will initiate fueling.\n\n3) Tower Clearance - Upon completion of fueling, the Launch Tower Operator will open the tower doors.
+
+CLIPBOARD_LADDER=To: All Area Commanders\nFrom: Deputy Reichsminister Ungeschickt\nSubject: Ladder Safety Project Results\n\nI am pleased to announce that since the implementation of Reichsminister Directive 174 - the mandatory introduction of safety cages for all ladders residing on military installations - our survey has shown an astonishing 75% reduction in ladder related injuries and fatalities.  I cannot begin to relate how important this statistic is in light of the current manpower shortage we are facing.\n\nLet me caution all of you against lapsing into a false sense of complacency.  Only through your unwavering diligence can this project achieve such a continued level of success.\n\nWolfgang Ungeschickt\nDeputy Reichsminister, Office of Industrial Safety, Berlin
+
+CLIPBOARD_CHOCOLADE=To: All Trainyard Loading Supervisors.\nFrom: Leutnant Shosshund.\nSubj: Priority Shipment.\n\nA priority shipment of Swiss Chocolate is due to arrive on the 0900 supply train.  This shipment is to be delivered, intact, to the SS Senior Officers' Mess.  Extra guards will be detailed to prevent pilfering.\n\nLeutnant A Shosshund\nLogistics Coordinator\nReich Special Projects, Kugelstadt District.
+
+CLIPBOARD_WASTE=To: All Specimen Caretakers\nFrom: Hauptmann Shmutzig\n\nThe three cases of cholera reported in the outer guard compound have been, unequivocally, traced back to improper disposal of specimen waste materials.  In future, anyone found dumping specimen waste in the local water supply will be severely reprimanded.\n\nHauptmann Vernor Shmutzig\nOperations Officer, Reich Special Projects, Norway
+
+CLIPBOARD_DOCTOR=\n\n\nDoctor Merkwurdigliebe,\n\nI am positively at my wit's end. The charm has worn off much sooner than you promised.  I don't know what to do now. How can I go out in the daylight looking like this?  Please, please call me as soon as you get in!\n\nIlsa
+
+CLIPBOARD_BLAVATSKY=To: Reichsfuhrer SS Heinrich Himmler\nFrom: SS Oberfuhrer Blavatsky,\n           High Priestess, Paranormal Division\n\nMy good friend and leader,\nMy good friend and leader, As I write you now I am filled with an indescribable mixture of joy and anticipation.  Here it is, the day, almost the very hour of our greatest triumph.  Destiny is now drawing us towards our appointment with the Anointed One, ushering us into a glorious new, Thousand Year Reich.\n\nDo you remember the long years of our struggle?  The times when only you and I remained steadfast?  When only you and I would not be swayed from our purpose or our vision?  Think of all the fools who scoffed at us. The cowards who ridiculed us behind our backs.  To them I say - Let those laugh that win.  I believe we shall both be laughing very soon.\n\nYour Servant\nMarianna
+
+CLIPBOARD_DISPLAY=To: All V-Weapons Launch Supervisors\nFrom: Deputy Reichsminister Ungeschickt\nSubj: Special Issue Protective Eyewear\n\nShortly after the upgrading of the Mk XIVa Telemetric Console with the new, Version 2, Ultra-High-Contrast Electron Display Panel, there was a sudden influx of glaucoma-like symptoms reported by Telemetry Console Operators.  Although our studies indicate that these symptoms are temporary and, in most cases, of short duration, we are, nevertheless, issuing special ultraviolet protective eyewear to all console operators. Proper use of this eyewear should greatly reduce these instances of temporary visual impairment.\n\nWolfgang Ungeschickt\nDeputy Reichsminister, Office of Industrial Safety, Berlin
+
+CLIPBOARD_GOLD=To: Major Jurgen\nFrom: Secretary Giereg\n\nI wish to call your attention to Reichsmarshall Directive 197 which explicitly states that all art treasures, artifacts, and miscellaneous valuables, acquired during wartime, are to be turned over to the Minister of the Interior (Reichsmarshall Goering) for proper disposition.  Be advised that any violation of this directive will be treated as a serious criminal offense.\n\nDieter Giereg,\nSpecial Assistant to the Reichsmarshall,\nMinistry of the Interior
+
+CLIPBOARD_GOLD2=To: Secretary Giereg\nFrom: Major Jurgen\n\nI am well aware of Reichsmarshall Directive 197, however I admit to being at a complete loss as to why you should consider it necessary to remind me of it.  We have always been operating within full compliance of the law and all such items not deemed essential to the current project have been swiftly forwarded to the Reichsmarshall's office.  Let me assure you that absolutely nothing has been withheld and that no hoarding of any kind has been taking place here.\n\nRegards,\nMajor Wilhelm Jurgen\nSecurity Officer, Castle Wolfenstein
+
+CLIPBOARD_TRAFFIC=To: All Watch Personnel\nFrom: Shufstaffel H.Q.\n\nDue to special conditions of security pertaining to the upcoming ceremony, absolutely no traffic is to be allowed in or out of the vicinity of the village of Paderborn for the next 24 hours.\n\nBy Order of\nGeneral von Stauff
+
+CLIPBOARD_BULOW2=To: SS Oberfuhrer Blavatsky\nFrom: Oberst Von Bulow\n\nI have incredible news.  Our team has just uncovered evidence of an even older burial site within the church ruins.  I believe this could actually be the Tomb of Olaric, fabled weaponsmith of Ancient Thule and founder of the Legion of the Dark Forge.  If this is the case, then contained within may be the long lost Dagger of Warding, one of the most coveted relics in all of Thulian lore.  What a glorious discovery this would be for all of us.\n\nRegards,\nOberst Helga Von Bulow, SS Paranormal Division
+
+CLIPBOARD_HIMMLER2=To:   SS-Oberfuhrer Wilhelm (Deathshead) Strasse\nFrom: Reichsfuhrer SS Heinrich Himmler\n\nWilly,\nIt saddens me to hear that you have declined the invitation from the Paranormal Division to attend the upcoming ceremony in Paderborn. You will be missing out on a rare opportunity to witness a momentous event.  I had hoped this experience might provide you with new insight or, at the very least, cure your lingering skepticism.  I see that, once again, I am to be disappointed.\n\nI have always considered you one the most valuable contributors to the Reich.  Were it not for your continued obstinacy in this area, there would be no limit to the support I would give you.  I urge you to reconsider.  It is not too late.\n\nH. Himmler
+
+CLIPBOARD_STRASSE2=To:  General Haupfman\nFrom: SS-Oberfuhrer Wilhelm Strasse\n\nI'm sorry, old friend, but my decision not to attend the ceremony must stand.  This is especially true in light of recent catastrophic events.  I know you and I have never seen eye to eye on this subject, but that does not stop me from wishing you much success.  They tell me you were chosen to help establish a "psychic control" over the situation.  I'm not sure I fully understand what that means, but I'm relieved to hear that at least one rational mind will be present to maintain order.\n\nSincerely,\nWilhelm
+
+CLIPBOARD_BLAVATSKY2=To:  General Von Stauff\nFrom: SS Oberfuhrer Blavatsky\n\nMy Dear General\nI was overjoyed to hear that you were one of the chosen few.  I can think of no one more deserving of that honor.  On the other hand, I was totally dejected when I learned Burkhalter was also chosen.  I know you think the world of him, but I absolutely detest him and his arrogance.  Still I must give the devil his due.  He has the talent and, for the purpose of maintaining the meta-psychic link, that is paramount.  At least there will be one friend present whose support I can count on.\n\nMarianna
+
+CLIPBOARD_HIMMLER3=To:  General Burkhalter \nFrom: Reichsfuhrer SS Heinrich Himmler\n\nCongratulations on being selected as a Meta-Psychic Controller.  It is a great honor but also a great responsibility.  Only you and your colleagues, by exercising the necessary controls, can guarantee success and prevent utter chaos.  I direct you to weigh the matter heavily.  I also direct you to put aside any petty differences.  I know your feelings about Madame Blavatsky; but understand that, despite your objections, she is in charge of the ceremony.  She has my complete confidence and I expect you to obey her orders as you would my own.\n\nHeinrich Himmler, Reichsfuhrer SS
+
+# SUBTITLES
+
+# CONSOLE MESSAGES
+CONSOLE_UNKNOWN_CMD=Unknown command "%s"
+CONSOLE_UNKNOWN_CMD_SERVER=unknown cmd %s
+CONSOLE_RESOLVING=Resolving %s
+CONSOLE_COULDNT_RESOLVE=Couldn't resolve address
+CONSOLE_RESOLVED_TO=%s resolved to %i.%i.%i.%i:%i
+CONSOLE_CHEATS_NOT_ENABLED=Cheats are not enabled on this server.
+CONSOLE_CHEATS_MUST_BE_ALIVE=You must be alive to use this command.
+CONSOLE_BAD_CLIENT_SLOT=Bad client slot: %i
+CONSOLE_CLIENT_NOT_ACTIVE=Client %i is not active
+CONSOLE_USER_NOT_ON_SERVER=User %s is not on the server
+CONSOLE_VOTING_NOT_ALLOWED=Voting not allowed here.
+CONSOLE_GODMODE_OFF=godmode OFF
+CONSOLE_GODMODE_ON=godmode ON
+CONSOLE_NOFATIGUE_OFF=nofatigue OFF
+CONSOLE_NOFATIGUE_ON=nofatigue ON
+CONSOLE_NOTARGET_OFF=notarget OFF
+CONSOLE_NOTARGET_ON=notarget ON
+CONSOLE_NOCLIP_OFF=noclip OFF
+CONSOLE_NOCLIP_ON=noclip ON
+CONSOLE_LEVELSHOT_GAMETYPE=Must be in g_gametype 0 for levelshot
+CONSOLE_SETVIEWPOS_USAGE=usage: setviewpos x y z yaw
+CONSOLE_ENTITY_COUNT=entity count = %i
+CONSOLE_KILL_COUNT=kills %i/%i nazis %i/%i monsters %i/%i
+CONSOLE_CANT_FIND_SAVEGAME=Can't find savegame %s
+CONSOLE_SAVEGAME_DISK_SPACE_LINUX=Unable to save game.\n\nPlease check that you have at least 5mb free of disk space in your home directory.
+CONSOLE_SAVEGAME_DISK_SPACE_WIN=Insufficient free disk space.\n\nPlease free at least 5mb of free space on game drive.
+CONSOLE_CANT_FIND_MAP=Can't find map %s
+CONSOLE_SERVER_NOT_RUNNING=Server is not running.
+CONSOLE_VARIABLE_CHANGE_RESTART=variable change -- restarting.
+CONSOLE_MAP_RESTART_DENIED=SV_MapRestart_f(%d): dropped client %i - denied!
+CONSOLE_SPECIFY_SAVEGAME=You must specify a savegame to load
+CONSOLE_MAP_NAME=map: %s
+CONSOLE_SERVER_INIT=------ Server Initialization ------
+CONSOLE_SERVER_NAME=Server: %s
+CONSOLE_PURE_NO_PK3=WARNING: sv_pure set but no PK3 files loaded
+CONSOLE_SERVER_INIT_DONE=-----------------------------------
+CONSOLE_SERVER_SHUTDOWN=----- Server Shutdown -----
+CONSOLE_SERVER_SHUTDOWN_DONE=---------------------------

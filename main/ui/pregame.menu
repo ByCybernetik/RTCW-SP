@@ -1,0 +1,2562 @@
+#include "ui/menudef.h"
+
+
+{
+
+	menuDef {
+    		name "pregame"
+    		background "ui/assets/backscreen"
+      		rect 0 0 640 480
+    		fullScreen MENU_TRUE
+    		visible MENU_TRUE
+      		style WINDOW_STYLE_EMPTY
+
+//
+// draw levelshot
+//
+
+			itemDef {
+					name background
+					rect 0 0 640 480
+					style WINDOW_STYLE_SHADER
+					ownerdraw UI_LEVELSHOT
+					forecolor 0 0 0 1
+					visible MENU_TRUE
+					decoration
+				}
+
+
+/////////////// escape1 ////////////////////////////////////
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "escape1" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RUMORS_ESCAPE1_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "escape1" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RUMORS_ESCAPE1_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "escape1", "escape2", "tram" }	// added current map rev
+		text "MISSION_RUMORS"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "escape1", "escape2", "tram" }	// added current map rev
+		text "MISSION_RUMORS"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "escape1" }	// added current map rev
+		text "MISSION_RUMORS_ESCAPE1"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "escape1" }	// added current map rev
+		text "MISSION_RUMORS_ESCAPE1"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "escape1", "escape2", "tram" }	// added current map rev
+		text "MISSION_RUMORS_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "escape1" , "escape2", "tram" }	// added current map rev
+		text "MISSION_RUMORS_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+/////////////// escape2 ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "escape2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RUMORS_ESCAPE2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "escape2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RUMORS_ESCAPE2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "escape2" }	// added current map rev
+		text "MISSION_RUMORS_ESCAPE2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "escape2" }	// added current map rev
+		text "MISSION_RUMORS_ESCAPE2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+
+/////////////// tram ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "tram" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RUMORS_TRAM_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "tram" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RUMORS_TRAM_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "tram" }	// added current map rev
+		text "MISSION_RUMORS_TRAM"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "tram" }	// added current map rev
+		text "MISSION_RUMORS_TRAM"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+
+/////////////// village ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "village1" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_VILLAGE_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "village1" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_VILLAGE_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "village1", "crypt1", "crypt2", "church", "boss1" }	// added current map rev
+		text "MISSION_DS"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "village1", "crypt1", "crypt2", "church", "boss1" }	// added current map rev
+		text "MISSION_DS"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "village1" }	// added current map rev
+		text "MISSION_DS_VILLAGE1"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "village1" }	// added current map rev
+		text "MISSION_DS_VILLAGE1"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "village1" }	// added current map rev
+		text "MISSION_DS_VILLAGE1_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "village1" }	// added current map rev
+		text "MISSION_DS_VILLAGE1_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+
+///////////
+
+
+/////////////// crypt ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "crypt1" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_CRYPT1_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "crypt1" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_CRYPT1_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "crypt1" }	// added current map rev
+		text "MISSION_DS_CRYPT1"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "crypt1" }	// added current map rev
+		text "MISSION_DS_CRYPT1"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "crypt1", "crypt2" }	// added current map rev
+		text "MISSION_DS_CRYPT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "crypt1", "crypt2" }	// added current map rev
+		text "MISSION_DS_CRYPT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+			itemDef {
+		name win2
+		rect 348 290 254 456
+		cvarTest "mapname"
+		showcvar { "crypt1" }	// added current map rev
+		text "MISSION_DS_CRYPT1_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 290 254 456
+		cvarTest "mapname"
+		showcvar { "crypt1" }	// added current map rev
+		text "MISSION_DS_CRYPT1_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+
+/////////////// crypt2 ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "crypt2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_CRYPT2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "crypt2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_CRYPT2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "crypt2" }	// added current map rev
+		text "MISSION_DS_CRYPT2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "crypt2" }	// added current map rev
+		text "MISSION_DS_CRYPT2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "crypt2" }	// added current map rev
+		text "MISSION_DS_CRYPT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "crypt2" }	// added current map rev
+		text "MISSION_DS_CRYPT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+/////////////// church ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "church" }	// added current map rev
+		rect 52 272 280 200
+		text"MISSION_DS_CHURCH_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "church" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_CHURCH_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "church", "boss1" }	// added current map rev
+		text "MISSION_DS_CHURCH"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "church", "boss1" }	// added current map rev
+		text "MISSION_DS_CHURCH"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "church", "boss1" }	// added current map rev
+		text "MISSION_DS_CHURCH_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "church", "boss1" }	// added current map rev
+		text "MISSION_DS_CHURCH_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// boss1 ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "boss1" }	// added current map rev
+		rect 52 272 280 200
+		text"MISSION_DS_BOSS1_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "boss1" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DS_BOSS1_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+
+///////////
+
+
+/////////////// forest ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "forest" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_FOREST_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "forest" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_FOREST_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "forest", "rocket", "baseout", "assault" }	// added current map rev
+		text "MISSION_WOV"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "forest", "rocket", "baseout", "assault" }	// added current map rev
+		text "MISSION_WOV"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "forest" }	// added current map rev
+		text "MISSION_WOV_FOREST"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "forest" }	// added current map rev
+		text "MISSION_WOV_FOREST"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+			itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "forest" }	// added current map rev
+		text "MISSION_WOV_FOREST_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "forest" }	// added current map rev
+		text "MISSION_WOV_FOREST_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// rocket ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "rocket" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_ROCKET_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "rocket" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_ROCKET_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "rocket" }	// added current map rev
+		text "MISSION_WOV_ROCKET"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "rocket" }	// added current map rev
+		text "MISSION_WOV_ROCKET"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "rocket" }	// added current map rev
+		text "MISSION_WOV_ROCKET_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "rocket" }	// added current map rev
+		text "MISSION_WOV_ROCKET_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// baseout ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_BASEOUT_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_BASEOUT_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		text "MISSION_WOV_BASEOUT"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		text "MISSION_WOV_BASEOUT"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		text "MISSION_WOV_BASEOUT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "baseout" }	// added current map rev
+		text "MISSION_WOV_BASEOUT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// assault ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "assault" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_ASSAULT_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "assault" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_WOV_ASSAULT_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "assault" }	// added current map rev
+		text "MISSION_WOV_ASSAULT"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "assault" }	// added current map rev
+		text "MISSION_WOV_ASSAULT"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "assault" }	// added current map rev
+		text "MISSION_WOV_ASSAULT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "assault" }	// added current map rev
+		text "MISSION_WOV_ASSAULT_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// sfm ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_SFM_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_SFM_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "sfm", "factory","trainyard" }	// added current map rev
+		rect 52 430 280 200
+		text "MISSION_DD_SWF_NOTE"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "sfm", "factory","trainyard" }	// added current map rev
+		rect 52 430 280 200
+		text "MISSION_DD_SWF_NOTE"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "sfm", "factory", "trainyard", "swf" }	// added current map rev
+		text "MISSION_DD"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "sfm", "factory", "trainyard", "swf" }	// added current map rev
+		text "MISSION_DD"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		text "MISSION_DD_SFM"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		text "MISSION_DD_SFM"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		text "MISSION_DD_SFM_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		text "MISSION_DD_SFM_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 313 254 456
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		text "MISSION_DD_SFM_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 313 254 456
+		cvarTest "mapname"
+		showcvar { "sfm" }	// added current map rev
+		text "MISSION_DD_SFM_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// factory ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "factory" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_FACTORY_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "factory" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_FACTORY_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "factory" }	// added current map rev
+		text"MISSION_DD_FACTOTY"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "factory" }	// added current map rev
+		text "MISSION_DD_FACTOTY"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "factory" }	// added current map rev
+		text"MISSION_DD_FACTORY_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "factory" }	// added current map rev
+		text "MISSION_DD_FACTORY_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// trainyard ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "trainyard" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_TARAINYARD_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "trainyard" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_TARAINYARD_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "trainyard" }	// added current map rev
+		text "MISSION_DD_TRAINYARD"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "trainyard" }	// added current map rev
+		text "MISSION_DD_TRAINYARD"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "trainyard" }	// added current map rev
+		text "MISSION_DD_TRAINYARD_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "trainyard" }	// added current map rev
+		text "MISSION_DD_TRAINYARD_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// swf ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "swf" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_SWF_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "swf" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DD_SWF_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "swf" }	// added current map rev
+		text "MISSION_DD_SWF"
+//		textfile "text/EnglishUSA/trainyards.txt"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "swf" }	// added current map rev
+		text "MISSION_DD_SWF"
+//		textfile "text/EnglishUSA/trainyards.txt"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "swf" }	// added current map rev
+		text "MISSION_DD_SWF_BRIEFING"
+//		textfile "text/EnglishUSA/trainyards.txt"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "swf" }	// added current map rev
+		text "MISSION_DD_SWF_BRIEFING"
+//		textfile "text/EnglishUSA/trainyards.txt"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// norway ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "norway" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DP_NORWAY_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "norway" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DP_NORWAY_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "norway", "xlabs", "boss2" }	// added current map rev
+		text "MISSION_DP"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "norway", "xlabs", "boss2" }	// added current map rev
+		text "MISSION_DP"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "norway" }	// added current map rev
+		text "MISSION_DP_NORWAY"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "norway" }	// added current map rev
+		text "MISSION_DP_NORWAY"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "norway" }	// added current map rev
+		text "MISSION_DP_NORWAY_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "norway" }	// added current map rev
+		text "MISSION_DP_NORWAY_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// xlab ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "xlabs" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DP_XLABS_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "xlabs" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DP_XLABS_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "xlabs" }	// added current map rev
+		text "MISSION_DP_XLABS"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "xlabs" }	// added current map rev
+		text "MISSION_DP_XLABS"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "xlabs", "boss2" }	// added current map rev
+		text "MISSION_DP_XLABS_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "xlabs", "boss2" }	// added current map rev
+		text "MISSION_DP_XLABS_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 245 254 456
+		cvarTest "mapname"
+		showcvar { "xlabs", "boss2" }	// added current map rev
+		text "MISSION_DP_XLABS_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 245 254 456
+		cvarTest "mapname"
+		showcvar { "xlabs", "boss2" }	// added current map rev
+		text "MISSION_DP_XLABS_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// boss2 ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "boss2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DP_BOSS2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "boss2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_DP_BOSS2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "boss2" }	// added current map rev
+		text "MISSION_DP_BOSS2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "boss2" }	// added current map rev
+		text "MISSION_DP_BOSS2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+///////////
+
+
+/////////////// dam ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RE_DAM_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RE_DAM_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "dam", "village2", "chateau", "dark" }	// added current map rev
+		text "MISSION_RE"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "dam", "village2", "chateau", "dark" }	// added current map rev
+		text "MISSION_RE"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		text "MISSION_RE_DAM"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		text "MISSION_RE_DAM"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		text "MISSION_RE_DAM_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		text "MISSION_RE_DAM_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 268 254 456
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		text "MISSION_RE_DAM_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 268 254 456
+		cvarTest "mapname"
+		showcvar { "dam" }	// added current map rev
+		text "MISSION_RE_DAM_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+
+
+/////////////// village2 ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RE_VILLAGE2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RE_VILLAGE2_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		text "MISSION_RE_VILLAGE2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		text "MISSION_RE_VILLAGE2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		text "MISSION_RE_VILLAGE2_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		text "MISSION_RE_VILLAGE2_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 278 254 456
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		text "MISSION_RE_VILLAGE2_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 278 254 456
+		cvarTest "mapname"
+		showcvar { "village2" }	// added current map rev
+		text "MISSION_RE_VILLAGE2_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+/////////////// chateau ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "chateau" }	// added current map rev
+		rect 52 272 280 200
+		text"MISSION_RE_CHATEAU_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "chateau" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RE_CHATEAU_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+
+		itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "chateau" }	// added current map rev
+		text "MISSION_RE_CHATEAU"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "chateau" }	// added current map rev
+		text "MISSION_RE_CHATEAU"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "chateau", "dark" }	// added current map rev
+		text "MISSION_RE_CHATEAU_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "chateau", "dark" }	// added current map rev
+		text "MISSION_RE_CHATEAU_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+		itemDef {
+		name win2
+		rect 348 352 254 456
+		cvarTest "mapname"
+		showcvar { "chateau" }	// added current map rev
+		text "MISSION_RE_CHATEAU_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 352 254 456
+		cvarTest "mapname"
+		showcvar { "chateau" }	// added current map rev
+		text "MISSION_RE_CHATEAU_BRIEFING2"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+/////////////// dark ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "dark" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RE_DARK_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "dark" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_RE_DARK_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "dark" }	// added current map rev
+		text "MISSION_RE_DARK"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "dark" }	// added current map rev
+		text "MISSION_RE_DARK"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+/////////////// dig ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "dig" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_OR_DIG_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "dig" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_OR_DIG_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "dig", "castle", "end" }	// added current map rev
+		text "MISSION_OR"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 40 254 456
+		cvarTest "mapname"
+		showcvar { "dig", "castle", "end" }	// added current map rev
+		text "MISSION_OR"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "dig", "castle", "end" }	// added current map rev
+		text "MISSION_OR_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 80 254 456
+		cvarTest "mapname"
+		showcvar { "dig", "castle", "end" }	// added current map rev
+		text "MISSION_OR_BRIEFING"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "dig" }	// added current map rev
+		text "MISSION_OR_DIG"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "dig" }	// added current map rev
+		text "MISSION_OR_DIG"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+/////////////// castle ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "castle" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_OR_CASTLE_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "castle" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_OR_CASTLE_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "castle" }	// added current map rev
+		text "MISSION_OR_CASTLE"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "castle" }	// added current map rev
+		text "MISSION_OR_CASTLE"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+/////////////// end ///////////////////////
+
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "end" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_OR_END_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win1
+		cvarTest "mapname"
+		showcvar { "end" }	// added current map rev
+		rect 52 272 280 200
+		text "MISSION_OR_END_OBJECTIVES"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "end" }	// added current map rev
+		text "MISSION_OR_END"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+	itemDef {
+		name win2
+		rect 348 60 254 456
+		cvarTest "mapname"
+		showcvar { "end" }	// added current map rev
+		text "MISSION_OR_END"
+		textfont UI_FONT_SMALL
+		textscale .2
+		forecolor .1 .1 .1 1
+		visible MENU_TRUE
+		autowrapped
+		decoration
+	}
+
+
+
+///////////
+
+//
+// the button
+//
+		itemDef {
+			name but2
+			rect 560 420 80 60
+			style 3
+		  	background "forwardarrow"
+			visible 1
+			mouseEnter { hide but2 ; show but2_alt}
+		}
+
+		itemDef {
+			name but2_alt
+			type ITEM_TYPE_BUTTON
+			rect 560 420 80 60
+			style 3
+			visible 0
+			background "ui/assets/forwardarrow_alt.tga"
+//			action { exec "fade 0 0 0 0 3"; close pregame }
+			action { uiScript playerstart }
+			mouseExit { hide but2_alt ; show but2 }
+		}
+
+}	// menudef
+}	// end
+

@@ -1584,7 +1584,7 @@ typedef struct {
 	int teamChatPos;
 	int teamLastChatPos;
 
-	char itemPrintNames[MAX_ITEMS][32];             //----(SA)	added
+	char itemPrintNames[MAX_ITEMS][MAX_QPATH];      //----(SA)	added
 
 	int cursorX;
 	int cursorY;

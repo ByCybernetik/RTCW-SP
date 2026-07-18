@@ -36,9 +36,17 @@ The text is stored as UTF-8 internally. Lookup is hash-based.
 
 #include "../game/q_shared.h"
 
-qboolean CSF_Load( const char *filename );
-void CSF_Shutdown( void );
-const char *CSF_GetString( const char *label );
-qboolean CSF_IsLoaded( void );
+#if defined( __GNUC__ ) || defined( __clang__ )
+#define CSF_API __attribute__( ( visibility( "hidden" ) ) )
+#else
+#define CSF_API
+#endif
+
+CSF_API qboolean CSF_Load( const char *filename );
+CSF_API void CSF_Shutdown( void );
+CSF_API const char *CSF_GetString( const char *label );
+CSF_API qboolean CSF_IsLoaded( void );
+CSF_API const char *CSF_GetLanguageCode( const char *raw );
+CSF_API qboolean CSF_LoadForLanguage( const char *rawLang );
 
 #endif // CSF_LOAD_H
