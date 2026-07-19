@@ -10,7 +10,8 @@ layout(location = 0) out vec4 outColor;
 layout(binding = 0) uniform sampler2D uBaseTex;
 layout(binding = 1) uniform sampler2D uLightmapTex;
 layout(push_constant) uniform PushConstants {
-    mat4 mvp;
+    uint mvpIndex;
+    uint drawParamIndex;
     vec4 params0;
     vec4 params1;
     vec4 params2;
@@ -26,13 +27,12 @@ layout(push_constant) uniform PushConstants {
     vec4 params12;
     vec4 params13;
     vec4 params14;
-    vec4 params15;
-    vec4 params16;
-    vec4 params17;
-    vec4 params18;
-    vec4 params19;
-    vec4 params20;
 } pc;
+
+layout(set = 1, binding = 0) uniform ViewUBO {
+    mat4 mvps[256];
+    vec4 drawParams[12288];
+} view;
 
 float evalWave(float waveFunc, float x) {
     float t = fract(x);
@@ -55,9 +55,9 @@ float evalWave(float waveFunc, float x) {
 /* Replicates R_FogFactor from the GL renderer using the same
  * fog table curve (exp == 0.5, i.e. sqrt). */
 float calcFogDensity(vec3 worldPos) {
-    float s = dot(worldPos, pc.params18.xyz) + pc.params18.w;
-    float eyeT = dot(pc.params14.xyz, pc.params19.xyz) + pc.params19.w;
-    float t = dot(worldPos, pc.params19.xyz) + pc.params19.w;
+    float s = dot(worldPos, view.drawParams[pc.drawParamIndex * 6u + 3u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 3u].w;
+    float eyeT = dot(pc.params14.xyz, view.drawParams[pc.drawParamIndex * 6u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 4u].w;
+    float t = dot(worldPos, view.drawParams[pc.drawParamIndex * 6u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 4u].w;
     bool eyeOutside = eyeT < 0.0;
     if (eyeOutside) {
         if (t < 1.0) {
@@ -123,7 +123,7 @@ void main() {
      * close to the eye (s < 0) means no fog, far/behind the clipping plane
      * (s > 1 or t out of bounds) means fully fogged. Vertex alpha is preserved
      * so a future non-opaque fog color behaves like OpenGL's modulate path. */
-    if (pc.params16.w > 3.5) {
+    if (view.drawParams[pc.drawParamIndex * 6u + 1u].w > 3.5) {
         float fogAlpha;
         if (vTexCoord.s < 0.0) {
             fogAlpha = 0.0;
@@ -144,8 +144,8 @@ void main() {
     bool skyMode = pc.params11.w > 0.5;
     vec3 vertexRgb = (pc.params7.x > 0.5) ? vColor.rgb : vec3(1.0);
     float vertexAlpha = (pc.params7.y > 0.5) ? vColor.a : 1.0;
-    if (pc.params15.w > 0.0) {
-        vertexAlpha *= vNormalZFadeAlpha * pc.params15.w;
+    if (view.drawParams[pc.drawParamIndex * 6u + 0u].w > 0.0) {
+        vertexAlpha *= vNormalZFadeAlpha * view.drawParams[pc.drawParamIndex * 6u + 0u].w;
     }
     if (skyMode) {
         int rgbMode = int(pc.params1.x + 0.5);
@@ -174,8 +174,8 @@ void main() {
      * params17.w encodes the mode: 2 = RGB, 3 = RGBA, 4 = ALPHA. */
     float fogModFactor = 1.0;
     int fogModMode = 0;
-    if (pc.params17.w > 1.5) {
-        fogModMode = int(pc.params17.w + 0.5);
+    if (view.drawParams[pc.drawParamIndex * 6u + 2u].w > 1.5) {
+        fogModMode = int(view.drawParams[pc.drawParamIndex * 6u + 2u].w + 0.5);
         fogModFactor = 1.0 - calcFogDensity(vWorldPos);
         if (fogModMode == 2 || fogModMode == 3) {
             lit *= fogModFactor;
@@ -188,8 +188,8 @@ void main() {
      * artifacts on large brush polygons.  Active whenever params16.w selects a
      * distance-fog mode (1=linear, 2=exp, 3=exp2), even if volumetric modulation
      * is also on. */
-    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 4.0) {
-        lit = mix(pc.params16.xyz, lit, vFogFactor);
+    if (view.drawParams[pc.drawParamIndex * 6u + 2u].w > 0.5 && view.drawParams[pc.drawParamIndex * 6u + 1u].w > 0.0 && view.drawParams[pc.drawParamIndex * 6u + 1u].w < 4.0) {
+        lit = mix(view.drawParams[pc.drawParamIndex * 6u + 1u].xyz, lit, vFogFactor);
     }
 
     if (pc.params12.z > 0.5) {

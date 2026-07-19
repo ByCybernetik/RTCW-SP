@@ -9,14 +9,29 @@ void VK_BeginFrame(stereoFrame_t stereoFrame) {
 
     vk_state.renderPassActive = qfalse;
 
-    vkWaitForFences(vk_state.dev, 1, &vk_state.inFlight[vk_state.frameIndex],
-                    VK_TRUE, UINT64_MAX);
+    /* Do not wait forever: if a previous frame failed to signal the fence,
+     * skip this frame instead of deadlocking the renderer. */
+    VkResult res = vkWaitForFences(vk_state.dev, 1, &vk_state.inFlight[vk_state.frameIndex],
+                                    VK_TRUE, 100000000); /* 100 ms */
+    if (res == VK_TIMEOUT) {
+        ri.Printf(PRINT_WARNING, "VK_BeginFrame: in-flight fence timed out, skipping frame\n");
+        return;
+    }
+    if (res != VK_SUCCESS) {
+        ri.Printf(PRINT_WARNING, "VK_BeginFrame: vkWaitForFences failed (%d), skipping frame\n", res);
+        return;
+    }
+
+    /* The frame that last used this slot has completed: safe to recycle its
+     * upload staging buffers and per-view MVP slots. */
+    VK_ReapUploadSlot(vk_state.frameIndex);
+    VK_ViewFrameBegin();
 
     uint32_t imageIndex;
-    VkResult res = vkAcquireNextImageKHR(vk_state.dev, vk_state.swapchain,
-                                          UINT64_MAX,
-                                          vk_state.imageAvailable[vk_state.frameIndex],
-                                          VK_NULL_HANDLE, &imageIndex);
+    res = vkAcquireNextImageKHR(vk_state.dev, vk_state.swapchain,
+                                UINT64_MAX,
+                                vk_state.imageAvailable[vk_state.frameIndex],
+                                VK_NULL_HANDLE, &imageIndex);
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
         VK_UpdateSwapchain(vk_state.swapExtent.width, vk_state.swapExtent.height);
         res = vkAcquireNextImageKHR(vk_state.dev, vk_state.swapchain,
@@ -24,20 +39,37 @@ void VK_BeginFrame(stereoFrame_t stereoFrame) {
                                     vk_state.imageAvailable[vk_state.frameIndex],
                                     VK_NULL_HANDLE, &imageIndex);
     }
+    if (res != VK_SUCCESS) {
+        ri.Printf(PRINT_WARNING, "VK_BeginFrame: vkAcquireNextImageKHR failed (%d), skipping frame\n", res);
+        return;
+    }
     vk_state.currentImageIndex = imageIndex;
 
-    vkResetFences(vk_state.dev, 1, &vk_state.inFlight[vk_state.frameIndex]);
+    /* The command buffer for this swapchain image may still be in flight from
+     * a submission older than the one guarded by inFlight[frameIndex] (with
+     * swapCount > VK_MAX_FRAMES_IN_FLIGHT the two indices are not the same).
+     * Wait for the specific submission that last used this image. */
+    if (vk_state.imagesInFlight && vk_state.imagesInFlight[imageIndex] != VK_NULL_HANDLE &&
+        vk_state.imagesInFlight[imageIndex] != vk_state.inFlight[vk_state.frameIndex]) {
+        vkWaitForFences(vk_state.dev, 1, &vk_state.imagesInFlight[imageIndex],
+                        VK_TRUE, UINT64_MAX);
+    }
+    if (vk_state.imagesInFlight) {
+        vk_state.imagesInFlight[imageIndex] = vk_state.inFlight[vk_state.frameIndex];
+    }
 
     VkCommandBuffer cmd = vk_state.cmdBuffers[imageIndex];
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 
     if (!cmd || !vk_state.framebuffers[imageIndex]) {
+        ri.Printf(PRINT_WARNING, "VK_BeginFrame: missing cmd buffer or framebuffer for image %u\n", imageIndex);
         return;
     }
 
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkResetCommandBuffer(cmd, 0) != VK_SUCCESS ||
         vkBeginCommandBuffer(cmd, &bi) != VK_SUCCESS) {
+        ri.Printf(PRINT_WARNING, "VK_BeginFrame: failed to begin command buffer\n");
         return;
     }
 
@@ -85,11 +117,15 @@ void VK_BeginFrame(stereoFrame_t stereoFrame) {
         vkCmdSetScissor(cmd, 0, 1, &scissor);
     }
 
+    /* Bind the per-view MVP descriptor set (set 1) for this frame slot. */
+    VK_ViewBindSet(cmd);
+
     VK_ResetDynamicVBO();
 }
 
 void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
     VkCommandBuffer cmd;
+    VkResult res;
 
     if (!vk_state.renderPassActive) {
         return;
@@ -97,24 +133,58 @@ void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
 
     cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
     if (!cmd) {
+        ri.Printf(PRINT_WARNING, "VK_EndFrame: missing command buffer for image %u\n", vk_state.currentImageIndex);
         vk_state.renderPassActive = qfalse;
         return;
     }
 
     vkCmdEndRenderPass(cmd);
-    vkEndCommandBuffer(cmd);
+    res = vkEndCommandBuffer(cmd);
+    if (res != VK_SUCCESS) {
+        ri.Printf(PRINT_WARNING, "VK_EndFrame: vkEndCommandBuffer failed (%d), skipping frame\n", res);
+        vk_state.renderPassActive = qfalse;
+        return;
+    }
 
     VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    /* The fence must be reset immediately before it is submitted. Doing it
+     * earlier (in VK_BeginFrame) leaves the fence unsignaled forever if any
+     * later step fails, which deadlocks the next frame. */
+    vkResetFences(vk_state.dev, 1, &vk_state.inFlight[vk_state.frameIndex]);
+
+    /* Include the batched texture-upload command buffer first in the same
+     * submission. Its layout transitions complete before any rendering
+     * command executes, and no queue drain is needed. */
+    VkCommandBuffer cmds[2];
+    uint32_t cmdCount = 0;
+    VkCommandBuffer uploadCmd;
+    if (VK_UploadGetPending(&uploadCmd)) {
+        cmds[cmdCount++] = uploadCmd;
+    }
+    cmds[cmdCount++] = cmd;
 
     VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     si.waitSemaphoreCount = 1;
     si.pWaitSemaphores = &vk_state.imageAvailable[vk_state.frameIndex];
     si.pWaitDstStageMask = &waitStages;
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cmd;
+    si.commandBufferCount = cmdCount;
+    si.pCommandBuffers = cmds;
     si.signalSemaphoreCount = 1;
     si.pSignalSemaphores = &vk_state.renderFinished[vk_state.frameIndex];
-    vkQueueSubmit(vk_state.gfxQueue, 1, &si, vk_state.inFlight[vk_state.frameIndex]);
+    res = vkQueueSubmit(vk_state.gfxQueue, 1, &si, vk_state.inFlight[vk_state.frameIndex]);
+    if (res != VK_SUCCESS) {
+        ri.Printf(PRINT_WARNING, "VK_EndFrame: vkQueueSubmit failed (%d)\n", res);
+        /* Try to recover by signaling the fence with an empty submission so
+         * the next VK_BeginFrame does not deadlock. */
+        VkSubmitInfo emptySi = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+        if (vkQueueSubmit(vk_state.gfxQueue, 1, &emptySi, vk_state.inFlight[vk_state.frameIndex]) != VK_SUCCESS) {
+            ri.Printf(PRINT_WARNING, "VK_EndFrame: could not recover in-flight fence\n");
+        }
+        vkQueueWaitIdle(vk_state.gfxQueue);
+        vk_state.renderPassActive = qfalse;
+        return;
+    }
 
     VkPresentInfoKHR pi = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     pi.waitSemaphoreCount = 1;
@@ -122,13 +192,169 @@ void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
     pi.swapchainCount = 1;
     pi.pSwapchains = &vk_state.swapchain;
     pi.pImageIndices = &vk_state.currentImageIndex;
-    vkQueuePresentKHR(vk_state.presentQueue, &pi);
+    res = vkQueuePresentKHR(vk_state.presentQueue, &pi);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+        ri.Printf(PRINT_WARNING, "VK_EndFrame: present reported %d, swapchain will be updated next frame\n", res);
+    } else if (res != VK_SUCCESS) {
+        ri.Printf(PRINT_WARNING, "VK_EndFrame: vkQueuePresentKHR failed (%d)\n", res);
+    }
 
     vk_state.renderPassActive = qfalse;
     vk_state.frameIndex = (vk_state.frameIndex + 1) % VK_MAX_FRAMES_IN_FLIGHT;
 
     if (frontEndMsec) *frontEndMsec = 0;
     if (backEndMsec) *backEndMsec = 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Per-view MVP uniform buffer.
+ *
+ * The view projection is converted once per view and the MVP is computed once
+ * per (view, entity) into a UBO slot; draws reference the slot through a
+ * 4-byte push-constant index instead of a full 64-byte matrix plus the
+ * per-draw matrix multiply on the CPU.
+ * ------------------------------------------------------------------------- */
+
+uint32_t vk_currentMvpSlot;
+uint32_t vk_worldMvpSlot;
+
+static float vk_viewProj[16];
+static int vk_2dMvpSlot = -1;
+
+static void VK_Set2DMVP(float *mvp, int width, int height);
+
+void VK_ViewFrameBegin(void) {
+    vk_viewUbo.slotCount = 0;
+    vk_viewUbo.drawSlotCount = 0;
+    vk_2dMvpSlot = -1;
+}
+
+uint32_t VK_ViewAllocMvp(const float mvp[16]) {
+    uint32_t slot;
+    uint8_t *dst;
+
+    if (vk_viewUbo.slotCount >= VK_VIEW_MAX_MVPS) {
+        static int overflowLogged = 0;
+        if (!overflowLogged) {
+            overflowLogged = 1;
+            ri.Printf(PRINT_WARNING, "VK_ViewAllocMvp: slot overflow, reusing slot 0\n");
+        }
+        return 0;
+    }
+
+    slot = vk_viewUbo.slotCount++;
+    dst = vk_viewUbo.mapped +
+          (size_t)vk_state.frameIndex * VK_VIEW_UBO_REGION_SIZE +
+          (size_t)slot * 64;
+    memcpy(dst, mvp, 64);
+    return slot;
+}
+
+uint32_t VK_ViewAllocDrawParams(const float *drawParams) {
+    uint32_t slot;
+    uint8_t *dst;
+    uint8_t *regionBase;
+
+    if (!vk_viewUbo.mapped || !drawParams) {
+        return 0;
+    }
+
+    regionBase = vk_viewUbo.mapped +
+                 (size_t)vk_state.frameIndex * VK_VIEW_UBO_REGION_SIZE +
+                 VK_VIEW_UBO_DRAW_OFF;
+
+    /* Reuse the previous slot when fog/fade params did not change. Consecutive
+     * stages/batches almost always share identical distance-fog state. */
+    if (vk_viewUbo.drawSlotCount > 0) {
+        uint32_t prev = vk_viewUbo.drawSlotCount - 1;
+        const uint8_t *prevSrc = regionBase + (size_t)prev * VK_VIEW_DRAW_SLOT_BYTES;
+        if (memcmp(prevSrc, drawParams, VK_VIEW_DRAW_SLOT_BYTES) == 0) {
+            return prev;
+        }
+    }
+
+    if (vk_viewUbo.drawSlotCount >= VK_VIEW_MAX_DRAW_PARAMS) {
+        static int overflowLogged = 0;
+        if (!overflowLogged) {
+            overflowLogged = 1;
+            ri.Printf(PRINT_WARNING,
+                      "VK_ViewAllocDrawParams: slot overflow (%u), reusing last slot\n",
+                      VK_VIEW_MAX_DRAW_PARAMS);
+        }
+        /* Never reuse slot 0: that stomps the first draws of the frame and
+         * makes fog flicker on a handful of surfaces. Overwrite only the last
+         * slot (newest fog state). */
+        slot = VK_VIEW_MAX_DRAW_PARAMS - 1;
+    } else {
+        slot = vk_viewUbo.drawSlotCount++;
+    }
+
+    dst = regionBase + (size_t)slot * VK_VIEW_DRAW_SLOT_BYTES;
+    memcpy(dst, drawParams, VK_VIEW_DRAW_SLOT_BYTES);
+    return slot;
+}
+
+void VK_ViewBegin(void) {
+    float mvp[16];
+
+    /* Runs on the BACK END at the start of VK_DrawSurfList, where
+     * backEnd.viewParms already holds the CURRENT scene's data (set by
+     * RB_DrawSurfs). This matches the old per-draw computation and is correct
+     * even with multiple scenes per frame. */
+    memcpy(vk_viewProj, backEnd.viewParms.projectionMatrix, sizeof(vk_viewProj));
+    VK_ConvertProjectionMatrixToVulkan(vk_viewProj);
+    VK_MatrixMulQ3Clip(mvp, vk_viewProj, backEnd.viewParms.world.modelMatrix);
+
+    vk_worldMvpSlot = VK_ViewAllocMvp(mvp);
+    vk_currentMvpSlot = vk_worldMvpSlot;
+}
+
+void VK_ViewSetEntityMvp(void) {
+    float mvp[16];
+
+    if (!backEnd.currentEntity || backEnd.currentEntity == &tr.worldEntity) {
+        vk_currentMvpSlot = vk_worldMvpSlot;
+        return;
+    }
+
+    VK_MatrixMulQ3Clip(mvp, vk_viewProj, backEnd.or.modelMatrix);
+    vk_currentMvpSlot = VK_ViewAllocMvp(mvp);
+}
+
+uint32_t VK_ViewGet2DMvpSlot(void) {
+    if (vk_2dMvpSlot < 0) {
+        float mvp[16];
+
+        VK_Set2DMVP(mvp, vk_state.swapExtent.width, vk_state.swapExtent.height);
+        vk_2dMvpSlot = (int)VK_ViewAllocMvp(mvp);
+    }
+    return (uint32_t)vk_2dMvpSlot;
+}
+
+void VK_ViewBindSet(VkCommandBuffer cmd) {
+    uint32_t dynamicOffset = vk_state.frameIndex * VK_VIEW_UBO_REGION_SIZE;
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            vk_state.pipelineLayout, 1, 1, &vk_viewUbo.set,
+                            1, &dynamicOffset);
+}
+
+void VK_CmdPushMaterial(VkCommandBuffer cmd, const vk_push_constants_t *pcIn) {
+    vk_push_constants_t pc;
+
+    if (!pcIn) {
+        return;
+    }
+
+    pc = *pcIn;
+    /* One immutable slot per push: GPU reads it later when the CB runs, so a
+     * single shared drawParams cell would make fog flicker (last write wins). */
+    pc.drawParamIndex = VK_ViewAllocDrawParams(&pc.params[15][0]);
+    pc.pad[0] = 0;
+    pc.pad[1] = 0;
+    vkCmdPushConstants(cmd, vk_state.pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, VK_PUSH_CONSTANTS_GPU_SIZE, &pc);
 }
 
 void VK_RenderView(viewParms_t *parms) {
@@ -151,6 +377,11 @@ void VK_RenderView(viewParms_t *parms) {
     R_RotateForViewer();
     R_SetupFrustum();
     R_GenerateDrawSurfs();
+
+    /* The view-projection UBO slots are allocated on the back end in
+     * VK_DrawSurfList (VK_ViewBegin), where backEnd.viewParms holds the
+     * current scene's data. */
+
     R_SortDrawSurfs(tr.refdef.drawSurfs + firstDrawSurf,
                     tr.refdef.numDrawSurfs - firstDrawSurf);
 }
@@ -320,7 +551,6 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
                            const byte color2[4], const byte color3[4]) {
     VkCommandBuffer cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
     shader_t *state;
-    float mvp[16];
     vk_push_constants_t pc;
     int vboSize;
     int iboSize;
@@ -345,7 +575,6 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
     }
 
     VK_SetPicViewport(cmd);
-    VK_Set2DMVP(mvp, vk_state.swapExtent.width, vk_state.swapExtent.height);
 
     vboSize = 4 * (int)sizeof(drawVert_t);
     iboSize = 6 * (int)sizeof(int);
@@ -428,8 +657,11 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
                 currentPipe = pipeIdx;
             }
 
-            vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-                               0, sizeof(mvp), mvp);
+            {
+                uint32_t slot = VK_ViewGet2DMvpSlot();
+                vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                                   0, sizeof(slot), &slot);
+            }
 
             descSet = VK_GetDescriptorSetForImage(img ? img : tr.whiteImage);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -439,7 +671,7 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
         }
 
         VK_SetUIStageStateFromShader(state, stage);
-        VK_FillPushConstants(mvp, state, &pc);
+        VK_FillPushConstants(VK_ViewGet2DMvpSlot(), state, &pc);
         pc.params[14][3] = 0.2f;
 
         pipeIdx = VK_PipelineForUIStage(stage);
@@ -449,9 +681,7 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
         }
 
         vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
-        vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0, sizeof(pc), &pc);
+        VK_CmdPushMaterial(cmd, &pc);
 
         descSet = VK_StageDescriptorSet(state, stage);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -504,7 +734,6 @@ void VK_StretchPicGradient(float x, float y, float w, float h,
 void VK_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, int client) {
     VkCommandBuffer cmd;
     image_t *image;
-    float mvp[16];
     float s1, t1, s2, t2;
     int vboSize;
     int iboSize;
@@ -537,7 +766,6 @@ void VK_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, int clien
     t2 = ((float)rows - 0.5f) / (float)rows;
 
     VK_SetPicViewport(cmd);
-    VK_Set2DMVP(mvp, vk_state.swapExtent.width, vk_state.swapExtent.height);
 
     vboSize = 4 * (int)sizeof(drawVert_t);
     iboSize = 6 * (int)sizeof(int);
@@ -577,7 +805,10 @@ void VK_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, int clien
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[VK_PIPELINE_2D]);
     vkCmdBindVertexBuffers(cmd, 0, 1, &vk_dyn.buffer, offsets);
     vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
-    vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
+    {
+        uint32_t slot = VK_ViewGet2DMvpSlot();
+        vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(slot), &slot);
+    }
 
     descSet = VK_GetDescriptorSetForImage(image);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,

@@ -30,6 +30,11 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
+#ifdef VULKAN_BACKEND
+extern qboolean vk_active;
+extern void VK_BuildWorldStaticBuffers(void);
+#endif
+
 /*
 
 Loads and prepares a map file for scene rendering.
@@ -2246,6 +2251,12 @@ void RE_LoadWorldMap( const char *name ) {
 
 	// only set tr.world now that we know the entire level has loaded properly
 	tr.world = &s_worldData;
+
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		VK_BuildWorldStaticBuffers();
+	}
+#endif
 
 	// reset fog to world fog (if present)
 //	R_SetFog(FOG_CMD_SWITCHFOG, FOG_MAP,20,0,0,0,0);

@@ -488,7 +488,7 @@ if vulkan_backend
         t = custom_target(out + '_stamp',
             input: src,
             output: out + '_stamp',
-            command: ['sh', '-c', 'mkdir -p ' + main_dir + ' && ' + glslc.full_path() + ' -fshader-stage=' + stage + ' -o ' + main_dir + '/' + out + ' @INPUT@ && touch @OUTPUT@'],
+            command: ['sh', '-c', 'mkdir -p ' + main_dir + ' && ' + glslc.full_path() + ' -fshader-stage=' + stage + ' -o ' + main_dir + '/' + out + ' @INPUT@ && cp ' + main_dir + '/' + out + ' ' + meson.project_source_root() / 'main' / out + ' && touch @OUTPUT@'],
             build_by_default: true,
         )
         shader_targets += t

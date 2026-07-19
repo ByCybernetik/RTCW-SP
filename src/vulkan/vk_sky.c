@@ -19,13 +19,9 @@ static float vk_sky_min;
 static float vk_sky_max;
 
 static void VK_FillSkyPushConstants(const shader_t *shader, vk_push_constants_t *pc) {
-    float proj[16];
-    float mvp[16];
-
-    memcpy(proj, tr.viewParms.projectionMatrix, sizeof(proj));
-    VK_ConvertProjectionMatrixToVulkan(proj);
-    VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-    VK_FillPushConstants(mvp, shader, pc);
+    /* The sky is drawn with the world entity active; reuse its per-view MVP
+     * slot instead of recomputing the matrix. */
+    VK_FillPushConstants(vk_currentMvpSlot, shader, pc);
 }
 
 static void VK_MakeSkyVec(float s, float t, int axis, float outSt[2], vec3_t outXYZ) {
@@ -230,9 +226,7 @@ static void VK_DrawCloudLayers(shader_t *shader, VkCommandBuffer cmd,
         VK_FillSkyPushConstants(shader, pc);
         VK_SetSkyPushConstants(shader, stage, pc, qtrue);
 
-        vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0, sizeof(*pc), pc);
+        VK_CmdPushMaterial(cmd, pc);
 
         pipeIdx = VK_StageIsBlended(stage) ? VK_PipelineForStage(stage) : VK_PIPELINE_SKY;
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipeIdx]);
@@ -328,9 +322,7 @@ void VK_DrawSky(shader_t *shader, surfaceType_t *surf, VkCommandBuffer cmd) {
         VK_FillSkyPushConstants(shader, &pc);
         VK_SetSkyPushConstants(shader, NULL, &pc, qfalse);
 
-        vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0, sizeof(pc), &pc);
+        VK_CmdPushMaterial(cmd, &pc);
 
         VK_DrawSkyBoxFaces(shader, shader->sky.outerbox, cmd, &pc, VK_PIPELINE_SKY);
     }
@@ -347,9 +339,7 @@ void VK_DrawSky(shader_t *shader, surfaceType_t *surf, VkCommandBuffer cmd) {
         VK_FillSkyPushConstants(shader, &pc);
         VK_SetSkyPushConstants(shader, NULL, &pc, qfalse);
 
-        vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0, sizeof(pc), &pc);
+        VK_CmdPushMaterial(cmd, &pc);
 
         VK_DrawSkyBoxFaces(shader, shader->sky.innerbox, cmd, &pc, VK_PIPELINE_ALPHA);
     }
@@ -480,8 +470,6 @@ void VK_DrawSun(VkCommandBuffer cmd) {
     for (i = 0; i < MAX_SHADER_STAGES && shader->stages[i]; i++) {
         shaderStage_t *stage = shader->stages[i];
         vk_push_constants_t pc;
-        float proj[16];
-        float mvp[16];
         int pipeIdx;
         VkDescriptorSet descSet;
 
@@ -494,17 +482,14 @@ void VK_DrawSun(VkCommandBuffer cmd) {
 
         VK_SetStageStateFromShader(shader, stage);
 
-        memcpy(proj, tr.viewParms.projectionMatrix, sizeof(proj));
-        VK_ConvertProjectionMatrixToVulkan(proj);
-        VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-        VK_FillPushConstants(mvp, shader, &pc);
+        /* The sun is drawn after the surf list with the world orientation
+         * restored: reuse the world-entity MVP slot for this view. */
+        VK_FillPushConstants(vk_worldMvpSlot, shader, &pc);
 
         pipeIdx = VK_PipelineForStage(stage);
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipeIdx]);
 
-        vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0, sizeof(pc), &pc);
+        VK_CmdPushMaterial(cmd, &pc);
 
         descSet = VK_StageDescriptorSet(shader, stage);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,

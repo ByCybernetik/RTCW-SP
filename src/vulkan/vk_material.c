@@ -596,14 +596,16 @@ int VK_PipelineFor2DPic(const shaderStage_t *stage) {
     return VK_PIPELINE_2D;
 }
 
-void VK_FillPushConstants(const float mvp[16], const shader_t *shader, vk_push_constants_t *pc) {
+void VK_FillPushConstants(uint32_t mvpIndex, const shader_t *shader, vk_push_constants_t *pc) {
     float timeSec;
 
     if (!pc) {
         return;
     }
 
-    memcpy(pc->mvp, mvp, sizeof(float) * 16);
+    pc->mvpIndex = mvpIndex;
+    pc->drawParamIndex = 0;
+    memset(pc->pad, 0, sizeof(pc->pad));
     memset(pc->params, 0, sizeof(pc->params));
 
     timeSec = backEnd.refdef.floatTime;

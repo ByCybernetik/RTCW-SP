@@ -71,6 +71,381 @@ int VK_ReserveDynamicVBO(int size) {
     return offset;
 }
 
+/* ---------------------------------------------------------------------------
+ * Static world VBO/IBO
+ *
+ * All SF_FACE / SF_GRID / SF_TRIANGLES world surfaces are immutable after map
+ * load, so they are uploaded once into a device-local vertex/index buffer
+ * instead of being re-streamed through the dynamic VBO every draw call.
+ * ------------------------------------------------------------------------- */
+
+vk_world_static_t vk_world;
+
+static uint32_t VK_WorldHashKey(const void *p) {
+    uintptr_t v = (uintptr_t)p;
+    return (uint32_t)((v >> 4) ^ (v >> 20));
+}
+
+static void VK_WorldHashInsert(void *surfData, uint32_t firstIndex,
+                               int32_t vertexOffset, uint32_t indexCount) {
+    uint32_t idx;
+
+    if (!vk_world.hash || vk_world.hashSize == 0) {
+        return;
+    }
+
+    idx = VK_WorldHashKey(surfData) & (vk_world.hashSize - 1);
+    while (vk_world.hash[idx].surfData) {
+        idx = (idx + 1) & (vk_world.hashSize - 1);
+    }
+    vk_world.hash[idx].surfData = surfData;
+    vk_world.hash[idx].firstIndex = firstIndex;
+    vk_world.hash[idx].vertexOffset = vertexOffset;
+    vk_world.hash[idx].indexCount = indexCount;
+    vk_world.surfCount++;
+}
+
+static vk_world_surf_t *VK_WorldFindSurf(void *surfData) {
+    uint32_t idx;
+
+    if (!vk_world.built || !vk_world.hash || vk_world.hashSize == 0) {
+        return NULL;
+    }
+
+    idx = VK_WorldHashKey(surfData) & (vk_world.hashSize - 1);
+    while (vk_world.hash[idx].surfData) {
+        if (vk_world.hash[idx].surfData == surfData) {
+            return &vk_world.hash[idx];
+        }
+        idx = (idx + 1) & (vk_world.hashSize - 1);
+    }
+    return NULL;
+}
+
+void VK_DestroyWorldStaticBuffers(void) {
+    /* In-flight frames may still be drawing from these buffers (map loading
+     * happens while the loading screen keeps rendering), so wait for the GPU
+     * before destroying them. */
+    if ((vk_world.vbo || vk_world.ibo) && vk_state.dev) {
+        vkDeviceWaitIdle(vk_state.dev);
+    }
+    if (vk_world.vbo) {
+        vkDestroyBuffer(vk_state.dev, vk_world.vbo, NULL);
+    }
+    if (vk_world.vboMemory) {
+        vkFreeMemory(vk_state.dev, vk_world.vboMemory, NULL);
+    }
+    if (vk_world.ibo) {
+        vkDestroyBuffer(vk_state.dev, vk_world.ibo, NULL);
+    }
+    if (vk_world.iboMemory) {
+        vkFreeMemory(vk_state.dev, vk_world.iboMemory, NULL);
+    }
+    free(vk_world.cpuIndices);
+    free(vk_world.hash);
+    memset(&vk_world, 0, sizeof(vk_world));
+}
+
+const vk_world_surf_t *VK_WorldGetStaticSurf(void *surfData) {
+    return VK_WorldFindSurf(surfData);
+}
+
+const uint32_t *VK_WorldGetCpuIndices(void) {
+    return vk_world.cpuIndices;
+}
+
+static qboolean VK_CreateDeviceLocalBuffer(const void *data, VkDeviceSize size,
+                                           VkBufferUsageFlags usage,
+                                           VkBuffer *outBuf,
+                                           VkDeviceMemory *outMem) {
+    VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkMemoryRequirements req;
+    VkBuffer stagingBuf = VK_NULL_HANDLE;
+    VkDeviceMemory stagingMem = VK_NULL_HANDLE;
+    void *mapped;
+    VkCommandBuffer cmd;
+    VkCommandBufferBeginInfo cbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    VkBufferCopy copy = { 0 };
+
+    *outBuf = VK_NULL_HANDLE;
+    *outMem = VK_NULL_HANDLE;
+
+    bci.size = size;
+    bci.usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(vk_state.dev, &bci, NULL, outBuf) != VK_SUCCESS) {
+        return qfalse;
+    }
+
+    vkGetBufferMemoryRequirements(vk_state.dev, *outBuf, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, outMem) != VK_SUCCESS) {
+        vkDestroyBuffer(vk_state.dev, *outBuf, NULL);
+        *outBuf = VK_NULL_HANDLE;
+        return qfalse;
+    }
+    vkBindBufferMemory(vk_state.dev, *outBuf, *outMem, 0);
+
+    bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    if (vkCreateBuffer(vk_state.dev, &bci, NULL, &stagingBuf) != VK_SUCCESS) {
+        goto fail;
+    }
+    vkGetBufferMemoryRequirements(vk_state.dev, stagingBuf, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &stagingMem) != VK_SUCCESS) {
+        goto fail;
+    }
+    vkBindBufferMemory(vk_state.dev, stagingBuf, stagingMem, 0);
+    vkMapMemory(vk_state.dev, stagingMem, 0, size, 0, &mapped);
+    memcpy(mapped, data, size);
+    vkUnmapMemory(vk_state.dev, stagingMem);
+
+    cmd = vk_state.uploadCmd;
+    vkResetCommandBuffer(cmd, 0);
+    vkBeginCommandBuffer(cmd, &cbbi);
+    copy.size = size;
+    vkCmdCopyBuffer(cmd, stagingBuf, *outBuf, 1, &copy);
+    vkEndCommandBuffer(cmd);
+
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cmd;
+    vkQueueSubmit(vk_state.gfxQueue, 1, &si, VK_NULL_HANDLE);
+    vkQueueWaitIdle(vk_state.gfxQueue);
+
+    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
+    vkFreeMemory(vk_state.dev, stagingMem, NULL);
+    return qtrue;
+
+fail:
+    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
+    vkFreeMemory(vk_state.dev, stagingMem, NULL);
+    if (*outBuf) {
+        vkDestroyBuffer(vk_state.dev, *outBuf, NULL);
+        *outBuf = VK_NULL_HANDLE;
+    }
+    if (*outMem) {
+        vkFreeMemory(vk_state.dev, *outMem, NULL);
+        *outMem = VK_NULL_HANDLE;
+    }
+    return qfalse;
+}
+
+static void VK_AppendFaceToStaticBuffers(const srfSurfaceFace_t *face,
+                                         drawVert_t *outVerts,
+                                         uint32_t *outIndices) {
+    int i;
+    int numVerts = face->numPoints;
+    int numIdx = face->numIndices;
+    const int *idxSrc = (const int *)((const uint8_t *)face + face->ofsIndices);
+
+    for (i = 0; i < numVerts; i++) {
+        const float *v = face->points[i];
+        drawVert_t *dv = &outVerts[i];
+        VectorCopy(v, dv->xyz);
+        dv->st[0] = v[3];
+        dv->st[1] = v[4];
+        dv->lightmap[0] = v[5];
+        dv->lightmap[1] = v[6];
+        VectorCopy(face->plane.normal, dv->normal);
+        *(int *)dv->color = *(const int *)&v[7];
+        if (*(int *)dv->color == 0) {
+            dv->color[0] = 255;
+            dv->color[1] = 255;
+            dv->color[2] = 255;
+            dv->color[3] = 255;
+        }
+    }
+
+    for (i = 0; i < numIdx; i++) {
+        outIndices[i] = (uint32_t)idxSrc[i];
+    }
+}
+
+static void VK_AppendGridToStaticBuffers(const srfGridMesh_t *grid,
+                                         drawVert_t *outVerts,
+                                         uint32_t *outIndices) {
+    int x, y;
+    int idx = 0;
+    int w = grid->width;
+    int h = grid->height;
+    int numVerts = w * h;
+
+    memcpy(outVerts, grid->verts, numVerts * sizeof(drawVert_t));
+
+    for (y = 0; y < h - 1; y++) {
+        for (x = 0; x < w - 1; x++) {
+            int a = y * w + x;
+            int b = y * w + x + 1;
+            int c = (y + 1) * w + x;
+            int d = (y + 1) * w + x + 1;
+            outIndices[idx++] = (uint32_t)a;
+            outIndices[idx++] = (uint32_t)c;
+            outIndices[idx++] = (uint32_t)b;
+            outIndices[idx++] = (uint32_t)b;
+            outIndices[idx++] = (uint32_t)c;
+            outIndices[idx++] = (uint32_t)d;
+        }
+    }
+}
+
+void VK_BuildWorldStaticBuffers(void) {
+    int i;
+    int totalVerts = 0;
+    int totalIdx = 0;
+    int worldSurfs = 0;
+    int vertOff = 0;
+    int idxOff = 0;
+    drawVert_t *verts = NULL;
+    uint32_t *indices = NULL;
+
+    if (!vk_active || !tr.world) {
+        return;
+    }
+
+    VK_DestroyWorldStaticBuffers();
+
+    /* First pass: count geometry and hash size. */
+    for (i = 0; i < tr.world->numsurfaces; i++) {
+        const msurface_t *surf = &tr.world->surfaces[i];
+        const void *data = surf->data;
+
+        if (!data) {
+            continue;
+        }
+
+        switch (*(const surfaceType_t *)data) {
+        case SF_FACE: {
+            const srfSurfaceFace_t *face = (const srfSurfaceFace_t *)data;
+            totalVerts += face->numPoints;
+            totalIdx += face->numIndices;
+            worldSurfs++;
+            break;
+        }
+        case SF_GRID: {
+            const srfGridMesh_t *grid = (const srfGridMesh_t *)data;
+            totalVerts += grid->width * grid->height;
+            totalIdx += (grid->width - 1) * (grid->height - 1) * 6;
+            worldSurfs++;
+            break;
+        }
+        case SF_TRIANGLES: {
+            const srfTriangles_t *tri = (const srfTriangles_t *)data;
+            totalVerts += tri->numVerts;
+            totalIdx += tri->numIndexes;
+            worldSurfs++;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    if (totalVerts == 0 || totalIdx == 0 || worldSurfs == 0) {
+        return;
+    }
+
+    vk_world.hashSize = 1;
+    while (vk_world.hashSize < (uint32_t)(worldSurfs * 2)) {
+        vk_world.hashSize <<= 1;
+    }
+    vk_world.hash = calloc(vk_world.hashSize, sizeof(*vk_world.hash));
+    if (!vk_world.hash) {
+        return;
+    }
+
+    verts = malloc(totalVerts * sizeof(*verts));
+    indices = malloc(totalIdx * sizeof(*indices));
+    if (!verts || !indices) {
+        free(verts);
+        free(indices);
+        VK_DestroyWorldStaticBuffers();
+        return;
+    }
+
+    /* Second pass: fill CPU-side arrays and record per-surface offsets. */
+    for (i = 0; i < tr.world->numsurfaces; i++) {
+        const msurface_t *surf = &tr.world->surfaces[i];
+        void *data = surf->data;
+        int numVerts = 0;
+        int numIdx = 0;
+
+        if (!data) {
+            continue;
+        }
+
+        switch (*(const surfaceType_t *)data) {
+        case SF_FACE: {
+            const srfSurfaceFace_t *face = (const srfSurfaceFace_t *)data;
+            numVerts = face->numPoints;
+            numIdx = face->numIndices;
+            VK_AppendFaceToStaticBuffers(face, verts + vertOff, indices + idxOff);
+            break;
+        }
+        case SF_GRID: {
+            const srfGridMesh_t *grid = (const srfGridMesh_t *)data;
+            numVerts = grid->width * grid->height;
+            numIdx = (grid->width - 1) * (grid->height - 1) * 6;
+            VK_AppendGridToStaticBuffers(grid, verts + vertOff, indices + idxOff);
+            break;
+        }
+        case SF_TRIANGLES: {
+            const srfTriangles_t *tri = (const srfTriangles_t *)data;
+            numVerts = tri->numVerts;
+            numIdx = tri->numIndexes;
+            memcpy(verts + vertOff, tri->verts, numVerts * sizeof(drawVert_t));
+            for (int j = 0; j < numIdx; j++) {
+                indices[idxOff + j] = (uint32_t)tri->indexes[j];
+            }
+            break;
+        }
+        default:
+            break;
+        }
+
+        if (numVerts > 0 && numIdx > 0) {
+            VK_WorldHashInsert(data, (uint32_t)idxOff, vertOff, (uint32_t)numIdx);
+            vertOff += numVerts;
+            idxOff += numIdx;
+        }
+    }
+
+    vk_world.vboSize = (VkDeviceSize)totalVerts * sizeof(*verts);
+    vk_world.iboSize = (VkDeviceSize)totalIdx * sizeof(*indices);
+
+    if (!VK_CreateDeviceLocalBuffer(verts, vk_world.vboSize,
+                                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                    &vk_world.vbo, &vk_world.vboMemory) ||
+        !VK_CreateDeviceLocalBuffer(indices, vk_world.iboSize,
+                                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                    &vk_world.ibo, &vk_world.iboMemory)) {
+        free(verts);
+        free(indices);
+        VK_DestroyWorldStaticBuffers();
+        return;
+    }
+
+    free(verts);
+    /* Keep a CPU-side copy of the world indices: the draw-call batcher
+     * re-bases them into the dynamic IBO so whole batches of world surfaces
+     * can be drawn with a single vkCmdDrawIndexed. */
+    vk_world.cpuIndices = indices;
+    vk_world.cpuIndexCount = (uint32_t)totalIdx;
+    vk_world.totalVerts = (uint32_t)totalVerts;
+    vk_world.built = qtrue;
+
+    ri.Printf(PRINT_ALL,
+              "VK_BuildWorldStaticBuffers: %u world surfaces, %d verts, %d idx (VBO %.1f MB, IBO %.1f MB)\n",
+              vk_world.surfCount, totalVerts, totalIdx,
+              (double)vk_world.vboSize / (1024.0 * 1024.0),
+              (double)vk_world.iboSize / (1024.0 * 1024.0));
+}
+
 static void VK_DecodeLatLongNormal(vec3_t outNormal, short latLong) {
     unsigned lat, lng;
 
@@ -279,13 +654,21 @@ static void VK_LerpMDCMesh(mdcSurface_t *surf, float backlerp, drawVert_t *outVe
 void VK_SurfaceFace(void *surfData) {
     srfSurfaceFace_t *face = (srfSurfaceFace_t *)surfData;
     VkCommandBuffer cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
+    vk_world_surf_t *ws = VK_WorldFindSurf(surfData);
     int numVerts = face->numPoints;
     int numIdx = face->numIndices;
-    int vertSize = VERTEXSIZE * sizeof(float);
-    int totalSize = numVerts * sizeof(drawVert_t) + numIdx * sizeof(int);
-    int vboOff = 0, iboOff = 0;
-    int baseVert = 0;
+    int vboOff, iboOff;
 
+    if (ws) {
+        VkDeviceSize offsets[1] = { 0 };
+        vkCmdBindVertexBuffers(cmd, 0, 1, &vk_world.vbo, offsets);
+        vkCmdBindIndexBuffer(cmd, vk_world.ibo, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmd, ws->indexCount, 1, ws->firstIndex, ws->vertexOffset, 0);
+        vk_worldDrawCount++;
+        return;
+    }
+
+    /* Fallback: surface was not present when the static buffers were built. */
     vboOff = VK_ReserveDynamicVBO(numVerts * sizeof(drawVert_t));
     iboOff = VK_ReserveDynamicVBO(numIdx * sizeof(int));
     if (vboOff < 0 || iboOff < 0) {
@@ -326,12 +709,24 @@ void VK_SurfaceFace(void *surfData) {
 void VK_SurfaceGrid(void *surfData) {
     srfGridMesh_t *grid = (srfGridMesh_t *)surfData;
     VkCommandBuffer cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
+    vk_world_surf_t *ws = VK_WorldFindSurf(surfData);
     int w = grid->width, h = grid->height;
     int numVerts = w * h;
     int numIdx = (w - 1) * (h - 1) * 6;
+    int vboOff, iboOff;
 
-    int vboOff = VK_ReserveDynamicVBO(numVerts * sizeof(drawVert_t));
-    int iboOff = VK_ReserveDynamicVBO(numIdx * sizeof(int));
+    if (ws) {
+        VkDeviceSize offsets[1] = { 0 };
+        vkCmdBindVertexBuffers(cmd, 0, 1, &vk_world.vbo, offsets);
+        vkCmdBindIndexBuffer(cmd, vk_world.ibo, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmd, ws->indexCount, 1, ws->firstIndex, ws->vertexOffset, 0);
+        vk_worldDrawCount++;
+        return;
+    }
+
+    /* Fallback: surface was not present when the static buffers were built. */
+    vboOff = VK_ReserveDynamicVBO(numVerts * sizeof(drawVert_t));
+    iboOff = VK_ReserveDynamicVBO(numIdx * sizeof(int));
     if (vboOff < 0 || iboOff < 0) {
         return;
     }
@@ -363,9 +758,21 @@ void VK_SurfaceGrid(void *surfData) {
 void VK_SurfaceTriangles(void *surfData) {
     srfTriangles_t *tri = (srfTriangles_t *)surfData;
     VkCommandBuffer cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
+    vk_world_surf_t *ws = VK_WorldFindSurf(surfData);
+    int vboOff, iboOff;
 
-    int vboOff = VK_ReserveDynamicVBO(tri->numVerts * sizeof(drawVert_t));
-    int iboOff = VK_ReserveDynamicVBO(tri->numIndexes * sizeof(int));
+    if (ws) {
+        VkDeviceSize offsets[1] = { 0 };
+        vkCmdBindVertexBuffers(cmd, 0, 1, &vk_world.vbo, offsets);
+        vkCmdBindIndexBuffer(cmd, vk_world.ibo, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmd, ws->indexCount, 1, ws->firstIndex, ws->vertexOffset, 0);
+        vk_worldDrawCount++;
+        return;
+    }
+
+    /* Fallback: surface was not present when the static buffers were built. */
+    vboOff = VK_ReserveDynamicVBO(tri->numVerts * sizeof(drawVert_t));
+    iboOff = VK_ReserveDynamicVBO(tri->numIndexes * sizeof(int));
     if (vboOff < 0 || iboOff < 0) {
         return;
     }

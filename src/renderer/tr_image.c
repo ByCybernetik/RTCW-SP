@@ -945,13 +945,24 @@ image_t *R_CreateImageExt( const char *name, const byte *pic, int width, int hei
 		image->internalFormat = GL_RGBA8;
 
 		if ( vkIdx >= 0 && vkIdx < VK_MAX_TEXTURES ) {
-        if ( VK_CreateTextureFromPixels( (const uint8_t *)pic, width, height,
+			/* Apply the engine's internal gamma/intensity correction before
+			 * uploading. Vulkan has no hardware gamma ramp, so without this
+			 * textures look too dark and depend on external/system gamma. */
+			byte *gammaPic = (byte *)malloc( width * height * 4 );
+			const byte *uploadPic = pic;
+			if ( gammaPic ) {
+				memcpy( gammaPic, pic, width * height * 4 );
+				R_LightScaleTexture( (unsigned *)gammaPic, width, height, !mipmap );
+				uploadPic = gammaPic;
+			}
+			if ( VK_CreateTextureFromPixels( (const uint8_t *)uploadPic, width, height,
 			                                 &vk_state.textures[vkIdx], glWrapClampMode, image->mipmap ) ) {
 				if ( vkIdx >= vk_state.textureCount ) {
 					vk_state.textureCount = vkIdx + 1;
 				}
 				VK_OnTextureUploaded( vkIdx );
 			}
+			free( gammaPic );
 		}
 
 		hash = generateHashValue( name );

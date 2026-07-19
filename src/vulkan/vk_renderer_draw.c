@@ -14,15 +14,10 @@ static int vk_oldEntityNum = -1;
 static cvar_t *r_vkVolumetricFog;
 
 static void VK_FillStagePushConstants(const shader_t *shader, vk_push_constants_t *pc) {
-    float proj[16];
-    float mvp[16];
-
-    /* Match GL depth distribution: engine projection + Vulkan Y flip + Z remap.
-     * Use backEnd.viewParms so portal and main views use the correct projection. */
-    memcpy(proj, backEnd.viewParms.projectionMatrix, sizeof(proj));
-    VK_ConvertProjectionMatrixToVulkan(proj);
-    VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-    VK_FillPushConstants(mvp, shader, pc);
+    /* The MVP comes from the per-view UBO slot computed once per entity; only
+     * the 4-byte slot index and the stage parameters go through push
+     * constants now. */
+    VK_FillPushConstants(vk_currentMvpSlot, shader, pc);
 }
 
 static void VK_GetFogVectors(vec4_t fogDistanceVector, vec4_t fogDepthVector, float *eyeT) {
@@ -133,9 +128,7 @@ static void VK_FogPass(drawSurf_t *drawSurf, surfaceType_t type, VkCommandBuffer
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipelineIdx]);
     vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
-    vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0, sizeof(pc), &pc);
+    VK_CmdPushMaterial(cmd, &pc);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             vk_state.pipelineLayout, 0, 1, &vk_state.fogDescSet, 0, NULL);
 
@@ -200,6 +193,10 @@ static void VK_SetupEntity(int entityNum) {
         backEnd.or = backEnd.viewParms.world;
         R_TransformDlights(backEnd.refdef.num_dlights, backEnd.refdef.dlights, &backEnd.or);
     }
+
+    /* One MVP slot per (view, entity): computed here once instead of per
+     * surface per shader stage. */
+    VK_ViewSetEntityMvp();
 }
 
 static qboolean VK_ShouldDrawShader(const shader_t *shader) {
@@ -226,13 +223,7 @@ static int VK_SurfaceDlightBits(surfaceType_t *surf) {
 }
 
 static void VK_FillDlightPushConstants(const dlight_t *dl, vk_push_constants_t *pc) {
-    float proj[16];
-    float mvp[16];
-
-    memcpy(proj, backEnd.viewParms.projectionMatrix, sizeof(proj));
-    VK_ConvertProjectionMatrixToVulkan(proj);
-    VK_MatrixMulQ3Clip(mvp, proj, backEnd.or.modelMatrix);
-    memcpy(pc->mvp, mvp, sizeof(pc->mvp));
+    pc->mvpIndex = vk_currentMvpSlot;
     memset(pc->params, 0, sizeof(pc->params));
 
     pc->params[1][0] = dl->transformed[0];
@@ -295,15 +286,346 @@ static void VK_ProjectDlightTexture(drawSurf_t *drawSurf, int dlightBits) {
         dl = &backEnd.refdef.dlights[i];
 
         VK_FillDlightPushConstants(dl, &pc);
-        vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0, sizeof(pc), &pc);
+        VK_CmdPushMaterial(cmd, &pc);
 
         /* Surface functions append geometry and issue the draw call. */
         tess.numVertexes = 0;
         tess.numIndexes = 0;
         vk_surfaceTable[type](surf);
     }
+}
+
+/* ---------------------------------------------------------------------------
+ * Draw-call batching for static world surfaces.
+ *
+ * Consecutive world surfaces with identical (shader, entity, fog) are merged
+ * into one batch: their indices are re-based into the dynamic IBO while the
+ * vertices stay in the static world VBO. A flush draws the whole batch with
+ * one vkCmdDrawIndexed per shader stage instead of one per surface, matching
+ * (and exceeding) the batching level of the OpenGL backend.
+ * ------------------------------------------------------------------------- */
+
+typedef struct {
+    qboolean active;
+    const shader_t *shader;
+    int entityNum;
+    int fogNum;
+    int dlightBits;
+    int iboStart;
+    int numIdx;
+} vk_world_batch_t;
+
+static vk_world_batch_t vk_batch;
+
+static void VK_BatchReset(void) {
+    vk_batch.active = qfalse;
+    vk_batch.shader = NULL;
+    vk_batch.entityNum = -1;
+    vk_batch.fogNum = 0;
+    vk_batch.dlightBits = 0;
+    vk_batch.iboStart = -1;
+    vk_batch.numIdx = 0;
+}
+
+static qboolean VK_SurfaceIsBatchable(surfaceType_t type) {
+    return type == SF_FACE || type == SF_GRID || type == SF_TRIANGLES;
+}
+
+static void VK_BatchAppendSurface(void *surfData) {
+    const vk_world_surf_t *ws = VK_WorldGetStaticSurf(surfData);
+    const uint32_t *cpuIndices = VK_WorldGetCpuIndices();
+    int iboOff;
+    uint32_t *dst;
+    uint32_t j;
+
+    if (!ws || !cpuIndices) {
+        return;
+    }
+
+    if (!vk_batch.active) {
+        vk_batch.active = qtrue;
+        vk_batch.iboStart = -1;
+        vk_batch.numIdx = 0;
+        vk_batch.dlightBits = 0;
+    }
+
+    iboOff = VK_ReserveDynamicVBO(ws->indexCount * sizeof(uint32_t));
+    if (iboOff < 0) {
+        /* Dynamic arena exhausted: skip these indices (counted by the
+         * reserve function). The batch stays contiguous because a failed
+         * reserve does not advance the arena offset. */
+        return;
+    }
+    if (vk_batch.iboStart < 0) {
+        vk_batch.iboStart = iboOff;
+    }
+
+    /* Store absolute static-VBO vertex indices. The surfaces are sorted by
+     * shader, not by VBO order, so re-basing against the first surface's
+     * vertexOffset could produce negative deltas that wrap around as uint32
+     * and read gigabytes past the buffer. With absolute indices the draw
+     * simply uses vertexOffset = 0. */
+    dst = (uint32_t *)((uint8_t *)vk_dyn.mapped + iboOff);
+    for (j = 0; j < ws->indexCount; j++) {
+        uint32_t idx = cpuIndices[ws->firstIndex + j] + ws->vertexOffset;
+        if (idx >= vk_world.totalVerts) {
+            static int corruptLogged = 0;
+            if (corruptLogged < 5) {
+                corruptLogged++;
+                ri.Printf(PRINT_WARNING,
+                          "VK_BatchAppendSurface: index %u out of range (totalVerts=%u, firstIndex=%u, vertexOffset=%d, j=%u)\n",
+                          idx, vk_world.totalVerts, ws->firstIndex, ws->vertexOffset, j);
+            }
+            /* Rewind this reservation so the batch IBO stays contiguous. */
+            vk_dyn.offset = iboOff;
+            if (vk_batch.iboStart == iboOff) {
+                vk_batch.iboStart = -1;
+            }
+            return;
+        }
+        dst[j] = idx;
+    }
+    vk_batch.numIdx += (int)ws->indexCount;
+    vk_batch.dlightBits |= VK_SurfaceDlightBits((surfaceType_t *)surfData);
+}
+
+static void VK_BatchDrawGeometry(VkCommandBuffer cmd) {
+    VkDeviceSize vboOffset = 0;
+
+    if (!vk_world.vbo || vk_batch.numIdx <= 0 || vk_batch.iboStart < 0) {
+        static int badDrawLogged = 0;
+        if (badDrawLogged < 5) {
+            badDrawLogged++;
+            ri.Printf(PRINT_WARNING,
+                      "VK_BatchDrawGeometry: skipped (vbo=%p numIdx=%d iboStart=%d)\n",
+                      (void *)vk_world.vbo, vk_batch.numIdx, vk_batch.iboStart);
+        }
+        return;
+    }
+
+    vkCmdBindVertexBuffers(cmd, 0, 1, &vk_world.vbo, &vboOffset);
+    vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)vk_batch.iboStart,
+                         VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(cmd, (uint32_t)vk_batch.numIdx, 1, 0, 0, 0);
+    vk_worldDrawCount++;
+}
+
+static void VK_FlushBatchDlights(VkCommandBuffer cmd) {
+    vk_push_constants_t pc;
+    int i;
+
+    if (!vk_batch.dlightBits || !backEnd.refdef.num_dlights) {
+        return;
+    }
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      vk_state.pipelines[VK_PIPELINE_DLIGHT]);
+    vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
+
+    {
+        VkDescriptorSet descSet = VK_GetDescriptorSetForImages(tr.whiteImage, tr.whiteImage);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
+    }
+
+    for (i = 0; i < backEnd.refdef.num_dlights; i++) {
+        const dlight_t *dl;
+
+        if (!(vk_batch.dlightBits & (1 << i))) {
+            continue;
+        }
+
+        dl = &backEnd.refdef.dlights[i];
+        VK_FillDlightPushConstants(dl, &pc);
+        VK_CmdPushMaterial(cmd, &pc);
+        VK_BatchDrawGeometry(cmd);
+    }
+}
+
+static void VK_FlushBatchFog(VkCommandBuffer cmd) {
+    fog_t *fog;
+    vk_push_constants_t pc;
+    vec4_t fogDistanceVector;
+    vec4_t fogDepthVector;
+    float eyeT;
+    int pipelineIdx;
+    unsigned color;
+
+    if (!tess.fogNum || !tess.shader->fogPass) {
+        return;
+    }
+    if (backEnd.refdef.rdflags & RDF_SNOOPERVIEW) {
+        return;
+    }
+
+    fog = tr.world->fogs + tess.fogNum;
+
+    pipelineIdx = (tess.shader->fogPass == FP_EQUAL) ? VK_PIPELINE_FOG_EQUAL : VK_PIPELINE_FOG;
+
+    VK_FillStagePushConstants(tess.shader, &pc);
+
+    color = fog->colorInt;
+    pc.params[VK_FOG_COLOR_PARAM][0] = (float)(color & 0xFF) / 255.0f;
+    pc.params[VK_FOG_COLOR_PARAM][1] = (float)((color >> 8) & 0xFF) / 255.0f;
+    pc.params[VK_FOG_COLOR_PARAM][2] = (float)((color >> 16) & 0xFF) / 255.0f;
+    pc.params[VK_FOG_COLOR_PARAM][3] = 4.0f;
+
+    pc.params[VK_FOG_RANGE_PARAM][0] = 0.0f;
+    pc.params[VK_FOG_RANGE_PARAM][1] = 0.0f;
+    pc.params[VK_FOG_RANGE_PARAM][2] = 0.0f;
+    pc.params[VK_FOG_RANGE_PARAM][3] = 0.0f;
+
+    VK_GetFogVectors(fogDistanceVector, fogDepthVector, &eyeT);
+    (void)eyeT;
+    pc.params[18][0] = fogDistanceVector[0];
+    pc.params[18][1] = fogDistanceVector[1];
+    pc.params[18][2] = fogDistanceVector[2];
+    pc.params[18][3] = fogDistanceVector[3];
+    pc.params[19][0] = fogDepthVector[0];
+    pc.params[19][1] = fogDepthVector[1];
+    pc.params[19][2] = fogDepthVector[2];
+    pc.params[19][3] = fogDepthVector[3];
+
+    pc.params[0][2] = 0.0f;
+    pc.params[7][0] = 0.0f;
+    pc.params[7][1] = 0.0f;
+    pc.params[7][2] = 1.0f;
+    pc.params[7][3] = 0.0f;
+    pc.params[11][2] = 0.0f;
+    pc.params[13][0] = 0.0f;
+    pc.params[13][1] = 0.0f;
+    pc.params[13][2] = 0.0f;
+    pc.params[13][3] = 0.0f;
+    pc.params[14][3] = 0.0f;
+    pc.params[15][3] = 0.0f;
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipelineIdx]);
+    vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
+    VK_CmdPushMaterial(cmd, &pc);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            vk_state.pipelineLayout, 0, 1, &vk_state.fogDescSet, 0, NULL);
+
+    VK_BatchDrawGeometry(cmd);
+}
+
+static void VK_FlushWorldBatch(VkCommandBuffer cmd) {
+    const shader_t *shader;
+    int pass;
+    int stageIdx;
+    int currentPipe;
+    vk_push_constants_t pc;
+
+    if (!vk_batch.active || vk_batch.numIdx <= 0) {
+        VK_BatchReset();
+        return;
+    }
+
+    shader = vk_batch.shader;
+
+    tess.shader = (shader_t *)shader;
+    tess.fogNum = vk_batch.fogNum;
+
+    currentPipe = -1;
+
+    for (pass = 0; pass < 4; pass++) {
+        for (stageIdx = 0; stageIdx < MAX_SHADER_STAGES && shader->stages[stageIdx]; stageIdx++) {
+            shaderStage_t *stage = shader->stages[stageIdx];
+            qboolean blended;
+            int pipeIdx;
+            VkDescriptorSet descSet;
+
+            if (!stage->active) {
+                continue;
+            }
+
+            blended = VK_StageIsBlended(stage);
+            if (!VK_RenderPassMatchesStage(pass, shader->polygonOffset, blended)) {
+                continue;
+            }
+
+            VK_SetStageStateFromShader(shader, stage);
+            VK_FillStagePushConstants(shader, &pc);
+
+            if (shader->noFog && !stage->isFogged) {
+                pc.params[VK_FOG_COLOR_PARAM][3] = 0.0f;
+            }
+
+            if (!r_vkVolumetricFog) {
+                r_vkVolumetricFog = ri.Cvar_Get("r_vkVolumetricFog", "1", CVAR_ARCHIVE);
+            }
+            if (r_vkVolumetricFog->integer && tess.fogNum && stage->adjustColorsForFog != ACFF_NONE) {
+                vec4_t distVec;
+                vec4_t depthVec;
+                float eyeT;
+
+                VK_GetFogVectors(distVec, depthVec, &eyeT);
+                (void)eyeT;
+                pc.params[18][0] = distVec[0];
+                pc.params[18][1] = distVec[1];
+                pc.params[18][2] = distVec[2];
+                pc.params[18][3] = distVec[3];
+                pc.params[19][0] = depthVec[0];
+                pc.params[19][1] = depthVec[1];
+                pc.params[19][2] = depthVec[2];
+                pc.params[19][3] = depthVec[3];
+
+                switch (stage->adjustColorsForFog) {
+                case ACFF_MODULATE_RGB:
+                    pc.params[17][3] = 2.0f;
+                    break;
+                case ACFF_MODULATE_RGBA:
+                    pc.params[17][3] = 3.0f;
+                    break;
+                case ACFF_MODULATE_ALPHA:
+                    pc.params[17][3] = 4.0f;
+                    break;
+                default:
+                    pc.params[17][3] = 0.0f;
+                    break;
+                }
+            }
+
+            pipeIdx = VK_PipelineForStage(stage);
+            if (pipeIdx < 0 || pipeIdx >= VK_PIPELINE_COUNT || !vk_state.pipelines[pipeIdx]) {
+                static int nullPipeLogged = 0;
+                if (nullPipeLogged < 5) {
+                    nullPipeLogged++;
+                    ri.Printf(PRINT_WARNING, "VK_FlushWorldBatch: pipeline %d missing for shader '%s' stage %d\n",
+                              pipeIdx, shader->name, stageIdx);
+                }
+                continue;
+            }
+            if (pipeIdx != currentPipe) {
+                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipeIdx]);
+                currentPipe = pipeIdx;
+            }
+
+            if (VK_MaterialPolygonOffset()) {
+                vkCmdSetDepthBias(cmd, VK_MaterialPolyOffsetUnits(), 0.0f, VK_MaterialPolyOffsetFactor());
+            } else {
+                vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
+            }
+
+            VK_CmdPushMaterial(cmd, &pc);
+
+            descSet = VK_StageDescriptorSet(shader, stage);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
+
+            VK_BatchDrawGeometry(cmd);
+        }
+    }
+
+    if (shader->sort <= SS_OPAQUE &&
+        !(shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY))) {
+        VK_FlushBatchDlights(cmd);
+    }
+
+    if (r_vkVolumetricFog && r_vkVolumetricFog->integer && tess.fogNum && shader->fogPass) {
+        VK_FlushBatchFog(cmd);
+    }
+
+    VK_BatchReset();
 }
 
 static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
@@ -430,9 +752,7 @@ static void VK_DrawSurfaceStages(drawSurf_t *drawSurf, shader_t *shader) {
                 vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
             }
 
-            vkCmdPushConstants(cmd, vk_state.pipelineLayout,
-                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                               0, sizeof(pc), &pc);
+            VK_CmdPushMaterial(cmd, &pc);
 
             descSet = VK_StageDescriptorSet(shader, stage);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -473,6 +793,7 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
     VkViewport vp;
     VkRect2D sc;
     int vpX, vpY, vpYBottom, vpW, vpH;
+    uint32_t flareMvpSlot = 0;
 
     if (!cmd || !vk_state.renderPassActive) {
         return;
@@ -556,12 +877,26 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
     vkCmdSetScissor(cmd, 0, 1, &sc);
     vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
 
+    /* Ortho matrix that maps OpenGL-style screen pixels to Vulkan NDC,
+     * shared by all flares in this call. */
+    {
+        float mvp[16];
+
+        memset(mvp, 0, sizeof(mvp));
+        mvp[0]  = 2.0f / (float)vpW;
+        mvp[5]  = -2.0f / (float)vpH;
+        mvp[10] = 1.0f;
+        mvp[12] = -1.0f - 2.0f * (float)vpX / (float)vpW;
+        mvp[13] = 1.0f + 2.0f * (float)vpYBottom / (float)vpH;
+        mvp[15] = 1.0f;
+        flareMvpSlot = VK_ViewAllocMvp(mvp);
+    }
+
     for (f = r_activeFlares; f; f = f->next) {
         shader_t *shader;
         shaderStage_t *stage;
         float size;
         float x0, x1, y0, y1;
-        float mvp[16];
         int vboSize, iboSize, vboOff, iboOff;
         drawVert_t *verts;
         int *idx;
@@ -615,19 +950,6 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
             }
         }
 
-        /* Ortho matrix that maps OpenGL-style screen pixels to Vulkan NDC.
-         * Flare window coordinates are bottom-left origin (y=0 at the bottom),
-         * matching OpenGL's qglOrtho. Vulkan NDC has y=-1 at the top and y=+1
-         * at the bottom, so a negative Y scale maps bottom-left screen coords
-         * correctly. vpYBottom is the viewport's bottom edge in screen space. */
-        memset(mvp, 0, sizeof(mvp));
-        mvp[0]  = 2.0f / (float)vpW;
-        mvp[5]  = -2.0f / (float)vpH;
-        mvp[10] = 1.0f;
-        mvp[12] = -1.0f - 2.0f * (float)vpX / (float)vpW;
-        mvp[13] = 1.0f + 2.0f * (float)vpYBottom / (float)vpH;
-        mvp[15] = 1.0f;
-
         vboSize = 4 * (int)sizeof(drawVert_t);
         iboSize = 6 * (int)sizeof(int);
         vboOff = VK_ReserveDynamicVBO(vboSize + iboSize);
@@ -669,13 +991,27 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         vkCmdBindVertexBuffers(cmd, 0, 1, &vk_dyn.buffer, offsets);
         vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
         vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-                           0, sizeof(mvp), mvp);
+                           0, sizeof(flareMvpSlot), &flareMvpSlot);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
         vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
     }
 
     tess = savedTess;
+}
+
+static void VK_SwitchEntity(int entityNum) {
+    qboolean wantsDepthRange;
+
+    VK_SetupEntity(entityNum);
+    vk_oldEntityNum = entityNum;
+
+    wantsDepthRange = ( entityNum != ENTITYNUM_WORLD &&
+                        ( backEnd.currentEntity->e.renderfx & RF_DEPTHHACK ) ) ? qtrue : qfalse;
+    if (wantsDepthRange != vk_depthRange) {
+        vk_depthRange = wantsDepthRange;
+        VK_SetViewViewport();
+    }
 }
 
 void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, const glfog_t *glfog) {
@@ -687,10 +1023,18 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
     int i;
     int savedGlfogNum;
     glfog_t savedCurrentFog;
+    VkCommandBuffer cmd;
+
+    /* backEnd.viewParms was set by RB_DrawSurfs for THIS scene: compute the
+     * view projection and the world-entity MVP slot now, on the back end,
+     * where they are correct even with multiple scenes per frame. */
+    VK_ViewBegin();
 
     if (!vk_state.renderPassActive || numDrawSurfs <= 0) {
         return;
     }
+
+    cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
 
     /* The backend may execute after the front-end has already advanced global
      * fog state for the next frame.  Snapshot the fog that was active when
@@ -709,6 +1053,7 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
     vk_depthRange = qfalse;
     backEnd.currentEntity = &tr.worldEntity;
     backEnd.or = backEnd.viewParms.world;
+    VK_BatchReset();
 
     VK_SetViewViewport();
 
@@ -727,11 +1072,11 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
         rect.rect.offset.y = 0;
         rect.rect.extent = vk_state.swapExtent;
         rect.layerCount = 1;
-        vkCmdClearAttachments(vk_state.cmdBuffers[vk_state.currentImageIndex], 1, &attachment, 1, &rect);
+        vkCmdClearAttachments(cmd, 1, &attachment, 1, &rect);
     }
 
     for (i = 0; i < numDrawSurfs; i++) {
-        qboolean wantsDepthRange;
+        surfaceType_t surfType;
 
         R_DecomposeSort(drawSurfs[i].sort, &entityNum, &shader, &fogNum, &dlighted, &atiTess);
 
@@ -743,20 +1088,60 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
             shader = shader->remappedShader;
         }
 
-        if (entityNum != vk_oldEntityNum) {
-            VK_SetupEntity(entityNum);
-            vk_oldEntityNum = entityNum;
-
-            wantsDepthRange = ( entityNum != ENTITYNUM_WORLD &&
-                                ( backEnd.currentEntity->e.renderfx & RF_DEPTHHACK ) ) ? qtrue : qfalse;
-            if (wantsDepthRange != vk_depthRange) {
-                vk_depthRange = wantsDepthRange;
-                VK_SetViewViewport();
+        /* Match GL skyboxportal logic: main view skips sky, portal view draws
+         * only sky (unless drawskyboxportal). */
+        if (skyboxportal) {
+            if (!(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL)) {
+                if (shader->isSky) {
+                    continue;
+                }
+            } else {
+                if (!drawskyboxportal && !shader->isSky) {
+                    continue;
+                }
             }
         }
 
-        VK_DrawSurfaceStages(&drawSurfs[i], shader);
+        surfType = drawSurfs[i].surface ? *drawSurfs[i].surface : SF_BAD;
+
+        /* Sky and non-static surface types use the per-surface path. */
+        if (shader->isSky || !VK_SurfaceIsBatchable(surfType)) {
+            VK_FlushWorldBatch(cmd);
+            if (entityNum != vk_oldEntityNum) {
+                VK_SwitchEntity(entityNum);
+            }
+            VK_DrawSurfaceStages(&drawSurfs[i], shader);
+            continue;
+        }
+
+        /* Batch key change: flush before switching entity/fog state. */
+        if (vk_batch.active &&
+            (vk_batch.shader != shader || vk_batch.entityNum != entityNum ||
+             vk_batch.fogNum != fogNum)) {
+            VK_FlushWorldBatch(cmd);
+        }
+
+        if (entityNum != vk_oldEntityNum) {
+            VK_SwitchEntity(entityNum);
+        }
+
+        if (!vk_batch.active) {
+            vk_batch.shader = shader;
+            vk_batch.entityNum = entityNum;
+            vk_batch.fogNum = fogNum;
+        }
+
+        if (VK_WorldGetStaticSurf(drawSurfs[i].surface)) {
+            VK_BatchAppendSurface(drawSurfs[i].surface);
+        } else {
+            /* Surface is missing from the static world buffers (should not
+             * happen for SF_FACE/GRID/TRIANGLES): per-surface fallback. */
+            VK_FlushWorldBatch(cmd);
+            VK_DrawSurfaceStages(&drawSurfs[i], shader);
+        }
     }
+
+    VK_FlushWorldBatch(cmd);
 
     /* Restore world orientation so later per-view commands (sun, flares)
      * use the same modelview state as in the OpenGL path. */

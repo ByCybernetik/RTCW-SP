@@ -377,11 +377,12 @@ void VKimp_Shutdown(void)
     VkInstance instance = vk_state.instance;
     VkSurfaceKHR surface = vk_state.surface;
 
-    /* Destroy surface before VK_Shutdown — surface and instance are owned
-     * by the platform layer. VK_Shutdown does NOT destroy the instance anymore. */
+    /* Vulkan objects (including the swapchain) must be destroyed BEFORE the
+     * surface they were created from, otherwise the driver's wayland code
+     * crashes tearing down the presentation engine. */
+    VK_Shutdown();
     if (surface)
         vkDestroySurfaceKHR(instance, surface, NULL);
-    VK_Shutdown();
     /* Destroy instance (VK_Shutdown zeroes vk, so we use saved handle) */
     if (instance) {
         vkDestroyInstance(instance, NULL);

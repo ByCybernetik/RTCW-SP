@@ -4,6 +4,7 @@
 #include <string.h>
 
 vk_state_t vk_state;
+vk_view_ubo_t vk_viewUbo;
 qboolean vk_active = qfalse;
 
 static qboolean VK_CreateWhiteTexture(void);
@@ -194,6 +195,13 @@ static void CreateSwapchainViews(void) {
     }
 }
 
+static void VK_DestroyRenderPass(void) {
+    if (vk_state.renderPass) {
+        vkDestroyRenderPass(vk_state.dev, vk_state.renderPass, NULL);
+        vk_state.renderPass = VK_NULL_HANDLE;
+    }
+}
+
 void VK_SetupRenderPass(void) {
     VkAttachmentDescription attachments[2];
     VkAttachmentReference colorRef = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
@@ -201,6 +209,9 @@ void VK_SetupRenderPass(void) {
     VkSubpassDescription subpass = { 0 };
     VkSubpassDependency dep[2] = {0};
     VkRenderPassCreateInfo ci = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+
+    /* Recreate the render pass when the swapchain format changes. */
+    VK_DestroyRenderPass();
 
     attachments[0].format = vk_state.swapFormat;
     attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -271,16 +282,18 @@ void VK_SetupDescriptorSetLayout(void) {
 }
 
 void VK_SetupDescriptorPool(void) {
-    VkDescriptorPoolSize poolSizes[2];
+    VkDescriptorPoolSize poolSizes[3];
     VkDescriptorPoolCreateInfo ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[0].descriptorCount = VK_MAX_DESCRIPTOR_SETS * 2;
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = VK_MAX_DESCRIPTOR_SETS * 2;
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    poolSizes[2].descriptorCount = 1;
 
-    ci.maxSets = VK_MAX_DESCRIPTOR_SETS;
-    ci.poolSizeCount = 2;
+    ci.maxSets = VK_MAX_DESCRIPTOR_SETS + 1;
+    ci.poolSizeCount = 3;
     ci.pPoolSizes = poolSizes;
     vkCreateDescriptorPool(vk_state.dev, &ci, NULL, &vk_state.descPool);
 }
@@ -288,16 +301,82 @@ void VK_SetupDescriptorPool(void) {
 void VK_SetupPipelineLayout(void) {
     VkPushConstantRange pcRange;
     VkPipelineLayoutCreateInfo ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    VkDescriptorSetLayout setLayouts[2];
 
     pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pcRange.offset = 0;
-    pcRange.size = sizeof(vk_push_constants_t);
+    /* Only the GPU-visible prefix (mvpIndex + params[0..14]) is declared as a
+     * push-constant range. params[15..20] live in ViewUBO.drawParams. */
+    pcRange.size = VK_PUSH_CONSTANTS_GPU_SIZE;
 
-    ci.setLayoutCount = 1;
-    ci.pSetLayouts = &vk_state.descSetLayout;
+    setLayouts[0] = vk_state.descSetLayout;
+    setLayouts[1] = vk_viewUbo.setLayout;
+
+    ci.setLayoutCount = 2;
+    ci.pSetLayouts = setLayouts;
     ci.pushConstantRangeCount = 1;
     ci.pPushConstantRanges = &pcRange;
     vkCreatePipelineLayout(vk_state.dev, &ci, NULL, &vk_state.pipelineLayout);
+}
+
+/* Create the per-view MVP uniform buffer, its descriptor set layout (set 1),
+ * and a single descriptor set bound with a per-frame dynamic offset. */
+qboolean VK_SetupViewUbo(void) {
+    VkDescriptorSetLayoutBinding binding = { 0 };
+    VkDescriptorSetLayoutCreateInfo lci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    VkDescriptorSetAllocateInfo dsai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    VkDescriptorBufferInfo dbi = { 0 };
+    VkWriteDescriptorSet wds = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkMemoryRequirements req;
+
+    binding.binding = 0;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    binding.descriptorCount = 1;
+    /* Fragment reads fog/fade drawParams from the same UBO. */
+    binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    lci.bindingCount = 1;
+    lci.pBindings = &binding;
+    if (vkCreateDescriptorSetLayout(vk_state.dev, &lci, NULL, &vk_viewUbo.setLayout) != VK_SUCCESS) {
+        return qfalse;
+    }
+
+    bci.size = VK_VIEW_UBO_REGION_SIZE * VK_MAX_FRAMES_IN_FLIGHT;
+    bci.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(vk_state.dev, &bci, NULL, &vk_viewUbo.buffer) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkGetBufferMemoryRequirements(vk_state.dev, vk_viewUbo.buffer, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &vk_viewUbo.memory) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkBindBufferMemory(vk_state.dev, vk_viewUbo.buffer, vk_viewUbo.memory, 0);
+    vkMapMemory(vk_state.dev, vk_viewUbo.memory, 0, bci.size, 0, (void **)&vk_viewUbo.mapped);
+
+    dsai.descriptorPool = vk_state.descPool;
+    dsai.descriptorSetCount = 1;
+    dsai.pSetLayouts = &vk_viewUbo.setLayout;
+    if (vkAllocateDescriptorSets(vk_state.dev, &dsai, &vk_viewUbo.set) != VK_SUCCESS) {
+        return qfalse;
+    }
+
+    dbi.buffer = vk_viewUbo.buffer;
+    dbi.offset = 0;
+    dbi.range = VK_VIEW_UBO_REGION_SIZE;
+    wds.dstSet = vk_viewUbo.set;
+    wds.dstBinding = 0;
+    wds.descriptorCount = 1;
+    wds.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    wds.pBufferInfo = &dbi;
+    vkUpdateDescriptorSets(vk_state.dev, 1, &wds, 0, NULL);
+
+    return qtrue;
 }
 
 int BlendModeToPipeline(shader_t *shader) {
@@ -473,6 +552,15 @@ static void VK_ConfigurePipelineBlend(int pipelineIndex, VkPipelineColorBlendAtt
     default:
         cba->blendEnable = VK_FALSE;
         break;
+    }
+}
+
+static void VK_DestroyPipelines(void) {
+    for (int i = 0; i < VK_PIPELINE_COUNT; i++) {
+        if (vk_state.pipelines[i]) {
+            vkDestroyPipeline(vk_state.dev, vk_state.pipelines[i], NULL);
+            vk_state.pipelines[i] = VK_NULL_HANDLE;
+        }
     }
 }
 
@@ -715,27 +803,55 @@ void VK_CreateSyncObjects(void) {
     }
 }
 
+static void VK_FreeCommandBuffers(void) {
+    if (vk_state.cmdBuffers) {
+        vkFreeCommandBuffers(vk_state.dev, vk_state.cmdPool, vk_state.swapCount,
+                             vk_state.cmdBuffers);
+        free(vk_state.cmdBuffers);
+        vk_state.cmdBuffers = NULL;
+    }
+}
+
 void VK_SetupCommandBuffers(void) {
     VkCommandPoolCreateInfo cpci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
     VkCommandBufferAllocateInfo cbai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 
-    cpci.queueFamilyIndex = vk_state.gfxFamily;
-    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    vkCreateCommandPool(vk_state.dev, &cpci, NULL, &vk_state.cmdPool);
+    if (!vk_state.cmdPool) {
+        cpci.queueFamilyIndex = vk_state.gfxFamily;
+        cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        vkCreateCommandPool(vk_state.dev, &cpci, NULL, &vk_state.cmdPool);
+    }
+
+    /* Reallocate if the swapchain image count changed. */
+    VK_FreeCommandBuffers();
 
     cbai.commandPool = vk_state.cmdPool;
     cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cbai.commandBufferCount = vk_state.swapCount;
     vk_state.cmdBuffers = malloc(vk_state.swapCount * sizeof(VkCommandBuffer));
     vkAllocateCommandBuffers(vk_state.dev, &cbai, vk_state.cmdBuffers);
+
+    free(vk_state.imagesInFlight);
+    vk_state.imagesInFlight = calloc(vk_state.swapCount, sizeof(VkFence));
 }
 
 void VK_UpdateSwapchain(int width, int height) {
+    vkDeviceWaitIdle(vk_state.dev);
+
     VK_DestroySwapchain();
+    VK_DestroyPipelines();
+    VK_DestroyRenderPass();
+    /* Free command buffers while the old swapCount is still valid. */
+    VK_FreeCommandBuffers();
+
     CreateSwapchain(width, height);
     CreateDepthImage();
     CreateSwapchainViews();
+    VK_SetupRenderPass();
     VK_SetupFramebuffers();
+    VK_SetupCommandBuffers();
+    VK_SetupPipelines();
+    VK_Setup2DPipeline();
 }
 
 uint32_t VK_FindMemoryType(uint32_t typeBits, VkMemoryPropertyFlags props) {
@@ -853,6 +969,22 @@ qboolean VK_InitFromPlatform(int width, int height,
     if (vkCreateDevice(vk_state.phys, &dci, NULL, &vk_state.dev) != VK_SUCCESS)
         return qfalse;
 
+    {
+        VkPhysicalDeviceProperties props;
+
+        vkGetPhysicalDeviceProperties(vk_state.phys, &props);
+        if (VK_PUSH_CONSTANTS_GPU_SIZE > props.limits.maxPushConstantsSize) {
+            ri.Printf(PRINT_WARNING,
+                      "VK: push constants GPU size %u exceeds device limit %u\n",
+                      (unsigned)VK_PUSH_CONSTANTS_GPU_SIZE,
+                      props.limits.maxPushConstantsSize);
+            return qfalse;
+        }
+        ri.Printf(PRINT_ALL, "VK: push constants GPU size %u (device max %u)\n",
+                  (unsigned)VK_PUSH_CONSTANTS_GPU_SIZE,
+                  props.limits.maxPushConstantsSize);
+    }
+
     vkGetDeviceQueue(vk_state.dev, vk_state.gfxFamily, 0, &vk_state.gfxQueue);
     vkGetDeviceQueue(vk_state.dev, vk_state.presentFamily, 0, &vk_state.presentQueue);
 
@@ -864,6 +996,10 @@ qboolean VK_InitFromPlatform(int width, int height,
     VK_SetupRenderPass();
     VK_SetupDescriptorSetLayout();
     VK_SetupDescriptorPool();
+    if (!VK_SetupViewUbo()) {
+        ri.Printf(PRINT_WARNING, "VK_InitFromPlatform: could not create view UBO\n");
+        return qfalse;
+    }
     VK_SetupPipelineLayout();
     VK_SetupPipelines();
     VK_Setup2DPipeline();
@@ -885,6 +1021,13 @@ qboolean VK_InitFromPlatform(int width, int height,
         ucbai.commandBufferCount = 1;
         if (vkAllocateCommandBuffers(vk_state.dev, &ucbai, &vk_state.uploadCmd) != VK_SUCCESS)
             return qfalse;
+    }
+
+    /* Upload slots must exist before any texture creation (white/fog
+     * textures below already go through the batched upload path). */
+    if (!VK_InitUploadSlots()) {
+        ri.Printf(PRINT_WARNING, "VK_InitFromPlatform: could not create upload slots\n");
+        return qfalse;
     }
 
     if (!VK_InitDynamicVBO()) {
@@ -919,6 +1062,8 @@ void VK_DestroySwapchain(void) {
     free(vk_state.framebuffers);
     free(vk_state.swapViews);
     free(vk_state.swapImages);
+    free(vk_state.imagesInFlight);
+    vk_state.imagesInFlight = NULL;
 
     if (vk_state.depth.view)
         vkDestroyImageView(vk_state.dev, vk_state.depth.view, NULL);
@@ -933,6 +1078,10 @@ void VK_DestroySwapchain(void) {
     vk_state.framebuffers = NULL;
     vk_state.swapViews = NULL;
     vk_state.swapImages = NULL;
+    vk_state.depth.view = VK_NULL_HANDLE;
+    vk_state.depth.memory = VK_NULL_HANDLE;
+    vk_state.depth.image = VK_NULL_HANDLE;
+    vk_state.swapchain = VK_NULL_HANDLE;
 }
 
 void VK_DestroyTexture(vk_texture_t *t) {
@@ -950,6 +1099,224 @@ static VkSamplerAddressMode VK_WrapToAddressMode(int wrapMode) {
     return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 }
 
+/* ---------------------------------------------------------------------------
+ * Batched texture uploads.
+ *
+ * Every texture upload used to do staging + submit + vkQueueWaitIdle, which
+ * stalled the pipeline per texture at load and per cinematic frame at runtime.
+ * Now uploads are recorded into the current frame slot's upload command
+ * buffer and submitted together with that frame's render command buffer
+ * (upload batch first in the same vkQueueSubmit, so the layout transitions
+ * are complete before any rendering command executes).
+ *
+ * Staging memory is recycled only after the frame's fence has signaled, and
+ * command buffers are reset only after the same fence, so nothing the GPU
+ * might still be reading is ever touched.
+ * ------------------------------------------------------------------------- */
+
+#define VK_UPLOAD_STAGING_SIZE (32u * 1024u * 1024u)
+#define VK_UPLOAD_MAX_FULL     8
+
+typedef struct {
+    VkBuffer buf;
+    VkDeviceMemory mem;
+    uint8_t *mapped;
+} vk_upstaging_t;
+
+typedef struct {
+    VkCommandBuffer cmd;
+    qboolean recording;
+    vk_upstaging_t active;
+    VkDeviceSize offset;
+    /* Filled during recording, still referenced by the unsubmitted CB. */
+    vk_upstaging_t full[VK_UPLOAD_MAX_FULL];
+    int fullCount;
+    /* Submitted with a frame, freed once that frame's fence has signaled. */
+    vk_upstaging_t pendingFree[VK_UPLOAD_MAX_FULL * 2];
+    int pendingFreeCount;
+} vk_upload_slot_t;
+
+static vk_upload_slot_t vk_uploadSlots[VK_MAX_FRAMES_IN_FLIGHT];
+
+static void VK_UploadFreeStaging(vk_upstaging_t *s) {
+    if (s->buf) {
+        vkDestroyBuffer(vk_state.dev, s->buf, NULL);
+    }
+    if (s->mem) {
+        vkFreeMemory(vk_state.dev, s->mem, NULL);
+    }
+    memset(s, 0, sizeof(*s));
+}
+
+static qboolean VK_UploadAllocStaging(vk_upstaging_t *s, VkDeviceSize size) {
+    VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkMemoryRequirements req;
+
+    bci.size = size;
+    bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(vk_state.dev, &bci, NULL, &s->buf) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkGetBufferMemoryRequirements(vk_state.dev, s->buf, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &s->mem) != VK_SUCCESS) {
+        vkDestroyBuffer(vk_state.dev, s->buf, NULL);
+        s->buf = VK_NULL_HANDLE;
+        return qfalse;
+    }
+    vkBindBufferMemory(vk_state.dev, s->buf, s->mem, 0);
+    vkMapMemory(vk_state.dev, s->mem, 0, size, 0, (void **)&s->mapped);
+    return qtrue;
+}
+
+qboolean VK_InitUploadSlots(void) {
+    VkCommandBufferAllocateInfo cbai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    int i;
+
+    cbai.commandPool = vk_state.uploadPool;
+    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbai.commandBufferCount = 1;
+
+    for (i = 0; i < VK_MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vkAllocateCommandBuffers(vk_state.dev, &cbai, &vk_uploadSlots[i].cmd) != VK_SUCCESS) {
+            return qfalse;
+        }
+        if (!VK_UploadAllocStaging(&vk_uploadSlots[i].active, VK_UPLOAD_STAGING_SIZE)) {
+            return qfalse;
+        }
+    }
+    return qtrue;
+}
+
+void VK_DestroyUploadSlots(void) {
+    int i, j;
+
+    for (i = 0; i < VK_MAX_FRAMES_IN_FLIGHT; i++) {
+        vk_upload_slot_t *slot = &vk_uploadSlots[i];
+
+        VK_UploadFreeStaging(&slot->active);
+        for (j = 0; j < slot->fullCount; j++) {
+            VK_UploadFreeStaging(&slot->full[j]);
+        }
+        for (j = 0; j < slot->pendingFreeCount; j++) {
+            VK_UploadFreeStaging(&slot->pendingFree[j]);
+        }
+        slot->fullCount = 0;
+        slot->pendingFreeCount = 0;
+        if (slot->cmd) {
+            vkFreeCommandBuffers(vk_state.dev, vk_state.uploadPool, 1, &slot->cmd);
+            slot->cmd = VK_NULL_HANDLE;
+        }
+        slot->recording = qfalse;
+        slot->offset = 0;
+    }
+}
+
+/* Free staging buffers whose frame has completed. Must be called only after
+ * the slot's in-flight fence has been waited on (VK_BeginFrame does this). */
+void VK_ReapUploadSlot(uint32_t frameIndex) {
+    vk_upload_slot_t *slot = &vk_uploadSlots[frameIndex];
+    int i;
+
+    for (i = 0; i < slot->pendingFreeCount; i++) {
+        VK_UploadFreeStaging(&slot->pendingFree[i]);
+    }
+    slot->pendingFreeCount = 0;
+}
+
+static qboolean VK_UploadBeginRecord(vk_upload_slot_t *slot) {
+    VkCommandBufferBeginInfo cbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+
+    if (slot->recording) {
+        return qtrue;
+    }
+
+    /* The slot's upload CB may still be in flight from two frames ago. Wait
+     * for that frame's fence before resetting it. At steady state this fence
+     * is already signaled, so this does not stall the pipeline. */
+    vkWaitForFences(vk_state.dev, 1, &vk_state.inFlight[vk_state.frameIndex],
+                    VK_TRUE, UINT64_MAX);
+
+    if (vkResetCommandBuffer(slot->cmd, 0) != VK_SUCCESS) {
+        return qfalse;
+    }
+    if (vkBeginCommandBuffer(slot->cmd, &cbbi) != VK_SUCCESS) {
+        return qfalse;
+    }
+    slot->recording = qtrue;
+    slot->offset = 0;
+    return qtrue;
+}
+
+/* Reserve staging space in the current frame slot and return the buffer,
+ * offset and a writable CPU pointer for the copy. */
+static qboolean VK_UploadAlloc(VkDeviceSize size, VkBuffer *outBuf,
+                               VkDeviceSize *outOff, uint8_t **outPtr) {
+    vk_upload_slot_t *slot = &vk_uploadSlots[vk_state.frameIndex];
+
+    if (size > VK_UPLOAD_STAGING_SIZE) {
+        return qfalse;
+    }
+
+    if (!VK_UploadBeginRecord(slot)) {
+        return qfalse;
+    }
+
+    if (slot->offset + size > VK_UPLOAD_STAGING_SIZE) {
+        if (slot->fullCount >= VK_UPLOAD_MAX_FULL) {
+            return qfalse;
+        }
+        slot->full[slot->fullCount++] = slot->active;
+        memset(&slot->active, 0, sizeof(slot->active));
+        if (!VK_UploadAllocStaging(&slot->active, VK_UPLOAD_STAGING_SIZE)) {
+            return qfalse;
+        }
+        slot->offset = 0;
+    }
+
+    *outBuf = slot->active.buf;
+    *outOff = slot->offset;
+    *outPtr = slot->active.mapped + slot->offset;
+    slot->offset += (size + 15) & ~(VkDeviceSize)15;
+    return qtrue;
+}
+
+/* If the current frame slot has recorded upload commands, end the command
+ * buffer and hand it out so the frame submit can include it. */
+qboolean VK_UploadGetPending(VkCommandBuffer *outCmd) {
+    vk_upload_slot_t *slot = &vk_uploadSlots[vk_state.frameIndex];
+    int i;
+
+    if (!slot->recording) {
+        return qfalse;
+    }
+    if (vkEndCommandBuffer(slot->cmd) != VK_SUCCESS) {
+        slot->recording = qfalse;
+        return qfalse;
+    }
+    slot->recording = qfalse;
+
+    /* These staging buffers are now referenced by the submitted CB; free
+     * them only after this frame's fence has been waited on. */
+    for (i = 0; i < slot->fullCount; i++) {
+        if (slot->pendingFreeCount >= VK_UPLOAD_MAX_FULL * 2) {
+            /* Should never happen (pendingFree is reaped every frame); stay
+             * safe rather than corrupting memory. */
+            vkQueueWaitIdle(vk_state.gfxQueue);
+            VK_ReapUploadSlot(vk_state.frameIndex);
+        }
+        slot->pendingFree[slot->pendingFreeCount++] = slot->full[i];
+    }
+    slot->fullCount = 0;
+
+    *outCmd = slot->cmd;
+    return qtrue;
+}
+
 qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h, vk_texture_t *out,
                                     int wrapMode, qboolean mipmap) {
     qboolean wasLoaded = out ? out->loaded : qfalse;
@@ -958,12 +1325,10 @@ qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h, vk_text
     VkImageViewCreateInfo ivci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
     VkSamplerCreateInfo sci = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     VkMemoryRequirements req;
-    VkBuffer stagingBuf = VK_NULL_HANDLE;
-    VkDeviceMemory stagingMem = VK_NULL_HANDLE;
-    void *data;
+    VkBuffer stagingBuf;
+    VkDeviceSize stagingOff;
+    uint8_t *stagingPtr;
     VkCommandBuffer cmd;
-    VkCommandBufferBeginInfo cbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     uint32_t mipLevels = 1;
     uint32_t i;
     int32_t mipWidth, mipHeight;
@@ -973,6 +1338,10 @@ qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h, vk_text
     }
 
     if (wasLoaded) {
+        /* In-flight frames may still sample the old texture. Re-creation is
+         * rare (vid_restart, cinematic resize), so keep it synchronous here
+         * instead of deferring the destruction. */
+        vkQueueWaitIdle(vk_state.gfxQueue);
         VK_DestroyTexture(out);
     }
 
@@ -1013,29 +1382,17 @@ qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h, vk_text
     }
     vkBindImageMemory(vk_state.dev, out->image, out->memory, 0);
 
-    VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    bci.size = w * h * 4;
-    bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (vkCreateBuffer(vk_state.dev, &bci, NULL, &stagingBuf) != VK_SUCCESS)
+    /* Reserve batched staging space; the GPU copy is submitted together with
+     * the next frame instead of a per-texture submit + queue drain. */
+    if (!VK_UploadAlloc((VkDeviceSize)w * h * 4, &stagingBuf, &stagingOff, &stagingPtr)) {
+        ri.Printf(PRINT_WARNING, "VK_CreateTextureFromPixels: upload staging exhausted\n");
         goto fail;
-    vkGetBufferMemoryRequirements(vk_state.dev, stagingBuf, &req);
-    ai.allocationSize = req.size;
-    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &stagingMem) != VK_SUCCESS)
-        goto fail;
-    vkBindBufferMemory(vk_state.dev, stagingBuf, stagingMem, 0);
-    vkMapMemory(vk_state.dev, stagingMem, 0, bci.size, 0, &data);
-    memcpy(data, pixels, bci.size);
-    vkUnmapMemory(vk_state.dev, stagingMem);
+    }
+    memcpy(stagingPtr, pixels, (size_t)w * h * 4);
 
-    cmd = vk_state.uploadCmd;
-    vkResetCommandBuffer(cmd, 0);
-    vkBeginCommandBuffer(cmd, &cbbi);
+    cmd = vk_uploadSlots[vk_state.frameIndex].cmd;
 
     VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1051,6 +1408,7 @@ qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h, vk_text
         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
 
     VkBufferImageCopy copy = { 0 };
+    copy.bufferOffset = stagingOff;
     copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copy.imageSubresource.mipLevel = 0;
     copy.imageSubresource.layerCount = 1;
@@ -1129,12 +1487,6 @@ qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h, vk_text
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
     }
 
-    vkEndCommandBuffer(cmd);
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cmd;
-    vkQueueSubmit(vk_state.gfxQueue, 1, &si, VK_NULL_HANDLE);
-    vkQueueWaitIdle(vk_state.gfxQueue);
-
     ivci.image = out->image;
     ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
     ivci.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -1168,14 +1520,10 @@ qboolean VK_CreateTextureFromPixels(const uint8_t *pixels, int w, int h, vk_text
     if (vkCreateSampler(vk_state.dev, &sci, NULL, &out->sampler) != VK_SUCCESS)
         goto fail;
 
-    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
-    vkFreeMemory(vk_state.dev, stagingMem, NULL);
     out->loaded = qtrue;
     return qtrue;
 
 fail:
-    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
-    vkFreeMemory(vk_state.dev, stagingMem, NULL);
     VK_DestroyTexture(out);
     return qfalse;
 }
@@ -1211,12 +1559,7 @@ qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
     VkImageViewCreateInfo ivci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
     VkSamplerCreateInfo sci = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     VkMemoryRequirements req;
-    VkBuffer stagingBuf = VK_NULL_HANDLE;
-    VkDeviceMemory stagingMem = VK_NULL_HANDLE;
-    void *data;
     VkCommandBuffer cmd;
-    VkCommandBufferBeginInfo cbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
     VkFormat format;
     uint32_t mipLevels;
@@ -1234,6 +1577,9 @@ qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
     }
 
     if (wasLoaded) {
+        /* In-flight frames may still sample the old texture; see
+         * VK_CreateTextureFromPixels. */
+        vkQueueWaitIdle(vk_state.gfxQueue);
         VK_DestroyTexture(out);
     }
 
@@ -1267,32 +1613,12 @@ qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
     }
     vkBindImageMemory(vk_state.dev, out->image, out->memory, 0);
 
-    {
-        VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-        bci.size = tex->dataSize;
-        bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        if (vkCreateBuffer(vk_state.dev, &bci, NULL, &stagingBuf) != VK_SUCCESS) {
-            goto fail;
-        }
-    }
-    vkGetBufferMemoryRequirements(vk_state.dev, stagingBuf, &req);
-    ai.allocationSize = req.size;
-    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &stagingMem) != VK_SUCCESS) {
+    /* Begin the batched upload recording before writing any commands. */
+    if (!VK_UploadBeginRecord(&vk_uploadSlots[vk_state.frameIndex])) {
         goto fail;
     }
-    vkBindBufferMemory(vk_state.dev, stagingBuf, stagingMem, 0);
-    vkMapMemory(vk_state.dev, stagingMem, 0, tex->dataSize, 0, &data);
-    memcpy(data, tex->data, tex->dataSize);
-    vkUnmapMemory(vk_state.dev, stagingMem);
+    cmd = vk_uploadSlots[vk_state.frameIndex].cmd;
 
-    cmd = vk_state.uploadCmd;
-    vkResetCommandBuffer(cmd, 0);
-    vkBeginCommandBuffer(cmd, &cbbi);
-
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1309,12 +1635,21 @@ qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
 
     for (i = 0; i < mipLevels; i++) {
         VkBufferImageCopy copy = { 0 };
+        VkBuffer stagingBuf;
+        VkDeviceSize stagingOff;
+        uint8_t *stagingPtr;
         uint32_t mipW = tex->width >> i;
         uint32_t mipH = tex->height >> i;
         if (mipW < 1) mipW = 1;
         if (mipH < 1) mipH = 1;
 
-        copy.bufferOffset = (VkDeviceSize)tex->levelOffsets[i];
+        if (!VK_UploadAlloc((VkDeviceSize)tex->levelSizes[i], &stagingBuf, &stagingOff, &stagingPtr)) {
+            ri.Printf(PRINT_WARNING, "VK_CreateTextureFromKTX: upload staging exhausted\n");
+            goto fail;
+        }
+        memcpy(stagingPtr, tex->data + tex->levelOffsets[i], tex->levelSizes[i]);
+
+        copy.bufferOffset = stagingOff;
         copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         copy.imageSubresource.mipLevel = i;
         copy.imageSubresource.layerCount = 1;
@@ -1333,12 +1668,6 @@ qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
-
-    vkEndCommandBuffer(cmd);
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cmd;
-    vkQueueSubmit(vk_state.gfxQueue, 1, &si, VK_NULL_HANDLE);
-    vkQueueWaitIdle(vk_state.gfxQueue);
 
     ivci.image = out->image;
     ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -1375,14 +1704,10 @@ qboolean VK_CreateTextureFromKTX(const ktx_texture_t *tex, vk_texture_t *out,
         goto fail;
     }
 
-    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
-    vkFreeMemory(vk_state.dev, stagingMem, NULL);
     out->loaded = qtrue;
     return qtrue;
 
 fail:
-    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
-    vkFreeMemory(vk_state.dev, stagingMem, NULL);
     VK_DestroyTexture(out);
     return qfalse;
 }
@@ -1450,44 +1775,25 @@ void VK_OnTextureUploaded(int vkIdx) {
 }
 
 static qboolean VK_SubImageUpload(vk_texture_t *out, const uint8_t *pixels, int w, int h) {
-    VkBuffer stagingBuf = VK_NULL_HANDLE;
-    VkDeviceMemory stagingMem = VK_NULL_HANDLE;
-    VkMemoryRequirements req;
-    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkBuffer stagingBuf;
+    VkDeviceSize stagingOff;
+    uint8_t *stagingPtr;
     VkCommandBuffer cmd;
-    VkCommandBufferBeginInfo cbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
-    void *data;
 
     if (!out || !out->image || !pixels || w <= 0 || h <= 0) {
         return qfalse;
     }
 
-    VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    bci.size = (VkDeviceSize)w * h * 4;
-    bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (vkCreateBuffer(vk_state.dev, &bci, NULL, &stagingBuf) != VK_SUCCESS) {
+    /* Batched upload: recorded now, submitted with the next frame. The
+     * upload batch executes before that frame's rendering, so the cinematic
+     * quad drawn later in the same frame samples the new contents. */
+    if (!VK_UploadAlloc((VkDeviceSize)w * h * 4, &stagingBuf, &stagingOff, &stagingPtr)) {
+        ri.Printf(PRINT_WARNING, "VK_SubImageUpload: upload staging exhausted\n");
         return qfalse;
     }
+    memcpy(stagingPtr, pixels, (size_t)w * h * 4);
 
-    vkGetBufferMemoryRequirements(vk_state.dev, stagingBuf, &req);
-    ai.allocationSize = req.size;
-    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &stagingMem) != VK_SUCCESS) {
-        vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
-        return qfalse;
-    }
-
-    vkBindBufferMemory(vk_state.dev, stagingBuf, stagingMem, 0);
-    vkMapMemory(vk_state.dev, stagingMem, 0, bci.size, 0, &data);
-    memcpy(data, pixels, (size_t)bci.size);
-    vkUnmapMemory(vk_state.dev, stagingMem);
-
-    cmd = vk_state.uploadCmd;
-    vkResetCommandBuffer(cmd, 0);
-    vkBeginCommandBuffer(cmd, &cbbi);
+    cmd = vk_uploadSlots[vk_state.frameIndex].cmd;
 
     VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
     barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1504,6 +1810,7 @@ static qboolean VK_SubImageUpload(vk_texture_t *out, const uint8_t *pixels, int 
         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
 
     VkBufferImageCopy copy = { 0 };
+    copy.bufferOffset = stagingOff;
     copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copy.imageSubresource.layerCount = 1;
     copy.imageExtent.width = (uint32_t)w;
@@ -1519,14 +1826,6 @@ static qboolean VK_SubImageUpload(vk_texture_t *out, const uint8_t *pixels, int 
     vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
 
-    vkEndCommandBuffer(cmd);
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cmd;
-    vkQueueSubmit(vk_state.gfxQueue, 1, &si, VK_NULL_HANDLE);
-    vkQueueWaitIdle(vk_state.gfxQueue);
-
-    vkDestroyBuffer(vk_state.dev, stagingBuf, NULL);
-    vkFreeMemory(vk_state.dev, stagingMem, NULL);
     return qtrue;
 }
 
@@ -1548,6 +1847,9 @@ void VK_UploadScratchImage(image_t *image, const byte *data, int cols, int rows,
     if (cols != image->width || rows != image->height || !tex->loaded || !tex->view) {
         image->width = image->uploadWidth = cols;
         image->height = image->uploadHeight = rows;
+        /* The old texture may still be sampled by in-flight frames (e.g. a
+         * cinematic that just changed size); keep this rare path synchronous. */
+        vkQueueWaitIdle(vk_state.gfxQueue);
         VK_DestroyTexture(tex);
         if (VK_CreateTextureFromPixels(data, cols, rows, tex, image->wrapClampMode, image->mipmap)) {
             if (vkIdx >= vk_state.textureCount) {
@@ -1976,12 +2278,28 @@ void VK_Shutdown(void) {
 
     VK_DestroySwapchain();
     VK_DestroyDynamicVBO();
+    VK_DestroyWorldStaticBuffers();
     VK_DestroyTexture(&vk_state.whiteTexture);
     VK_DestroyTexture(&vk_state.fogTexture);
 
     if (vk_state.descriptorSets) {
         free(vk_state.descriptorSets);
         vk_state.descriptorSets = NULL;
+    }
+
+    VK_DestroyUploadSlots();
+
+    if (vk_viewUbo.buffer) {
+        vkDestroyBuffer(vk_state.dev, vk_viewUbo.buffer, NULL);
+        vk_viewUbo.buffer = VK_NULL_HANDLE;
+    }
+    if (vk_viewUbo.memory) {
+        vkFreeMemory(vk_state.dev, vk_viewUbo.memory, NULL);
+        vk_viewUbo.memory = VK_NULL_HANDLE;
+    }
+    if (vk_viewUbo.setLayout) {
+        vkDestroyDescriptorSetLayout(vk_state.dev, vk_viewUbo.setLayout, NULL);
+        vk_viewUbo.setLayout = VK_NULL_HANDLE;
     }
 
     if (vk_state.uploadPool) {

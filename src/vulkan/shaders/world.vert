@@ -1,7 +1,8 @@
 #version 450
 
 layout(push_constant) uniform PushConstants {
-    mat4 mvp;
+    uint mvpIndex;
+    uint drawParamIndex;
     vec4 params0;
     vec4 params1;
     vec4 params2;
@@ -17,13 +18,14 @@ layout(push_constant) uniform PushConstants {
     vec4 params12;
     vec4 params13;
     vec4 params14;
-    vec4 params15;
-    vec4 params16;
-    vec4 params17;
-    vec4 params18;
-    vec4 params19;
-    vec4 params20;
 } pc;
+
+layout(set = 1, binding = 0) uniform ViewUBO {
+    mat4 mvps[256];
+    /* Per-draw fog/fade slots: drawParamIndex * 6 + {0..5} == old params15..20.
+     * Sized for VK_VIEW_MAX_DRAW_PARAMS (2048) slots. */
+    vec4 drawParams[12288];
+} view;
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inTexCoord;
@@ -151,7 +153,7 @@ void main() {
         float wave = evalWave(pc.params1.y, pc.params2.x + pc.params8.y * freq + off);
         float scale = pc.params1.z + pc.params1.w * wave;
 
-        vec3 up = pc.params15.xyz * pc.params2.w;
+        vec3 up = view.drawParams[pc.drawParamIndex * 6u + 0u].xyz * pc.params2.w;
         float upLen = length(up);
         if (upLen > 0.001) {
             up /= upLen;
@@ -163,7 +165,7 @@ void main() {
         }
     }
 
-    gl_Position = pc.mvp * vec4(pos, 1.0);
+    gl_Position = view.mvps[pc.mvpIndex] * vec4(pos, 1.0);
     if (pc.params11.w > 0.5) {
         gl_Position.z = gl_Position.w;
     }
@@ -176,12 +178,12 @@ void main() {
     }
     vec2 finalUv;
     vec4 finalColor;
-    if (pc.params16.w > 3.5) {
+    if (view.drawParams[pc.drawParamIndex * 6u + 1u].w > 3.5) {
         /* Volumetric fog pass: compute fog texture coordinates exactly like
          * RB_CalcFogTexCoords and use the fog color as the vertex color. */
-        float s = dot(pos, pc.params18.xyz) + pc.params18.w;
-        float eyeT = dot(pc.params14.xyz, pc.params19.xyz) + pc.params19.w;
-        float t = dot(pos, pc.params19.xyz) + pc.params19.w;
+        float s = dot(pos, view.drawParams[pc.drawParamIndex * 6u + 3u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 3u].w;
+        float eyeT = dot(pc.params14.xyz, view.drawParams[pc.drawParamIndex * 6u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 4u].w;
+        float t = dot(pos, view.drawParams[pc.drawParamIndex * 6u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 4u].w;
         bool eyeOutside = eyeT < 0.0;
         if (eyeOutside) {
             if (t < 1.0) {
@@ -197,7 +199,7 @@ void main() {
             }
         }
         finalUv = vec2(s, t);
-        finalColor = vec4(pc.params16.xyz, 1.0);
+        finalColor = vec4(view.drawParams[pc.drawParamIndex * 6u + 1u].xyz, 1.0);
     } else {
         finalUv = (pc.params14.w > 0.1 && pc.params14.w < 0.5) ? uv : applyTcMod(uv, pos);
         finalColor = inColor;
@@ -216,33 +218,33 @@ void main() {
      * distance metric (0=GL_EYE_RADIAL_NV, 1=GL_EYE_PLANE_ABSOLUTE_NV,
      * 2=GL_EYE_PLANE). */
     vFogFactor = 1.0;
-    if (pc.params17.w > 0.5 && pc.params16.w > 0.0 && pc.params16.w < 4.0) {
+    if (view.drawParams[pc.drawParamIndex * 6u + 2u].w > 0.5 && view.drawParams[pc.drawParamIndex * 6u + 1u].w > 0.0 && view.drawParams[pc.drawParamIndex * 6u + 1u].w < 4.0) {
         vec3 eyeVec = pos - pc.params14.xyz;
         float dist;
-        int distMode = int(pc.params20.w + 0.5);
+        int distMode = int(view.drawParams[pc.drawParamIndex * 6u + 5u].w + 0.5);
         if (distMode == 1) {
-            dist = abs(dot(eyeVec, pc.params20.xyz));
+            dist = abs(dot(eyeVec, view.drawParams[pc.drawParamIndex * 6u + 5u].xyz));
         } else if (distMode == 2) {
-            dist = dot(eyeVec, pc.params20.xyz);
+            dist = dot(eyeVec, view.drawParams[pc.drawParamIndex * 6u + 5u].xyz);
         } else {
             dist = length(eyeVec);
         }
-        if (pc.params16.w < 1.5) {
+        if (view.drawParams[pc.drawParamIndex * 6u + 1u].w < 1.5) {
             /* GL_LINEAR */
-            vFogFactor = clamp((pc.params17.y - dist) / (pc.params17.y - pc.params17.x), 0.0, 1.0);
-        } else if (pc.params16.w < 2.5) {
+            vFogFactor = clamp((view.drawParams[pc.drawParamIndex * 6u + 2u].y - dist) / (view.drawParams[pc.drawParamIndex * 6u + 2u].y - view.drawParams[pc.drawParamIndex * 6u + 2u].x), 0.0, 1.0);
+        } else if (view.drawParams[pc.drawParamIndex * 6u + 1u].w < 2.5) {
             /* GL_EXP */
-            vFogFactor = exp(-pc.params17.z * dist);
+            vFogFactor = exp(-view.drawParams[pc.drawParamIndex * 6u + 2u].z * dist);
         } else {
             /* GL_EXP2 */
-            float d = pc.params17.z * dist;
+            float d = view.drawParams[pc.drawParamIndex * 6u + 2u].z * dist;
             vFogFactor = exp(-d * d);
         }
     }
 
     float normalZFadeAlpha = 1.0;
-    if (pc.params15.w > 0.0) {
-        vec3 worldUp = normalize(pc.params15.xyz);
+    if (view.drawParams[pc.drawParamIndex * 6u + 0u].w > 0.0) {
+        vec3 worldUp = normalize(view.drawParams[pc.drawParamIndex * 6u + 0u].xyz);
         float d = dot(normalize(inNormal), worldUp);
         float lowest = pc.params12.x;
         float highest = pc.params12.y;
