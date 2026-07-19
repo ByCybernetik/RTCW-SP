@@ -34,6 +34,8 @@ If you have questions concerning this license or the applicable additional terms
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <time.h>
+#include <sched.h>
 #include <pwd.h>
 
 #include "../game/q_shared.h"
@@ -71,6 +73,29 @@ int Sys_Milliseconds( void ) {
 	curtime = ( tp.tv_sec - sys_timeBase ) * 1000 + tp.tv_usec / 1000;
 
 	return curtime;
+}
+
+/*
+================
+Sys_Sleep
+
+Sleep at least msec milliseconds.  msec == 0 yields the timeslice.
+================
+*/
+void Sys_Sleep( int msec ) {
+	struct timespec ts;
+
+	if ( msec < 0 ) {
+		return;
+	}
+	if ( msec == 0 ) {
+		sched_yield();
+		return;
+	}
+
+	ts.tv_sec = msec / 1000;
+	ts.tv_nsec = ( msec % 1000 ) * 1000000L;
+	nanosleep( &ts, NULL );
 }
 
 

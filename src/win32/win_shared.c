@@ -61,6 +61,22 @@ int Sys_Milliseconds( void ) {
 
 /*
 ================
+Sys_Sleep
+================
+*/
+void Sys_Sleep( int msec ) {
+	if ( msec < 0 ) {
+		return;
+	}
+	if ( msec == 0 ) {
+		Sleep( 0 );
+		return;
+	}
+	Sleep( msec );
+}
+
+/*
+================
 Sys_SnapVector
 ================
 */

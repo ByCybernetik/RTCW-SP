@@ -28,6 +28,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 #ifdef VULKAN_BACKEND
+#include "../vulkan/vk_local.h"
 extern qboolean vk_active;
 #endif
 
@@ -204,6 +205,13 @@ render thread if needed.
 void *R_GetCommandBuffer( int bytes ) {
 	renderCommandList_t *cmdList;
 
+	/* During map load SV_SpawnServer shuts the renderer down (tr.registered =
+	 * false) and Hunk_Clear frees backEndData, but SCR_UpdateScreen may still
+	 * run from CL_Frame. Guard before touching the command stream. */
+	if ( !tr.registered || !backEndData[tr.smpFrame] ) {
+		return NULL;
+	}
+
 	cmdList = &backEndData[tr.smpFrame]->commands;
 
 	// always leave room for the end of list command
@@ -260,6 +268,9 @@ Passing NULL will set the color to white
 void    RE_SetColor( const float *rgba ) {
 	setColorCommand_t   *cmd;
 
+	if ( !tr.registered ) {
+		return;
+	}
 	cmd = R_GetCommandBuffer( sizeof( *cmd ) );
 	if ( !cmd ) {
 		return;
@@ -287,6 +298,9 @@ void RE_StretchPic( float x, float y, float w, float h,
 					float s1, float t1, float s2, float t2, qhandle_t hShader ) {
 	stretchPicCommand_t *cmd;
 
+	if ( !tr.registered ) {
+		return;
+	}
 	cmd = R_GetCommandBuffer( sizeof( *cmd ) );
 	if ( !cmd ) {
 		return;
@@ -314,6 +328,9 @@ void RE_StretchPicGradient( float x, float y, float w, float h,
 							float s1, float t1, float s2, float t2, qhandle_t hShader, const float *gradientColor, int gradientType ) {
 	stretchPicCommand_t *cmd;
 
+	if ( !tr.registered ) {
+		return;
+	}
 	cmd = R_GetCommandBuffer( sizeof( *cmd ) );
 	if ( !cmd ) {
 		return;
@@ -579,5 +596,22 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		*backEndMsec = backEnd.pc.msec;
 	}
 	backEnd.pc.msec = 0;
+}
+
+/*
+====================
+RE_SetFrameHold
+
+Vulkan map-load path: blit last frame instead of clearing the swapchain.
+====================
+*/
+void RE_SetFrameHold( qboolean enable ) {
+#ifdef VULKAN_BACKEND
+	if ( vk_active ) {
+		VK_SetHoldRestore( enable );
+	}
+#else
+	(void)enable;
+#endif
 }
 

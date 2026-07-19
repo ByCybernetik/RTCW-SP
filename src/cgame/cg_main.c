@@ -2189,9 +2189,24 @@ const char *CG_translateString( const char *str ) {
 		return csfText;
 	}
 
+	/* Only warn for label-like keys (HUD_FOO). Free text and already-translated
+	 * UTF-8 strings often hit CenterPrint after composition and are not errors. */
 	if ( CSF_IsLoaded() && missCount < 20 ) {
-		missCount++;
-		CG_Printf( "CG_translateString: '%s' not found in CSF (loaded=%d)\n", str, CSF_IsLoaded() );
+		qboolean looksLikeLabel = qtrue;
+		const char *p;
+
+		for ( p = str; *p; p++ ) {
+			if ( ( *p >= 'A' && *p <= 'Z' ) || ( *p >= 'a' && *p <= 'z' ) ||
+				 ( *p >= '0' && *p <= '9' ) || *p == '_' ) {
+				continue;
+			}
+			looksLikeLabel = qfalse;
+			break;
+		}
+		if ( looksLikeLabel && p != str ) {
+			missCount++;
+			CG_Printf( "CG_translateString: '%s' not found in CSF (loaded=%d)\n", str, CSF_IsLoaded() );
+		}
 	}
 
 	for ( i = 0; translateStrings[i].name && translateStrings[i].name[0]; i++ ) {

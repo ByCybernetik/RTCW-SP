@@ -12,6 +12,122 @@ static int vk_2dBatchPipe = -1;
 static VkDescriptorSet vk_2dBatchDesc = VK_NULL_HANDLE;
 static uint32_t vk_2dBatchMvp;
 
+static void VK_CmdImageBarrier(VkCommandBuffer cmd, VkImage image,
+                               VkImageLayout oldLayout, VkImageLayout newLayout,
+                               VkAccessFlags srcAccess, VkAccessFlags dstAccess,
+                               VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
+    VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstAccessMask = dstAccess;
+    vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, NULL, 0, NULL, 1, &barrier);
+}
+
+void VK_SetHoldRestore(qboolean enable) {
+    vk_state.colorPreserve = enable;
+}
+
+/* Offscreen starts COLOR_ATTACHMENT_OPTIMAL. Clear every frame unless
+ * colorPreserve (map load) — LOAD then keeps the last scene and avoids flash.
+ * Clearing in the menu/gameplay prevents notify/console trails. */
+static void VK_PrepareOffscreenColor(VkCommandBuffer cmd) {
+    VkImage color = vk_state.colorImage[vk_state.frameIndex];
+    VkImageSubresourceRange range;
+    VkClearColorValue clearColor;
+    qboolean valid;
+
+    if (!color) {
+        return;
+    }
+
+    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    range.baseMipLevel = 0;
+    range.levelCount = 1;
+    range.baseArrayLayer = 0;
+    range.layerCount = 1;
+
+    valid = vk_state.colorValid[vk_state.frameIndex];
+    if (vk_state.colorPreserve && valid) {
+        return;
+    }
+
+    clearColor.float32[0] = 0.0f;
+    clearColor.float32[1] = 0.0f;
+    clearColor.float32[2] = 0.0f;
+    clearColor.float32[3] = 1.0f;
+
+    if (valid) {
+        VK_CmdImageBarrier(cmd, color,
+                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    } else {
+        VK_CmdImageBarrier(cmd, color,
+                           VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    }
+    vkCmdClearColorImage(cmd, color, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
+    VK_CmdImageBarrier(cmd, color,
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                       VK_ACCESS_TRANSFER_WRITE_BIT,
+                       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+}
+
+/* Blit finished offscreen color into the acquired swapchain image for present. */
+static void VK_BlitOffscreenToSwapchain(VkCommandBuffer cmd) {
+    VkImage color = vk_state.colorImage[vk_state.frameIndex];
+    VkImage swap = vk_state.swapImages[vk_state.currentImageIndex];
+    VkImageCopy copy;
+
+    if (!color || !swap) {
+        return;
+    }
+
+    VK_CmdImageBarrier(cmd, color,
+                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    VK_CmdImageBarrier(cmd, swap,
+                       VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                       0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+    memset(&copy, 0, sizeof(copy));
+    copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy.srcSubresource.layerCount = 1;
+    copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy.dstSubresource.layerCount = 1;
+    copy.extent.width = vk_state.swapExtent.width;
+    copy.extent.height = vk_state.swapExtent.height;
+    copy.extent.depth = 1;
+    vkCmdCopyImage(cmd, color, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   swap, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+
+    VK_CmdImageBarrier(cmd, swap,
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                       VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    /* Return offscreen to COLOR_ATTACHMENT for the next LOAD on this slot. */
+    VK_CmdImageBarrier(cmd, color,
+                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                       VK_ACCESS_TRANSFER_READ_BIT,
+                       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+                       VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+    vk_state.colorValid[vk_state.frameIndex] = qtrue;
+}
+
 void VK_BeginFrame(stereoFrame_t stereoFrame) {
     (void)stereoFrame;
 
@@ -69,8 +185,8 @@ void VK_BeginFrame(stereoFrame_t stereoFrame) {
     VkCommandBuffer cmd = vk_state.cmdBuffers[imageIndex];
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 
-    if (!cmd || !vk_state.framebuffers[imageIndex]) {
-        ri.Printf(PRINT_WARNING, "VK_BeginFrame: missing cmd buffer or framebuffer for image %u\n", imageIndex);
+    if (!cmd || !vk_state.framebuffers[vk_state.frameIndex]) {
+        ri.Printf(PRINT_WARNING, "VK_BeginFrame: missing cmd buffer or offscreen framebuffer\n");
         return;
     }
 
@@ -83,24 +199,18 @@ void VK_BeginFrame(stereoFrame_t stereoFrame) {
 
     VkClearValue clears[2];
 
-    /* Match GL clear color: current fog color when registered, otherwise neutral gray. */
-    if (glfogsettings[FOG_CURRENT].registered) {
-        clears[0].color.float32[0] = glfogsettings[FOG_CURRENT].color[0];
-        clears[0].color.float32[1] = glfogsettings[FOG_CURRENT].color[1];
-        clears[0].color.float32[2] = glfogsettings[FOG_CURRENT].color[2];
-        clears[0].color.float32[3] = glfogsettings[FOG_CURRENT].color[3];
-    } else {
-        clears[0].color.float32[0] = 0.5f;
-        clears[0].color.float32[1] = 0.5f;
-        clears[0].color.float32[2] = 0.5f;
-        clears[0].color.float32[3] = 1.0f;
-    }
+    clears[0].color.float32[0] = 0.0f;
+    clears[0].color.float32[1] = 0.0f;
+    clears[0].color.float32[2] = 0.0f;
+    clears[0].color.float32[3] = 1.0f;
     clears[1].depthStencil.depth = 1.0f;
     clears[1].depthStencil.stencil = 0;
 
+    VK_PrepareOffscreenColor(cmd);
+
     VkRenderPassBeginInfo rpbi = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
     rpbi.renderPass = vk_state.renderPass;
-    rpbi.framebuffer = vk_state.framebuffers[imageIndex];
+    rpbi.framebuffer = vk_state.framebuffers[vk_state.frameIndex];
     rpbi.renderArea.extent = vk_state.swapExtent;
     rpbi.clearValueCount = 2;
     rpbi.pClearValues = clears;
@@ -152,6 +262,10 @@ void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
     VK_Flush2DBatch();
 
     vkCmdEndRenderPass(cmd);
+
+    /* Copy offscreen → swapchain for present. Offscreen keeps contents (LOAD). */
+    VK_BlitOffscreenToSwapchain(cmd);
+
     res = vkEndCommandBuffer(cmd);
     if (res != VK_SUCCESS) {
         ri.Printf(PRINT_WARNING, "VK_EndFrame: vkEndCommandBuffer failed (%d), skipping frame\n", res);
@@ -159,7 +273,8 @@ void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
         return;
     }
 
-    VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    /* Swap is written in TRANSFER after acquire — wait there, not color output. */
+    VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
     /* The fence must be reset immediately before it is submitted. Doing it
      * earlier (in VK_BeginFrame) leaves the fence unsignaled forever if any

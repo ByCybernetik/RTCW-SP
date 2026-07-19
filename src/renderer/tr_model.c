@@ -1311,12 +1311,10 @@ void RE_BeginRegistration( glconfig_t *glconfigOut ) {
 
 	tr.registered = qtrue;
 
-	// NOTE: this sucks, for some reason the first stretch pic is never drawn
-	// without this we'd see a white flash on a level load because the very
-	// first time the level shot would not be drawn
-#ifndef VULKAN_BACKEND
+	/* First stretch pic after registration is dropped (GL historically, and
+	 * Vulkan with the same command-buffer path). Dummy draw so the first real
+	 * levelshot/briefing pic is not skipped → black flash on map load. */
 	RE_StretchPic( 0, 0, 0, 0, 0, 0, 1, 1, 0 );
-#endif
 }
 
 /*

@@ -106,7 +106,12 @@ static void CreateSwapchain(int width, int height) {
     ci.imageColorSpace = vk_state.swapColorSpace;
     ci.imageExtent = vk_state.swapExtent;
     ci.imageArrayLayers = 1;
-    ci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    /* Swapchain is blit destination only; scene renders to offscreen color. */
+    if (!(caps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
+        ri.Printf(PRINT_WARNING, "VK: swapchain lacks TRANSFER_DST (offscreen blit may fail)\n");
+    }
+    ci.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    vk_state.swapBlitOk = qtrue;
     ci.preTransform = caps.currentTransform;
     ci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     ci.presentMode = chosenMode;
@@ -125,6 +130,8 @@ static void CreateSwapchain(int width, int height) {
     vkGetSwapchainImagesKHR(vk_state.dev, vk_state.swapchain, &vk_state.swapCount, NULL);
     vk_state.swapImages = malloc(vk_state.swapCount * sizeof(VkImage));
     vkGetSwapchainImagesKHR(vk_state.dev, vk_state.swapchain, &vk_state.swapCount, vk_state.swapImages);
+
+    VK_CreateOffscreen();
 }
 
 static void CreateDepthImage(void) {
@@ -215,12 +222,14 @@ void VK_SetupRenderPass(void) {
 
     attachments[0].format = vk_state.swapFormat;
     attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-    attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    /* Offscreen: LOAD keeps last frame in this slot (no clear flash on load).
+     * First use clears in VK_PrepareOffscreenColor. */
+    attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     attachments[1].format = vk_state.depth.format;
     attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -238,10 +247,10 @@ void VK_SetupRenderPass(void) {
 
     dep[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dep[0].dstSubpass = 0;
-    dep[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dep[0].srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dep[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dep[0].srcAccessMask = 0;
-    dep[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dep[0].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    dep[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 
     dep[1].srcSubpass = VK_SUBPASS_EXTERNAL;
     dep[1].dstSubpass = 0;
@@ -902,6 +911,7 @@ void VK_SetupPipelines(void) {
 void VK_SetupFramebuffers(void) {
     VkFramebufferCreateInfo ci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
     VkImageView attachments[2];
+    int i;
 
     attachments[1] = vk_state.depth.view;
     ci.renderPass = vk_state.renderPass;
@@ -911,9 +921,15 @@ void VK_SetupFramebuffers(void) {
     ci.height = vk_state.swapExtent.height;
     ci.layers = 1;
 
-    vk_state.framebuffers = malloc(vk_state.swapCount * sizeof(VkFramebuffer));
-    for (uint32_t i = 0; i < vk_state.swapCount; i++) {
-        attachments[0] = vk_state.swapViews[i];
+    for (i = 0; i < VK_MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vk_state.framebuffers[i]) {
+            vkDestroyFramebuffer(vk_state.dev, vk_state.framebuffers[i], NULL);
+            vk_state.framebuffers[i] = VK_NULL_HANDLE;
+        }
+        attachments[0] = vk_state.colorView[i];
+        if (!attachments[0] || !attachments[1]) {
+            continue;
+        }
         vkCreateFramebuffer(vk_state.dev, &ci, NULL, &vk_state.framebuffers[i]);
     }
 }
@@ -1182,16 +1198,101 @@ qboolean VK_InitFromPlatform(int width, int height,
     return qtrue;
 }
 
+void VK_DestroyOffscreen(void) {
+    int i;
+
+    for (i = 0; i < VK_MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vk_state.framebuffers[i]) {
+            vkDestroyFramebuffer(vk_state.dev, vk_state.framebuffers[i], NULL);
+            vk_state.framebuffers[i] = VK_NULL_HANDLE;
+        }
+        if (vk_state.colorView[i]) {
+            vkDestroyImageView(vk_state.dev, vk_state.colorView[i], NULL);
+            vk_state.colorView[i] = VK_NULL_HANDLE;
+        }
+        if (vk_state.colorImage[i]) {
+            vkDestroyImage(vk_state.dev, vk_state.colorImage[i], NULL);
+            vk_state.colorImage[i] = VK_NULL_HANDLE;
+        }
+        if (vk_state.colorMemory[i]) {
+            vkFreeMemory(vk_state.dev, vk_state.colorMemory[i], NULL);
+            vk_state.colorMemory[i] = VK_NULL_HANDLE;
+        }
+        vk_state.colorValid[i] = qfalse;
+    }
+}
+
+void VK_CreateOffscreen(void) {
+    VkImageCreateInfo ici = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    VkImageViewCreateInfo ivci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkMemoryRequirements req;
+    int i;
+
+    VK_DestroyOffscreen();
+
+    if (!vk_state.swapExtent.width || !vk_state.swapExtent.height) {
+        return;
+    }
+
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.extent.width = vk_state.swapExtent.width;
+    ici.extent.height = vk_state.swapExtent.height;
+    ici.extent.depth = 1;
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    ici.format = vk_state.swapFormat;
+    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    ici.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    ivci.format = vk_state.swapFormat;
+    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    ivci.subresourceRange.levelCount = 1;
+    ivci.subresourceRange.layerCount = 1;
+
+    for (i = 0; i < VK_MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vkCreateImage(vk_state.dev, &ici, NULL, &vk_state.colorImage[i]) != VK_SUCCESS) {
+            ri.Printf(PRINT_WARNING, "VK_CreateOffscreen: vkCreateImage failed\n");
+            VK_DestroyOffscreen();
+            return;
+        }
+
+        vkGetImageMemoryRequirements(vk_state.dev, vk_state.colorImage[i], &req);
+        ai.allocationSize = req.size;
+        ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (vkAllocateMemory(vk_state.dev, &ai, NULL, &vk_state.colorMemory[i]) != VK_SUCCESS) {
+            ri.Printf(PRINT_WARNING, "VK_CreateOffscreen: vkAllocateMemory failed\n");
+            VK_DestroyOffscreen();
+            return;
+        }
+        vkBindImageMemory(vk_state.dev, vk_state.colorImage[i], vk_state.colorMemory[i], 0);
+
+        ivci.image = vk_state.colorImage[i];
+        if (vkCreateImageView(vk_state.dev, &ivci, NULL, &vk_state.colorView[i]) != VK_SUCCESS) {
+            ri.Printf(PRINT_WARNING, "VK_CreateOffscreen: vkCreateImageView failed\n");
+            VK_DestroyOffscreen();
+            return;
+        }
+        vk_state.colorValid[i] = qfalse;
+    }
+    ri.Printf(PRINT_ALL, "VK: offscreen color %d x %ux%u\n",
+              VK_MAX_FRAMES_IN_FLIGHT, vk_state.swapExtent.width, vk_state.swapExtent.height);
+}
+
 void VK_DestroySwapchain(void) {
     vkDeviceWaitIdle(vk_state.dev);
 
+    VK_DestroyOffscreen();
+
     for (uint32_t i = 0; i < vk_state.swapCount; i++) {
-        if (vk_state.framebuffers && vk_state.framebuffers[i])
-            vkDestroyFramebuffer(vk_state.dev, vk_state.framebuffers[i], NULL);
         if (vk_state.swapViews && vk_state.swapViews[i])
             vkDestroyImageView(vk_state.dev, vk_state.swapViews[i], NULL);
     }
-    free(vk_state.framebuffers);
     free(vk_state.swapViews);
     free(vk_state.swapImages);
     free(vk_state.imagesInFlight);
@@ -1207,7 +1308,6 @@ void VK_DestroySwapchain(void) {
     if (vk_state.swapchain)
         vkDestroySwapchainKHR(vk_state.dev, vk_state.swapchain, NULL);
 
-    vk_state.framebuffers = NULL;
     vk_state.swapViews = NULL;
     vk_state.swapImages = NULL;
     vk_state.depth.view = VK_NULL_HANDLE;

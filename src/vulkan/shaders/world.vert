@@ -53,7 +53,6 @@ layout(location = 1) out vec2 vLightmapCoord;
 layout(location = 2) out vec4 vColor;
 layout(location = 3) out vec3 vWorldPos;
 layout(location = 4) out float vNormalZFadeAlpha;
-layout(location = 5) out float vFogFactor;
 
 float evalWave(float waveFunc, float x) {
     float t = fract(x);
@@ -356,39 +355,6 @@ void main() {
     vLightmapCoord = inLightmapCoord;
     vColor = finalColor;
     vWorldPos = pos;
-
-    /* Distance fog factor computed per-vertex to match OpenGL's per-vertex fog
-     * coordinate. The scalar is perspective-correct interpolated, just like GL_FOG.
-     * params16.w holds the distance-fog mode (1=linear, 2=exp, 3=exp2); keep at
-     * 1.0 when distance fog is off or during the volumetric fog pass
-     * (params16.w == 4).
-     * params20.xyz is the eye-space forward axis and .w selects the NV fog
-     * distance metric (0=GL_EYE_RADIAL_NV, 1=GL_EYE_PLANE_ABSOLUTE_NV,
-     * 2=GL_EYE_PLANE). */
-    vFogFactor = 1.0;
-    if (view.drawParams[pc.drawParamIndex * 9u + 2u].w > 0.5 && view.drawParams[pc.drawParamIndex * 9u + 1u].w > 0.0 && view.drawParams[pc.drawParamIndex * 9u + 1u].w < 4.0) {
-        vec3 eyeVec = pos - pc.params14.xyz;
-        float dist;
-        int distMode = int(view.drawParams[pc.drawParamIndex * 9u + 5u].w + 0.5);
-        if (distMode == 1) {
-            dist = abs(dot(eyeVec, view.drawParams[pc.drawParamIndex * 9u + 5u].xyz));
-        } else if (distMode == 2) {
-            dist = dot(eyeVec, view.drawParams[pc.drawParamIndex * 9u + 5u].xyz);
-        } else {
-            dist = length(eyeVec);
-        }
-        if (view.drawParams[pc.drawParamIndex * 9u + 1u].w < 1.5) {
-            /* GL_LINEAR */
-            vFogFactor = clamp((view.drawParams[pc.drawParamIndex * 9u + 2u].y - dist) / (view.drawParams[pc.drawParamIndex * 9u + 2u].y - view.drawParams[pc.drawParamIndex * 9u + 2u].x), 0.0, 1.0);
-        } else if (view.drawParams[pc.drawParamIndex * 9u + 1u].w < 2.5) {
-            /* GL_EXP */
-            vFogFactor = exp(-view.drawParams[pc.drawParamIndex * 9u + 2u].z * dist);
-        } else {
-            /* GL_EXP2 */
-            float d = view.drawParams[pc.drawParamIndex * 9u + 2u].z * dist;
-            vFogFactor = exp(-d * d);
-        }
-    }
 
     float normalZFadeAlpha = 1.0;
     if (view.drawParams[pc.drawParamIndex * 9u + 0u].w > 0.0) {

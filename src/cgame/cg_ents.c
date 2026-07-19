@@ -35,6 +35,7 @@ If you have questions concerning this license or the applicable additional terms
 
 
 #include "cg_local.h"
+#include "../ui/ui_shared.h"
 
 ///////////////////////
 extern int propellerModel;
@@ -669,7 +670,7 @@ void CG_DrawHoldableSelect( void ) {
 	int bits;
 	int count;
 	int amount;
-	int i, x, y, w;
+	int i, x, y;
 	float   *color;
 	char    *name;
 	gitem_t     *item;
@@ -757,14 +758,15 @@ void CG_DrawHoldableSelect( void ) {
 		item = BG_FindItemForHoldable( cg.holdableSelect );
 		if ( item ) {
 			name = cgs.itemPrintNames[ item - bg_itemlist ];
-			if ( name ) {
-				//----(SA)	trying smaller text
-//				w = CG_DrawStrlen( name ) * BIGCHAR_WIDTH;
-				w = CG_DrawStrlen( name ) * 10;
-				x = ( SCREEN_WIDTH - w ) / 2;
-//				CG_DrawBigStringColor(x, y - 22, name, color);
-				CG_DrawStringExt2( x, y + 74, name, color, qfalse, qtrue, 10, 10, 0 );
-//				CG_Text_Paint(x, y + 74, 2, 0.3f, color, name, 0, 0, 6); // ITEM_TEXTSTYLE_SHADOWEDMORE
+			if ( name && name[0] ) {
+				/* UTF-8 item names must use the TTF path; CG_DrawStringExt2
+				 * treats each byte as a glyph and garbles Cyrillic. */
+				const float scale = 0.3f;
+				float tw = CG_Text_Width( name, UI_FONT_SMALL, scale, 0 );
+				float tx = ( SCREEN_WIDTH - tw ) / 2.0f;
+
+				CG_Text_Paint( tx, y + 74, UI_FONT_SMALL, scale, color, name,
+							   0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE );
 			}
 		}
 	}

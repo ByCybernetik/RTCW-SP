@@ -99,6 +99,10 @@ typedef struct {
 	// if the pointers are not NULL, timing info will be returned
 	void ( *EndFrame )( int *frontEndMsec, int *backEndMsec );
 
+	/* Vulkan: when enabled, BeginFrame blits the last presented frame instead
+	 * of clearing — used across map load so the swapchain never flashes black. */
+	void ( *SetFrameHold )( qboolean enable );
+
 
 	int ( *MarkFragments )( int numPoints, const vec3_t *points, const vec3_t projection,
 							int maxPoints, vec3_t pointBuffer, int maxFragments, markFragment_t *fragmentBuffer );

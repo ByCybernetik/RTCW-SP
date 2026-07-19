@@ -32,6 +32,10 @@ If you have questions concerning this license or the applicable additional terms
 
 qboolean scr_initialized;           // ready to draw
 
+/* Set while SCR_UpdateScreen is running. Must be cleared on Com_Error/longjmp
+ * or all later presents are skipped and the last frame freezes on screen. */
+static int scr_updateRecursive;
+
 cvar_t      *cl_timegraph;
 cvar_t      *cl_debuggraph;
 cvar_t      *cl_graphheight;
@@ -718,6 +722,37 @@ void SCR_Init( void ) {
 
 /*
 ==================
+SCR_DrawWidescreenBars
+
+Black pillarboxes outside the 4:3 UI/cgame virtual area. Drawn after menus so
+oversized menu art (models past 640) cannot bleed into the margins.
+==================
+*/
+static void SCR_DrawWidescreenBars( void ) {
+	float barWidth;
+
+	if ( !cls.whiteShader ) {
+		return;
+	}
+	if ( cls.glconfig.vidWidth * 480 <= cls.glconfig.vidHeight * 640 ) {
+		return;
+	}
+
+	barWidth = 0.5f * ( cls.glconfig.vidWidth - ( cls.glconfig.vidHeight * ( 640.0f / 480.0f ) ) );
+	if ( barWidth < 1.0f ) {
+		return;
+	}
+
+	re.SetColor( colorBlack );
+	re.DrawStretchPic( 0, 0, barWidth, cls.glconfig.vidHeight,
+					   0, 0, 0, 0, cls.whiteShader );
+	re.DrawStretchPic( cls.glconfig.vidWidth - barWidth, 0, barWidth, cls.glconfig.vidHeight,
+					   0, 0, 0, 0, cls.whiteShader );
+	re.SetColor( NULL );
+}
+
+/*
+==================
 SCR_DrawScreenField
 
 This will be called twice if rendering in stereo mode
@@ -726,14 +761,22 @@ This will be called twice if rendering in stereo mode
 void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 	re.BeginFrame( stereoFrame );
 
-	// wide aspect ratio screens need to have the sides cleared
-	// unless they are displaying game renderings
-	if ( cls.state != CA_ACTIVE ) {
-		if ( cls.glconfig.vidWidth * 480 > cls.glconfig.vidHeight * 640 ) {
-			re.SetColor( g_color_table[0] );
-			re.DrawStretchPic( 0, 0, cls.glconfig.vidWidth, cls.glconfig.vidHeight, 0, 0, 0, 0, cls.whiteShader );
-			re.SetColor( NULL );
-		}
+	/* Base clear under UI while loading / in main menu. */
+	if ( cls.whiteShader &&
+		 ( cls.state == CA_DISCONNECTED ||
+		   ( cls.state >= CA_CONNECTING && cls.state <= CA_PRIMED ) ) ) {
+		re.SetColor( colorBlack );
+		re.DrawStretchPic( 0, 0, cls.glconfig.vidWidth, cls.glconfig.vidHeight,
+						   0, 0, 0, 0, cls.whiteShader );
+		re.SetColor( NULL );
+	}
+
+	/* Solid black under an open console so notify/hold pixels do not trail. */
+	if ( cls.whiteShader && ( cls.keyCatchers & KEYCATCH_CONSOLE ) ) {
+		re.SetColor( colorBlack );
+		re.DrawStretchPic( 0, 0, cls.glconfig.vidWidth, cls.glconfig.vidHeight,
+						   0, 0, 0, 0, cls.whiteShader );
+		re.SetColor( NULL );
 	}
 
 	if ( !uivm ) {
@@ -793,6 +836,12 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 		VM_Call( uivm, UI_REFRESH, cls.realtime );
 	}
 
+	/* After UI: cover side bleed from oversized menu models / preserve junk. */
+	if ( cls.state == CA_DISCONNECTED ||
+		 ( cls.state >= CA_CONNECTING && cls.state <= CA_PRIMED ) ) {
+		SCR_DrawWidescreenBars();
+	}
+
 	// console draws next
 	Con_DrawConsole();
 
@@ -811,18 +860,46 @@ text to the screen.
 ==================
 */
 void SCR_UpdateScreen( void ) {
-	static int recursive;
+	qboolean preserve;
 
 	if ( !scr_initialized ) {
-		return;             // not initialized yet
+		return;
 	}
 
-	if ( ++recursive > 2 ) {
-		Com_Error( ERR_FATAL, "SCR_UpdateScreen: recursively called" );
+	/* Media restart: leave the last present on screen (no BeginFrame/clear). */
+	if ( !cls.rendererStarted || !uivm ) {
+		return;
 	}
-	recursive = 1;
 
-	// if running in stereo, we need to draw the frame twice
+	/* Nested trap_UpdateScreen must not start a second Vulkan frame. */
+	if ( scr_updateRecursive ) {
+		return;
+	}
+	scr_updateRecursive = 1;
+
+	/* Normal frames clear offscreen (no menu trails). Preserve across media
+	 * restart until pregame (fullscreen + KEYCATCH_UI in CA_ACTIVE).
+	 * Abort on disconnect/error — otherwise LOAD freezes the old scene under
+	 * the main menu / error_popmenu forever. */
+	preserve = qfalse;
+	if ( cls.frameHoldArmed ) {
+		if ( cls.state == CA_DISCONNECTED || cls.state == CA_CINEMATIC ) {
+			cls.frameHoldArmed = qfalse;
+		} else {
+			preserve = qtrue;
+			if ( cls.state == CA_ACTIVE && ( cls.keyCatchers & KEYCATCH_UI )
+				 && VM_Call( uivm, UI_IS_FULLSCREEN ) ) {
+				cls.frameHoldAfterActive--;
+				if ( cls.frameHoldAfterActive <= 0 ) {
+					cls.frameHoldArmed = qfalse;
+				}
+			}
+		}
+	}
+	if ( re.SetFrameHold ) {
+		re.SetFrameHold( preserve );
+	}
+
 	if ( cls.glconfig.stereoEnabled ) {
 		SCR_DrawScreenField( STEREO_LEFT );
 		SCR_DrawScreenField( STEREO_RIGHT );
@@ -836,5 +913,22 @@ void SCR_UpdateScreen( void ) {
 		re.EndFrame( NULL, NULL );
 	}
 
-	recursive = 0;
+	scr_updateRecursive = 0;
+}
+
+/*
+==================
+SCR_ResetAfterError
+
+Com_Error longjmps out of SCR_UpdateScreen and would leave the recursive
+guard set — no further frames. Also drop frame-hold so the menu can clear.
+==================
+*/
+void SCR_ResetAfterError( void ) {
+	scr_updateRecursive = 0;
+	cls.frameHoldArmed = qfalse;
+	cls.frameHoldAfterActive = 0;
+	if ( re.SetFrameHold ) {
+		re.SetFrameHold( qfalse );
+	}
 }

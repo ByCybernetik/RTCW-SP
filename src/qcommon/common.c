@@ -64,6 +64,7 @@ cvar_t  *com_fixedtime;
 cvar_t  *com_dropsim;       // 0.0 to 1.0, simulated packet drops
 cvar_t  *com_journal;
 cvar_t  *com_maxfps;
+cvar_t  *com_busyWait;
 cvar_t  *com_timedemo;
 cvar_t  *com_sv_running;
 cvar_t  *com_cl_running;
@@ -2027,6 +2028,8 @@ void Com_Init( char *commandLine ) {
 	// init commands and vars
 	//
 	com_maxfps = Cvar_Get( "com_maxfps", "85", CVAR_ARCHIVE );
+	/* 0 = sleep until next frame (low CPU); 1 = old busy-wait spin. */
+	com_busyWait = Cvar_Get( "com_busyWait", "0", CVAR_ARCHIVE );
 	com_blood = Cvar_Get( "com_blood", "1", CVAR_ARCHIVE );
 
 	com_developer = Cvar_Get( "developer", "0", CVAR_TEMP );
@@ -2317,7 +2320,7 @@ void Com_Frame( void ) {
 		timeBeforeFirstEvents = Sys_Milliseconds();
 	}
 
-	// we may want to spin here if things are going too fast
+	// we may want to spin / sleep here if things are going too fast
 	if ( !com_dedicated->integer && com_maxfps->integer > 0 && !com_timedemo->integer ) {
 		minMsec = 1000 / com_maxfps->integer;
 	} else {
@@ -2329,7 +2332,20 @@ void Com_Frame( void ) {
 			lastTime = com_frameTime;       // possible on first frame
 		}
 		msec = com_frameTime - lastTime;
-	} while ( msec < minMsec );
+		if ( msec >= minMsec ) {
+			break;
+		}
+		/* Classic Quake3 busy-wait pegged one core at ~100%. Sleep residual
+		 * time (minus 1ms for timer granularity), matching ioquake3. */
+		if ( !com_busyWait->integer ) {
+			int remaining = minMsec - msec;
+			if ( remaining > 1 ) {
+				Sys_Sleep( remaining - 1 );
+			} else {
+				Sys_Sleep( 0 );
+			}
+		}
+	} while ( 1 );
 	Cbuf_Execute();
 
 	lastTime = com_frameTime;

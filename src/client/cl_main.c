@@ -637,6 +637,10 @@ void CL_ShutdownAll( void ) {
 	cls.cgameStarted = qfalse;
 	cls.rendererStarted = qfalse;
 	cls.soundRegistered = qfalse;
+
+	/* Keep offscreen contents (LOAD) until the world is back — avoids clear flash. */
+	cls.frameHoldArmed = qtrue;
+	cls.frameHoldAfterActive = 8;
 }
 
 /*
@@ -649,6 +653,9 @@ Also called by Com_Error
 =================
 */
 void CL_FlushMemory( void ) {
+
+	/* Com_Error may longjmp out of SCR_UpdateScreen — clear stuck frame state. */
+	SCR_ResetAfterError();
 
 	// shutdown all the client stuff
 	CL_ShutdownAll();
@@ -694,7 +701,9 @@ void CL_MapLoading( void ) {
 		memset( clc.serverMessage, 0, sizeof( clc.serverMessage ) );
 		memset( &cl.gameState, 0, sizeof( cl.gameState ) );
 		clc.lastPacketSentTime = -9999;
-		SCR_UpdateScreen();
+		/* Do not SCR_UpdateScreen here: presenting Connect/clear over the last
+		 * gameplay frame is the visible load flash. Leave the previous present
+		 * on screen; Vulkan frame-hold restores it after media restart. */
 	} else {
 		// clear nextmap so the cinematic shutdown doesn't execute it
 		Cvar_Set( "nextmap", "" );
@@ -702,7 +711,6 @@ void CL_MapLoading( void ) {
 		Q_strncpyz( cls.servername, "localhost", sizeof( cls.servername ) );
 		cls.state = CA_CHALLENGING;     // so the connect screen is drawn
 		cls.keyCatchers = 0;
-		SCR_UpdateScreen();
 		clc.connectTime = -RETRANSMIT_TIMEOUT;
 		NET_StringToAdr( cls.servername, &clc.serverAddress );
 		// we don't need a challenge on the localhost

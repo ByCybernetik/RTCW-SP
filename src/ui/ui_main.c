@@ -4432,12 +4432,9 @@ static void UI_Update( const char *name ) {
 			trap_Cvar_SetValue( "r_subdivisions", 4 );
 			trap_Cvar_SetValue( "r_vertexlight", 0 );
 			trap_Cvar_SetValue( "r_lodbias", 0 );
-			trap_Cvar_SetValue( "r_colorbits", 32 );
-			trap_Cvar_SetValue( "r_depthbits", 24 );
 			trap_Cvar_SetValue( "r_picmip", 0 );
 			trap_Cvar_SetValue( "r_picmip2", 0 );
 			trap_Cvar_SetValue( "r_mode", 4 );
-			trap_Cvar_SetValue( "r_texturebits", 32 );
 			trap_Cvar_SetValue( "r_fastSky", 0 );
 			trap_Cvar_SetValue( "r_inGameVideo", 1 );
 			trap_Cvar_SetValue( "cg_shadows", 1 );
@@ -4449,12 +4446,9 @@ static void UI_Update( const char *name ) {
 			trap_Cvar_SetValue( "r_subdivisions", 12 );
 			trap_Cvar_SetValue( "r_vertexlight", 0 );
 			trap_Cvar_SetValue( "r_lodbias", 0 );
-			trap_Cvar_SetValue( "r_colorbits", 0 );
-			trap_Cvar_SetValue( "r_depthbits", 24 );
 			trap_Cvar_SetValue( "r_picmip", 0 );
 			trap_Cvar_SetValue( "r_picmip2", 1 );
 			trap_Cvar_SetValue( "r_mode", 3 );
-			trap_Cvar_SetValue( "r_texturebits", 0 );
 			trap_Cvar_SetValue( "r_fastSky", 0 );
 			trap_Cvar_SetValue( "r_inGameVideo", 1 );
 			trap_Cvar_SetValue( "cg_brassTime", 2500 );
@@ -4466,12 +4460,9 @@ static void UI_Update( const char *name ) {
 			trap_Cvar_SetValue( "r_subdivisions", 8 );
 			trap_Cvar_SetValue( "r_vertexlight", 0 );
 			trap_Cvar_SetValue( "r_lodbias", 1 );
-			trap_Cvar_SetValue( "r_colorbits", 0 );
-			trap_Cvar_SetValue( "r_depthbits", 0 );
 			trap_Cvar_SetValue( "r_picmip", 1 );
 			trap_Cvar_SetValue( "r_picmip2", 2 );
 			trap_Cvar_SetValue( "r_mode", 3 );
-			trap_Cvar_SetValue( "r_texturebits", 0 );
 			trap_Cvar_SetValue( "cg_shadows", 0 );
 			trap_Cvar_SetValue( "r_fastSky", 1 );
 			trap_Cvar_SetValue( "r_inGameVideo", 0 );
@@ -4483,12 +4474,9 @@ static void UI_Update( const char *name ) {
 			trap_Cvar_SetValue( "r_subdivisions", 20 );
 			trap_Cvar_SetValue( "r_vertexlight", 1 );
 			trap_Cvar_SetValue( "r_lodbias", 2 );
-			trap_Cvar_SetValue( "r_colorbits", 16 );
-			trap_Cvar_SetValue( "r_depthbits", 16 );
 			trap_Cvar_SetValue( "r_mode", 3 );
 			trap_Cvar_SetValue( "r_picmip", 2 );
 			trap_Cvar_SetValue( "r_picmip2", 3 );
-			trap_Cvar_SetValue( "r_texturebits", 16 );
 			trap_Cvar_SetValue( "cg_shadows", 0 );
 			trap_Cvar_SetValue( "cg_brassTime", 0 );
 			trap_Cvar_SetValue( "r_fastSky", 1 );
@@ -7011,6 +6999,9 @@ void _UI_SetActiveMenu( uiMenuCommand_t menu ) {
 			Com_Printf( "_UI_SetActiveMenu(BRIEFING): mapname='%s' menuCount=%d\n",
 			            mapname, Menu_Count() );
 		}
+			/* No KEYCATCH_UI / fullScreen — cgame must keep running for load and
+			 * rockandroll→pregame. Flash is avoided by offscreen preserve until
+			 * pregame (fullscreen) is up. */
 			Menus_CloseAll();
 			Menus_ActivateByName( "briefing" );
 			return;

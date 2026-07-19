@@ -29,6 +29,9 @@ If you have questions concerning this license or the applicable additional terms
 // tr_init.c -- functions that are not called every frame
 
 #include "tr_local.h"
+#ifdef VULKAN_BACKEND
+#include "../vulkan/vk_local.h"
+#endif
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -1325,6 +1328,16 @@ void RE_Shutdown( qboolean destroyWindow ) {
 
 	ri.Printf( PRINT_ALL, "RE_Shutdown( %i )\n", destroyWindow );
 
+#ifdef VULKAN_BACKEND
+	/* Error/longjmp can abort mid-frame; drain GPU and drop the active pass
+	 * so the next BeginFrame is not stuck on a half-recorded CB. */
+	if ( vk_active && vk_state.dev ) {
+		vkDeviceWaitIdle( vk_state.dev );
+		vk_state.renderPassActive = qfalse;
+		vk_state.colorPreserve = qfalse;
+	}
+#endif
+
 	ri.Cmd_RemoveCommand( "modellist" );
 	ri.Cmd_RemoveCommand( "screenshotJPEG" );
 	ri.Cmd_RemoveCommand( "screenshot" );
@@ -1442,6 +1455,7 @@ refexport_t *GetRefAPI( int apiVersion, refimport_t *rimp ) {
 
 	re.BeginFrame       = RE_BeginFrame;
 	re.EndFrame         = RE_EndFrame;
+	re.SetFrameHold     = RE_SetFrameHold;
 
 	re.MarkFragments    = R_MarkFragments;
 	re.LerpTag          = R_LerpTag;

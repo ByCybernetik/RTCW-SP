@@ -1311,6 +1311,8 @@ void    RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byt
 void    RE_UploadCinematic( int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty );
 
 void        RE_BeginFrame( stereoFrame_t stereoFrame );
+void        RE_EndFrame( int *frontEndMsec, int *backEndMsec );
+void        RE_SetFrameHold( qboolean enable );
 void        RE_BeginRegistration( glconfig_t *glconfig );
 void        RE_LoadWorldMap( const char *mapname );
 void        RE_SetWorldVisData( const byte *vis );

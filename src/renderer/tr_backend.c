@@ -1335,6 +1335,13 @@ const void *RB_StretchPic( const void *data ) {
 	if ( vk_active ) {
 		float color[4];
 
+		/* 2D may be queued before RC_DRAW_BUFFER (e.g. first pic after
+		 * BeginRegistration). Without an active pass VK_StretchPic no-ops and
+		 * the load screen flashes black. */
+		if ( !vk_state.renderPassActive ) {
+			VK_BeginFrame( STEREO_CENTER );
+		}
+
 		backEnd.refdef.time = ri.Milliseconds();
 		backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
 
@@ -1429,6 +1436,10 @@ const void *RB_StretchPicGradient( const void *data ) {
 #ifdef VULKAN_BACKEND
 	if ( vk_active ) {
 		float color[4];
+
+		if ( !vk_state.renderPassActive ) {
+			VK_BeginFrame( STEREO_CENTER );
+		}
 
 		backEnd.refdef.time = ri.Milliseconds();
 		backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;

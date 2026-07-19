@@ -109,7 +109,18 @@ typedef struct {
     VkImage *swapImages;
     uint32_t swapCount;
     VkImageView *swapViews;
-    VkFramebuffer *framebuffers;
+
+    /* Offscreen color targets (one per in-flight slot). Scene renders here;
+     * EndFrame blits to the acquired swapchain image. LOAD keeps the previous
+     * contents of this slot so map-load presents never flash clear. */
+    VkImage colorImage[VK_MAX_FRAMES_IN_FLIGHT];
+    VkDeviceMemory colorMemory[VK_MAX_FRAMES_IN_FLIGHT];
+    VkImageView colorView[VK_MAX_FRAMES_IN_FLIGHT];
+    VkFramebuffer framebuffers[VK_MAX_FRAMES_IN_FLIGHT];
+    qboolean colorValid[VK_MAX_FRAMES_IN_FLIGHT];
+    qboolean swapBlitOk;
+    /* When set, LOAD offscreen instead of clear (media restart / map load). */
+    qboolean colorPreserve;
 
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
@@ -356,6 +367,9 @@ void VK_SetupRenderPass(void);
 void VK_SetupFramebuffers(void);
 void VK_DestroySwapchain(void);
 void VK_UpdateSwapchain(int width, int height);
+void VK_CreateOffscreen(void);
+void VK_DestroyOffscreen(void);
+void VK_SetHoldRestore(qboolean enable); /* no-op; API compat */
 void VK_CreateSyncObjects(void);
 void VK_SetupCommandBuffers(void);
 void VK_AllocateDescriptorSets(void);

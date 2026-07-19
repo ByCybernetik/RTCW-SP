@@ -1065,6 +1065,92 @@ static void VK_SwitchEntity(int entityNum) {
     }
 }
 
+static void VK_ClearViewDepth(VkCommandBuffer cmd) {
+    VkClearAttachment attachment;
+    VkClearRect rect;
+
+    memset(&attachment, 0, sizeof(attachment));
+    memset(&rect, 0, sizeof(rect));
+    attachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    attachment.clearValue.depthStencil.depth = 1.0f;
+    rect.rect.offset.x = 0;
+    rect.rect.offset.y = 0;
+    rect.rect.extent = vk_state.swapExtent;
+    rect.layerCount = 1;
+    vkCmdClearAttachments(cmd, 1, &attachment, 1, &rect);
+}
+
+/* Match OpenGL RB_BeginDrawingView color clears. When fog uses clearscreen /
+ * !drawsky the sky is skipped — without this the offscreen clear stays black
+ * and fogsky looks like a hard black void above the fog line. */
+static void VK_ClearViewFogSky(VkCommandBuffer cmd) {
+    const glfog_t *fog;
+    VkClearAttachment attachment;
+    VkClearRect rect;
+    float color[4];
+    qboolean needClear;
+
+    if (r_uiFullScreen && r_uiFullScreen->integer) {
+        return;
+    }
+    if (backEnd.refdef.rdflags & RDF_NOWORLDMODEL) {
+        return;
+    }
+
+    fog = NULL;
+    if (backEnd.viewParms.glFog.registered) {
+        fog = &backEnd.viewParms.glFog;
+    } else if (glfogNum > FOG_NONE && glfogsettings[FOG_CURRENT].registered) {
+        fog = &glfogsettings[FOG_CURRENT];
+    }
+
+    color[0] = 0.5f;
+    color[1] = 0.5f;
+    color[2] = 0.5f;
+    color[3] = 1.0f;
+    needClear = qfalse;
+
+    if (r_fastsky && r_fastsky->integer) {
+        needClear = qtrue;
+        if (fog) {
+            color[0] = fog->color[0];
+            color[1] = fog->color[1];
+            color[2] = fog->color[2];
+            color[3] = fog->color[3];
+        }
+    } else if (fog && (fog->clearscreen || !fog->drawsky)) {
+        needClear = qtrue;
+        color[0] = fog->color[0];
+        color[1] = fog->color[1];
+        color[2] = fog->color[2];
+        color[3] = fog->color[3];
+    } else if (skyboxportal && !(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL)
+               && fog && r_portalsky && !r_portalsky->integer) {
+        needClear = qtrue;
+        color[0] = fog->color[0];
+        color[1] = fog->color[1];
+        color[2] = fog->color[2];
+        color[3] = fog->color[3];
+    }
+
+    if (!needClear) {
+        return;
+    }
+
+    memset(&attachment, 0, sizeof(attachment));
+    memset(&rect, 0, sizeof(rect));
+    attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    attachment.clearValue.color.float32[0] = color[0];
+    attachment.clearValue.color.float32[1] = color[1];
+    attachment.clearValue.color.float32[2] = color[2];
+    attachment.clearValue.color.float32[3] = color[3];
+    rect.rect.offset.x = 0;
+    rect.rect.offset.y = 0;
+    rect.rect.extent = vk_state.swapExtent;
+    rect.layerCount = 1;
+    vkCmdClearAttachments(cmd, 1, &attachment, 1, &rect);
+}
+
 void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, const glfog_t *glfog) {
     shader_t *shader;
     int fogNum;
@@ -1114,18 +1200,8 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
        OpenGL clears depth before the main view; do the same in Vulkan.
        Portal/mirror views must keep the previous depth contents. */
     if (!backEnd.viewParms.isPortal) {
-        VkClearAttachment attachment;
-        VkClearRect rect;
-
-        memset(&attachment, 0, sizeof(attachment));
-        memset(&rect, 0, sizeof(rect));
-        attachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        attachment.clearValue.depthStencil.depth = 1.0f;
-        rect.rect.offset.x = 0;
-        rect.rect.offset.y = 0;
-        rect.rect.extent = vk_state.swapExtent;
-        rect.layerCount = 1;
-        vkCmdClearAttachments(cmd, 1, &attachment, 1, &rect);
+        VK_ClearViewDepth(cmd);
+        VK_ClearViewFogSky(cmd);
     }
 
     for (i = 0; i < numDrawSurfs; i++) {

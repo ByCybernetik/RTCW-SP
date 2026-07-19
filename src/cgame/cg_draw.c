@@ -1975,10 +1975,10 @@ for a few moments
 ==============
 */
 void CG_CenterPrint( const char *str, int y, int charWidth ) {
-	unsigned char   *s;
+	char    *s;
 
 //----(SA)	added translation lookup
-	Q_strncpyz( cg.centerPrint, CG_translateString( (char*)str ), sizeof( cg.centerPrint ) );
+	Q_strncpyz( cg.centerPrint, CG_translateString( str ), sizeof( cg.centerPrint ) );
 //----(SA)	end
 
 
@@ -1993,7 +1993,7 @@ void CG_CenterPrint( const char *str, int y, int charWidth ) {
 		if ( *s == '\n' ) {
 			cg.centerPrintLines++;
 		}
-		if ( !Q_strncmp( s, "\\n", 1 ) ) {
+		if ( s[0] == '\\' && s[1] == 'n' ) {
 			cg.centerPrintLines++;
 			s++;
 		}
@@ -2009,12 +2009,14 @@ CG_DrawCenterString
 */
 static void CG_DrawCenterString( void ) {
 	char    *start;
-	int l;
 	float x, y;
 	float   *color;
 	const int font = UI_FONT_SMALL;
 	const float scale = 0.2f;
 	const float lineHeight = CG_Text_Height( "A", font, scale, 0 );
+	/* Max glyphs per line. Must count Unicode characters, not UTF-8 bytes —
+	 * otherwise Cyrillic (2 bytes/char) is truncated mid-sequence. */
+	const int maxLineChars = 40;
 
 	if ( !cg.centerPrintTime ) {
 		return;
@@ -2035,14 +2037,28 @@ static void CG_DrawCenterString( void ) {
 
 	while ( 1 ) {
 		char linebuffer[1024];
+		int out = 0;
+		int chars = 0;
 
-		for ( l = 0; l < 40; l++ ) {
-			if ( !start[l] || start[l] == '\n' || !Q_strncmp( &start[l], "\\n", 1 ) ) {
+		while ( start[0] && chars < maxLineChars && out + 4 < (int)sizeof( linebuffer ) ) {
+			int idx = 0;
+
+			if ( start[0] == '\n' ) {
 				break;
 			}
-			linebuffer[l] = start[l];
+			if ( start[0] == '\\' && start[1] == 'n' ) {
+				break;
+			}
+			Q_UTF8_ReadChar( start, &idx );
+			if ( idx <= 0 ) {
+				break;
+			}
+			memcpy( linebuffer + out, start, (size_t)idx );
+			out += idx;
+			start += idx;
+			chars++;
 		}
-		linebuffer[l] = 0;
+		linebuffer[out] = 0;
 
 		x = ( SCREEN_WIDTH - CG_Text_Width( linebuffer, font, scale, 0 ) ) / 2;
 
@@ -2051,9 +2067,9 @@ static void CG_DrawCenterString( void ) {
 		y += lineHeight * 1.5f;
 
 		while ( *start && ( *start != '\n' ) ) {
-			if ( !Q_strncmp( start, "\\n", 1 ) ) {
-				start++;
-				break;
+			if ( start[0] == '\\' && start[1] == 'n' ) {
+				start += 2;
+				goto next_line;
 			}
 			start++;
 		}
@@ -2061,6 +2077,8 @@ static void CG_DrawCenterString( void ) {
 			break;
 		}
 		start++;
+next_line:
+		;
 	}
 
 	cg_drawUniformCentered = qfalse;

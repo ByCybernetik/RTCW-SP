@@ -5,7 +5,6 @@ layout(location = 1) in vec2 vLightmapCoord;
 layout(location = 2) in vec4 vColor;
 layout(location = 3) in vec3 vWorldPos;
 layout(location = 4) in float vNormalZFadeAlpha;
-layout(location = 5) in float vFogFactor;
 layout(location = 0) out vec4 outColor;
 layout(binding = 0) uniform sampler2D uBaseTex;
 layout(binding = 1) uniform sampler2D uLightmapTex;
@@ -216,14 +215,36 @@ void main() {
         }
     }
 
-    /* Distance fog matching OpenGL GL_FOG. The fog factor was computed per-vertex
-     * in world.vert and perspective-correct interpolated, matching OpenGL's
-     * per-vertex fog coordinate. This avoids per-pixel world-position interpolation
-     * artifacts on large brush polygons.  Active whenever params16.w selects a
-     * distance-fog mode (1=linear, 2=exp, 3=exp2), even if volumetric modulation
-     * is also on. */
+    /* Distance fog matching OpenGL GL_FOG. Evaluate the fog equation per
+     * fragment from world position so large outdoor brushes are not
+     * under-fogged (lerping the factor / radial length is too clear). */
     if (view.drawParams[pc.drawParamIndex * 9u + 2u].w > 0.5 && view.drawParams[pc.drawParamIndex * 9u + 1u].w > 0.0 && view.drawParams[pc.drawParamIndex * 9u + 1u].w < 4.0) {
-        lit = mix(view.drawParams[pc.drawParamIndex * 9u + 1u].xyz, lit, vFogFactor);
+        vec3 eyeVec = vWorldPos - pc.params14.xyz;
+        float fogDist;
+        float fogFactor;
+        float fogStart = view.drawParams[pc.drawParamIndex * 9u + 2u].x;
+        float fogEnd = view.drawParams[pc.drawParamIndex * 9u + 2u].y;
+        float fogDensity = view.drawParams[pc.drawParamIndex * 9u + 2u].z;
+        float mode = view.drawParams[pc.drawParamIndex * 9u + 1u].w;
+        int distMode = int(view.drawParams[pc.drawParamIndex * 9u + 5u].w + 0.5);
+
+        if (distMode == 1) {
+            fogDist = abs(dot(eyeVec, view.drawParams[pc.drawParamIndex * 9u + 5u].xyz));
+        } else if (distMode == 2) {
+            fogDist = dot(eyeVec, view.drawParams[pc.drawParamIndex * 9u + 5u].xyz);
+        } else {
+            fogDist = length(eyeVec);
+        }
+
+        if (mode < 1.5) {
+            fogFactor = clamp((fogEnd - fogDist) / (fogEnd - fogStart), 0.0, 1.0);
+        } else if (mode < 2.5) {
+            fogFactor = exp(-fogDensity * fogDist);
+        } else {
+            float d = fogDensity * fogDist;
+            fogFactor = exp(-d * d);
+        }
+        lit = mix(view.drawParams[pc.drawParamIndex * 9u + 1u].xyz, lit, fogFactor);
     }
 
     if (pc.params12.z > 0.5) {

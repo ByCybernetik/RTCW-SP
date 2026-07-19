@@ -369,7 +369,8 @@ static void CG_UseItem( centity_t *cent ) {
 	// print a message if the local player
 	if ( es->number == cg.snap->ps.clientNum ) {
 		if ( !itemNum ) {
-			CG_CenterPrint( CG_translateString( "HUD_MESSAGE_NOITEM" ), SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH ); //----(SA)	modified
+			/* Pass CSF label; CG_CenterPrint translates once. */
+			CG_CenterPrint( "HUD_MESSAGE_NOITEM", SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH );
 		} else {
 			item = BG_FindItemForHoldable( itemNum );
 
@@ -382,7 +383,7 @@ static void CG_UseItem( centity_t *cent ) {
 				case HI_BOOK3:
 					break;
 				case HI_WINE:
-					CG_CenterPrint( CG_translateString( "HUD_MESSAGE_WINE" ), SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH );
+					CG_CenterPrint( "HUD_MESSAGE_WINE", SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH );
 					break;
 				default:
 					CG_CenterPrint( va( "Use %s", cgs.itemPrintNames[item - bg_itemlist] ), SCREEN_HEIGHT - ( SCREEN_HEIGHT * 0.25 ), SMALLCHAR_WIDTH );

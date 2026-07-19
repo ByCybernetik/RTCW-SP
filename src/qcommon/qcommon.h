@@ -975,6 +975,9 @@ void    Sys_Print( const char *msg );
 // any game related timing information should come from event timestamps
 int     Sys_Milliseconds( void );
 
+/* Sleep at least msec (0 = yield). Used by the maxfps limiter. */
+void    Sys_Sleep( int msec );
+
 void    Sys_SnapVector( float *v );
 
 // the system console is shown when a dedicated server is running
