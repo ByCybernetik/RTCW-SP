@@ -24,6 +24,7 @@ void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
 image_t *VK_BundleImage(const textureBundle_t *bundle, const shader_t *shader);
 image_t *VK_StageLightmapImage(const shader_t *shader);
 VkDescriptorSet VK_StageDescriptorSet(const shader_t *shader, const shaderStage_t *stage);
+qboolean VK_ShaderNeedsCpuDeform(const shader_t *shader);
 
 int VK_MaterialPolygonOffset(void);
 float VK_MaterialPolyOffsetFactor(void);

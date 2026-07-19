@@ -290,7 +290,7 @@ void VK_SetupDescriptorPool(void) {
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = VK_MAX_DESCRIPTOR_SETS * 2;
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    poolSizes[2].descriptorCount = 1;
+    poolSizes[2].descriptorCount = 3;
 
     ci.maxSets = VK_MAX_DESCRIPTOR_SETS + 1;
     ci.poolSizeCount = 3;
@@ -319,26 +319,37 @@ void VK_SetupPipelineLayout(void) {
     vkCreatePipelineLayout(vk_state.dev, &ci, NULL, &vk_state.pipelineLayout);
 }
 
-/* Create the per-view MVP uniform buffer, its descriptor set layout (set 1),
- * and a single descriptor set bound with a per-frame dynamic offset. */
+/* Create the per-view MVP + bone + dlight UBOs (set 1, bindings 0..2). */
+vk_bone_ubo_t vk_boneUbo;
+vk_dlight_ubo_t vk_dlightUbo;
+uint32_t vk_currentBoneSet;
+
 qboolean VK_SetupViewUbo(void) {
-    VkDescriptorSetLayoutBinding binding = { 0 };
+    VkDescriptorSetLayoutBinding bindings[3];
     VkDescriptorSetLayoutCreateInfo lci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     VkDescriptorSetAllocateInfo dsai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-    VkDescriptorBufferInfo dbi = { 0 };
-    VkWriteDescriptorSet wds = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    VkDescriptorBufferInfo dbi[3];
+    VkWriteDescriptorSet wds[3];
     VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     VkMemoryRequirements req;
 
-    binding.binding = 0;
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    binding.descriptorCount = 1;
-    /* Fragment reads fog/fade drawParams from the same UBO. */
-    binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    memset(bindings, 0, sizeof(bindings));
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    bindings[1].descriptorCount = 1;
+    bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    bindings[2].binding = 2;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    bindings[2].descriptorCount = 1;
+    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    lci.bindingCount = 1;
-    lci.pBindings = &binding;
+    lci.bindingCount = 3;
+    lci.pBindings = bindings;
     if (vkCreateDescriptorSetLayout(vk_state.dev, &lci, NULL, &vk_viewUbo.setLayout) != VK_SUCCESS) {
         return qfalse;
     }
@@ -359,6 +370,36 @@ qboolean VK_SetupViewUbo(void) {
     vkBindBufferMemory(vk_state.dev, vk_viewUbo.buffer, vk_viewUbo.memory, 0);
     vkMapMemory(vk_state.dev, vk_viewUbo.memory, 0, bci.size, 0, (void **)&vk_viewUbo.mapped);
 
+    memset(&vk_boneUbo, 0, sizeof(vk_boneUbo));
+    bci.size = VK_BONE_UBO_REGION_SIZE * VK_MAX_FRAMES_IN_FLIGHT;
+    if (vkCreateBuffer(vk_state.dev, &bci, NULL, &vk_boneUbo.buffer) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkGetBufferMemoryRequirements(vk_state.dev, vk_boneUbo.buffer, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &vk_boneUbo.memory) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkBindBufferMemory(vk_state.dev, vk_boneUbo.buffer, vk_boneUbo.memory, 0);
+    vkMapMemory(vk_state.dev, vk_boneUbo.memory, 0, bci.size, 0, (void **)&vk_boneUbo.mapped);
+
+    memset(&vk_dlightUbo, 0, sizeof(vk_dlightUbo));
+    bci.size = (VkDeviceSize)VK_DLIGHT_UBO_BYTES * VK_MAX_FRAMES_IN_FLIGHT;
+    if (vkCreateBuffer(vk_state.dev, &bci, NULL, &vk_dlightUbo.buffer) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkGetBufferMemoryRequirements(vk_state.dev, vk_dlightUbo.buffer, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, &vk_dlightUbo.memory) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkBindBufferMemory(vk_state.dev, vk_dlightUbo.buffer, vk_dlightUbo.memory, 0);
+    vkMapMemory(vk_state.dev, vk_dlightUbo.memory, 0, bci.size, 0, (void **)&vk_dlightUbo.mapped);
+
     dsai.descriptorPool = vk_state.descPool;
     dsai.descriptorSetCount = 1;
     dsai.pSetLayouts = &vk_viewUbo.setLayout;
@@ -366,16 +407,66 @@ qboolean VK_SetupViewUbo(void) {
         return qfalse;
     }
 
-    dbi.buffer = vk_viewUbo.buffer;
-    dbi.offset = 0;
-    dbi.range = VK_VIEW_UBO_REGION_SIZE;
-    wds.dstSet = vk_viewUbo.set;
-    wds.dstBinding = 0;
-    wds.descriptorCount = 1;
-    wds.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    wds.pBufferInfo = &dbi;
-    vkUpdateDescriptorSets(vk_state.dev, 1, &wds, 0, NULL);
+    memset(dbi, 0, sizeof(dbi));
+    memset(wds, 0, sizeof(wds));
+    dbi[0].buffer = vk_viewUbo.buffer;
+    dbi[0].offset = 0;
+    dbi[0].range = VK_VIEW_UBO_REGION_SIZE;
+    dbi[1].buffer = vk_boneUbo.buffer;
+    dbi[1].offset = 0;
+    dbi[1].range = VK_BONE_SET_BYTES;
+    dbi[2].buffer = vk_dlightUbo.buffer;
+    dbi[2].offset = 0;
+    dbi[2].range = VK_DLIGHT_UBO_BYTES;
 
+    wds[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wds[0].dstSet = vk_viewUbo.set;
+    wds[0].dstBinding = 0;
+    wds[0].descriptorCount = 1;
+    wds[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    wds[0].pBufferInfo = &dbi[0];
+    wds[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wds[1].dstSet = vk_viewUbo.set;
+    wds[1].dstBinding = 1;
+    wds[1].descriptorCount = 1;
+    wds[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    wds[1].pBufferInfo = &dbi[1];
+    wds[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wds[2].dstSet = vk_viewUbo.set;
+    wds[2].dstBinding = 2;
+    wds[2].descriptorCount = 1;
+    wds[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    wds[2].pBufferInfo = &dbi[2];
+    vkUpdateDescriptorSets(vk_state.dev, 3, wds, 0, NULL);
+
+    return qtrue;
+}
+
+void VK_DestroyBoneUbo(void) {
+    if (vk_boneUbo.buffer) {
+        vkDestroyBuffer(vk_state.dev, vk_boneUbo.buffer, NULL);
+        vk_boneUbo.buffer = VK_NULL_HANDLE;
+    }
+    if (vk_boneUbo.memory) {
+        vkFreeMemory(vk_state.dev, vk_boneUbo.memory, NULL);
+        vk_boneUbo.memory = VK_NULL_HANDLE;
+    }
+    vk_boneUbo.mapped = NULL;
+    vk_boneUbo.setCount = 0;
+
+    if (vk_dlightUbo.buffer) {
+        vkDestroyBuffer(vk_state.dev, vk_dlightUbo.buffer, NULL);
+        vk_dlightUbo.buffer = VK_NULL_HANDLE;
+    }
+    if (vk_dlightUbo.memory) {
+        vkFreeMemory(vk_state.dev, vk_dlightUbo.memory, NULL);
+        vk_dlightUbo.memory = VK_NULL_HANDLE;
+    }
+    vk_dlightUbo.mapped = NULL;
+}
+
+qboolean VK_SetupBoneUbo(void) {
+    /* Created together with the view UBO (same descriptor set). */
     return qtrue;
 }
 
@@ -568,8 +659,8 @@ void VK_SetupPipelines(void) {
     VkShaderModule vertMod, fragMod;
     VkPipelineShaderStageCreateInfo stages[2];
     VkPipelineVertexInputStateCreateInfo vi = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-    VkVertexInputBindingDescription binding;
-    VkVertexInputAttributeDescription attrs[5];
+    VkVertexInputBindingDescription binding[4];
+    VkVertexInputAttributeDescription attrs[11];
     VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     VkPipelineViewportStateCreateInfo vp = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
     VkPipelineRasterizationStateCreateInfo rs = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
@@ -619,9 +710,21 @@ void VK_SetupPipelines(void) {
     stages[1].module = fragMod;
     stages[1].pName = "main";
 
-    binding.binding = 0;
-    binding.stride = sizeof(vec3_t) + sizeof(vec2_t) * 2 + sizeof(vec3_t) + sizeof(byte) * 4;
-    binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    binding[0].binding = 0;
+    binding[0].stride = sizeof(vec3_t) + sizeof(vec2_t) * 2 + sizeof(vec3_t) + sizeof(byte) * 4;
+    binding[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    binding[1].binding = 1;
+    binding[1].stride = sizeof(vk_meshAttrib1_t);
+    binding[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    binding[2].binding = 2;
+    binding[2].stride = sizeof(md3XyzNormal_t);
+    binding[2].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    binding[3].binding = 3;
+    binding[3].stride = sizeof(md3XyzNormal_t);
+    binding[3].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     attrs[0].location = 0;
     attrs[0].binding = 0;
@@ -643,10 +746,34 @@ void VK_SetupPipelines(void) {
     attrs[4].binding = 0;
     attrs[4].format = VK_FORMAT_R8G8B8A8_UNORM;
     attrs[4].offset = sizeof(vec3_t) + sizeof(vec2_t) * 2 + sizeof(vec3_t);
+    attrs[5].location = 5;
+    attrs[5].binding = 1;
+    attrs[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attrs[5].offset = 0;
+    attrs[6].location = 6;
+    attrs[6].binding = 1;
+    attrs[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attrs[6].offset = 16;
+    attrs[7].location = 7;
+    attrs[7].binding = 1;
+    attrs[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attrs[7].offset = 32;
+    attrs[8].location = 8;
+    attrs[8].binding = 1;
+    attrs[8].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attrs[8].offset = 48;
+    attrs[9].location = 9;
+    attrs[9].binding = 2;
+    attrs[9].format = VK_FORMAT_R16G16B16A16_SINT;
+    attrs[9].offset = 0;
+    attrs[10].location = 10;
+    attrs[10].binding = 3;
+    attrs[10].format = VK_FORMAT_R16G16B16A16_SINT;
+    attrs[10].offset = 0;
 
-    vi.vertexBindingDescriptionCount = 1;
-    vi.pVertexBindingDescriptions = &binding;
-    vi.vertexAttributeDescriptionCount = 5;
+    vi.vertexBindingDescriptionCount = 4;
+    vi.pVertexBindingDescriptions = binding;
+    vi.vertexAttributeDescriptionCount = 11;
     vi.pVertexAttributeDescriptions = attrs;
 
     ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -1032,6 +1159,11 @@ qboolean VK_InitFromPlatform(int width, int height,
 
     if (!VK_InitDynamicVBO()) {
         ri.Printf(PRINT_WARNING, "VK_InitFromPlatform: could not create dynamic VBO\n");
+        return qfalse;
+    }
+
+    if (!VK_InitSkyStatic()) {
+        ri.Printf(PRINT_WARNING, "VK_InitFromPlatform: could not create static sky VBO\n");
         return qfalse;
     }
 
@@ -1716,6 +1848,7 @@ static void VK_WriteDescriptorPair(VkDescriptorSet dstSet, const vk_texture_t *b
                                    const vk_texture_t *light);
 
 #define VK_MAX_DESC_PAIRS 2048
+#define VK_DESC_PAIR_HASH 4096
 
 typedef struct {
     int baseIdx;
@@ -1725,6 +1858,52 @@ typedef struct {
 
 static vk_desc_pair_t vk_descPairs[VK_MAX_DESC_PAIRS];
 static int vk_descPairCount;
+static int16_t vk_descPairHash[VK_DESC_PAIR_HASH];
+
+static unsigned VK_DescPairHashKey(int baseIdx, int lightIdx) {
+    return ((unsigned)baseIdx * 73856093u) ^ ((unsigned)lightIdx * 19349663u);
+}
+
+static void VK_DescPairHashClear(void) {
+    int i;
+    for (i = 0; i < VK_DESC_PAIR_HASH; i++) {
+        vk_descPairHash[i] = -1;
+    }
+}
+
+static VkDescriptorSet VK_DescPairLookup(int baseIdx, int lightIdx) {
+    unsigned h = VK_DescPairHashKey(baseIdx, lightIdx) & (VK_DESC_PAIR_HASH - 1);
+    unsigned start = h;
+
+    do {
+        int16_t slot = vk_descPairHash[h];
+        if (slot < 0) {
+            return VK_NULL_HANDLE;
+        }
+        if (vk_descPairs[slot].baseIdx == baseIdx &&
+            vk_descPairs[slot].lightIdx == lightIdx) {
+            return vk_descPairs[slot].set;
+        }
+        h = (h + 1) & (VK_DESC_PAIR_HASH - 1);
+    } while (h != start);
+
+    return VK_NULL_HANDLE;
+}
+
+static void VK_DescPairInsert(int pairIndex) {
+    unsigned h = VK_DescPairHashKey(vk_descPairs[pairIndex].baseIdx,
+                                    vk_descPairs[pairIndex].lightIdx)
+                 & (VK_DESC_PAIR_HASH - 1);
+    unsigned start = h;
+
+    do {
+        if (vk_descPairHash[h] < 0) {
+            vk_descPairHash[h] = (int16_t)pairIndex;
+            return;
+        }
+        h = (h + 1) & (VK_DESC_PAIR_HASH - 1);
+    } while (h != start);
+}
 
 static void VK_RefreshDescPairsForVkIdx(int vkIdx) {
     int i;
@@ -2127,6 +2306,9 @@ void VK_AllocateDescriptorSets(void) {
         return;
     }
 
+    vk_descPairCount = 0;
+    VK_DescPairHashClear();
+
     ai.descriptorPool = vk_state.descPool;
     ai.descriptorSetCount = 1;
     ai.pSetLayouts = &vk_state.descSetLayout;
@@ -2200,7 +2382,6 @@ static vk_texture_t *VK_ImageToTexture(image_t *image) {
 VkDescriptorSet VK_GetDescriptorSetForImages(image_t *base, image_t *light) {
     int baseIdx;
     int lightIdx;
-    int i;
     vk_texture_t *baseTex;
     vk_texture_t *lightTex;
     VkDescriptorSetAllocateInfo ai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
@@ -2222,9 +2403,10 @@ VkDescriptorSet VK_GetDescriptorSetForImages(image_t *base, image_t *light) {
         return vk_state.whiteDescSet;
     }
 
-    for (i = 0; i < vk_descPairCount; i++) {
-        if (vk_descPairs[i].baseIdx == baseIdx && vk_descPairs[i].lightIdx == lightIdx) {
-            return vk_descPairs[i].set;
+    {
+        VkDescriptorSet found = VK_DescPairLookup(baseIdx, lightIdx);
+        if (found != VK_NULL_HANDLE) {
+            return found;
         }
     }
 
@@ -2245,6 +2427,7 @@ VkDescriptorSet VK_GetDescriptorSetForImages(image_t *base, image_t *light) {
     vk_descPairs[vk_descPairCount].baseIdx = baseIdx;
     vk_descPairs[vk_descPairCount].lightIdx = lightIdx;
     VK_WriteDescriptorPair(vk_descPairs[vk_descPairCount].set, baseTex, lightTex);
+    VK_DescPairInsert(vk_descPairCount);
     return vk_descPairs[vk_descPairCount++].set;
 }
 
@@ -2278,7 +2461,9 @@ void VK_Shutdown(void) {
 
     VK_DestroySwapchain();
     VK_DestroyDynamicVBO();
+    VK_DestroySkyStatic();
     VK_DestroyWorldStaticBuffers();
+    VK_DestroyMeshCaches();
     VK_DestroyTexture(&vk_state.whiteTexture);
     VK_DestroyTexture(&vk_state.fogTexture);
 
@@ -2301,6 +2486,7 @@ void VK_Shutdown(void) {
         vkDestroyDescriptorSetLayout(vk_state.dev, vk_viewUbo.setLayout, NULL);
         vk_viewUbo.setLayout = VK_NULL_HANDLE;
     }
+    VK_DestroyBoneUbo();
 
     if (vk_state.uploadPool) {
         if (vk_state.uploadCmd) {

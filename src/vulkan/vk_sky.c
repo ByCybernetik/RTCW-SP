@@ -2,12 +2,17 @@
 #include "vk_material.h"
 #include "vk_sky.h"
 #include <math.h>
+#include <string.h>
 
 #define SKY_SUBDIVISIONS        8
 #define HALF_SKY_SUBDIVISIONS   (SKY_SUBDIVISIONS / 2)
+#define SKY_FACE_VERTS          ((SKY_SUBDIVISIONS + 1) * (SKY_SUBDIVISIONS + 1))
+#define SKY_FACE_QUADS          (SKY_SUBDIVISIONS * SKY_SUBDIVISIONS)
+#define SKY_FACE_IDX            (SKY_FACE_QUADS * 6)
+#define SKY_TOTAL_VERTS         (SKY_FACE_VERTS * 6)
+#define SKY_TOTAL_IDX           (SKY_FACE_IDX * 6)
 
 extern void RB_ClipSkyPolygons(shaderCommands_t *input);
-extern void R_BuildCloudData(shaderCommands_t *input);
 extern void RB_SurfaceFace(srfSurfaceFace_t *surf);
 extern void RB_SurfaceGrid(srfGridMesh_t *cv);
 extern void RB_SurfaceTriangles(srfTriangles_t *srf);
@@ -15,8 +20,17 @@ extern void RB_SurfaceTriangles(srfTriangles_t *srf);
 extern float sky_mins[2][6];
 extern float sky_maxs[2][6];
 
-static float vk_sky_min;
-static float vk_sky_max;
+typedef struct {
+    VkBuffer vbo;
+    VkDeviceMemory vboMemory;
+    VkBuffer ibo;
+    VkDeviceMemory iboMemory;
+    uint32_t faceFirstIndex[6];
+    uint32_t faceIndexCount;
+    qboolean ready;
+} vk_sky_static_t;
+
+static vk_sky_static_t vk_skyStatic;
 
 static void VK_FillSkyPushConstants(const shader_t *shader, vk_push_constants_t *pc) {
     /* The sky is drawn with the world entity active; reuse its per-view MVP
@@ -24,7 +38,8 @@ static void VK_FillSkyPushConstants(const shader_t *shader, vk_push_constants_t 
     VK_FillPushConstants(vk_currentMvpSlot, shader, pc);
 }
 
-static void VK_MakeSkyVec(float s, float t, int axis, float outSt[2], vec3_t outXYZ) {
+/* Unit-cube sky direction for axis (boxSize == 1). ST in [0,1]. */
+static void VK_MakeUnitSkyVec(float s, float t, int axis, float outSt[2], vec3_t outXYZ) {
     static int st_to_vec[6][3] = {
         { 3,-1, 2},
         {-3, 1, 2},
@@ -35,20 +50,10 @@ static void VK_MakeSkyVec(float s, float t, int axis, float outSt[2], vec3_t out
     };
     vec3_t b;
     int j, k;
-    float boxSize;
 
-    if (glfogsettings[FOG_SKY].registered) {
-        boxSize = glfogsettings[FOG_SKY].end;
-    } else {
-        boxSize = backEnd.viewParms.zFar / 1.75f;
-    }
-    if (boxSize < r_znear->value * 2.0f) {
-        boxSize = r_znear->value * 2.0f;
-    }
-
-    b[0] = s * boxSize;
-    b[1] = t * boxSize;
-    b[2] = boxSize;
+    b[0] = s;
+    b[1] = t;
+    b[2] = 1.0f;
 
     for (j = 0; j < 3; j++) {
         k = st_to_vec[axis][j];
@@ -61,16 +66,6 @@ static void VK_MakeSkyVec(float s, float t, int axis, float outSt[2], vec3_t out
 
     s = (s + 1.0f) * 0.5f;
     t = (t + 1.0f) * 0.5f;
-    if (s < vk_sky_min) {
-        s = vk_sky_min;
-    } else if (s > vk_sky_max) {
-        s = vk_sky_max;
-    }
-    if (t < vk_sky_min) {
-        t = vk_sky_min;
-    } else if (t > vk_sky_max) {
-        t = vk_sky_max;
-    }
     t = 1.0f - t;
 
     if (outSt) {
@@ -79,88 +74,187 @@ static void VK_MakeSkyVec(float s, float t, int axis, float outSt[2], vec3_t out
     }
 }
 
+static qboolean VK_CreateSkyHostBuffer(VkBufferUsageFlags usage, const void *data,
+                                       VkDeviceSize size, VkBuffer *outBuf,
+                                       VkDeviceMemory *outMem) {
+    VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkMemoryRequirements req;
+    void *mapped;
+
+    *outBuf = VK_NULL_HANDLE;
+    *outMem = VK_NULL_HANDLE;
+
+    bci.size = size;
+    bci.usage = usage;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(vk_state.dev, &bci, NULL, outBuf) != VK_SUCCESS) {
+        return qfalse;
+    }
+    vkGetBufferMemoryRequirements(vk_state.dev, *outBuf, &req);
+    ai.allocationSize = req.size;
+    ai.memoryTypeIndex = VK_FindMemoryType(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(vk_state.dev, &ai, NULL, outMem) != VK_SUCCESS) {
+        vkDestroyBuffer(vk_state.dev, *outBuf, NULL);
+        *outBuf = VK_NULL_HANDLE;
+        return qfalse;
+    }
+    vkBindBufferMemory(vk_state.dev, *outBuf, *outMem, 0);
+    if (vkMapMemory(vk_state.dev, *outMem, 0, size, 0, &mapped) != VK_SUCCESS) {
+        vkDestroyBuffer(vk_state.dev, *outBuf, NULL);
+        vkFreeMemory(vk_state.dev, *outMem, NULL);
+        *outBuf = VK_NULL_HANDLE;
+        *outMem = VK_NULL_HANDLE;
+        return qfalse;
+    }
+    memcpy(mapped, data, (size_t)size);
+    vkUnmapMemory(vk_state.dev, *outMem);
+    return qtrue;
+}
+
+qboolean VK_InitSkyStatic(void) {
+    drawVert_t *verts;
+    uint32_t *indices;
+    int axis, s, t;
+    int vertBase;
+    int idxBase;
+    VkDeviceSize vboSize;
+    VkDeviceSize iboSize;
+
+    memset(&vk_skyStatic, 0, sizeof(vk_skyStatic));
+
+    verts = (drawVert_t *)ri.Hunk_AllocateTempMemory(SKY_TOTAL_VERTS * sizeof(drawVert_t));
+    indices = (uint32_t *)ri.Hunk_AllocateTempMemory(SKY_TOTAL_IDX * sizeof(uint32_t));
+    if (!verts || !indices) {
+        if (verts) {
+            ri.Hunk_FreeTempMemory(verts);
+        }
+        if (indices) {
+            ri.Hunk_FreeTempMemory(indices);
+        }
+        return qfalse;
+    }
+
+    memset(verts, 0, SKY_TOTAL_VERTS * sizeof(drawVert_t));
+    idxBase = 0;
+    for (axis = 0; axis < 6; axis++) {
+        vertBase = axis * SKY_FACE_VERTS;
+        vk_skyStatic.faceFirstIndex[axis] = (uint32_t)idxBase;
+
+        for (t = 0; t <= SKY_SUBDIVISIONS; t++) {
+            for (s = 0; s <= SKY_SUBDIVISIONS; s++) {
+                float s_norm = (s / (float)HALF_SKY_SUBDIVISIONS) - 1.0f;
+                float t_norm = (t / (float)HALF_SKY_SUBDIVISIONS) - 1.0f;
+                int vi = vertBase + t * (SKY_SUBDIVISIONS + 1) + s;
+                float st[2];
+                vec3_t xyz;
+
+                VK_MakeUnitSkyVec(s_norm, t_norm, axis, st, xyz);
+                VectorCopy(xyz, verts[vi].xyz);
+                verts[vi].st[0] = st[0];
+                verts[vi].st[1] = st[1];
+                VectorSet(verts[vi].normal, 0.0f, 0.0f, 1.0f);
+                verts[vi].color[0] = 255;
+                verts[vi].color[1] = 255;
+                verts[vi].color[2] = 255;
+                verts[vi].color[3] = 255;
+            }
+        }
+
+        for (t = 0; t < SKY_SUBDIVISIONS; t++) {
+            for (s = 0; s < SKY_SUBDIVISIONS; s++) {
+                int row = SKY_SUBDIVISIONS + 1;
+                int v0 = vertBase + s + t * row;
+                int v1 = vertBase + s + (t + 1) * row;
+                int v2 = vertBase + s + 1 + t * row;
+                int v3 = vertBase + s + 1 + (t + 1) * row;
+
+                indices[idxBase++] = (uint32_t)v0;
+                indices[idxBase++] = (uint32_t)v1;
+                indices[idxBase++] = (uint32_t)v2;
+                indices[idxBase++] = (uint32_t)v1;
+                indices[idxBase++] = (uint32_t)v3;
+                indices[idxBase++] = (uint32_t)v2;
+            }
+        }
+    }
+    vk_skyStatic.faceIndexCount = SKY_FACE_IDX;
+
+    vboSize = (VkDeviceSize)(SKY_TOTAL_VERTS * sizeof(drawVert_t));
+    iboSize = (VkDeviceSize)(SKY_TOTAL_IDX * sizeof(uint32_t));
+
+    if (!VK_CreateSkyHostBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, verts, vboSize,
+                                &vk_skyStatic.vbo, &vk_skyStatic.vboMemory) ||
+        !VK_CreateSkyHostBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, iboSize,
+                                &vk_skyStatic.ibo, &vk_skyStatic.iboMemory)) {
+        ri.Hunk_FreeTempMemory(indices);
+        ri.Hunk_FreeTempMemory(verts);
+        VK_DestroySkyStatic();
+        return qfalse;
+    }
+
+    ri.Hunk_FreeTempMemory(indices);
+    ri.Hunk_FreeTempMemory(verts);
+    vk_skyStatic.ready = qtrue;
+    ri.Printf(PRINT_ALL, "VK_InitSkyStatic: %d verts, %d indices\n",
+              SKY_TOTAL_VERTS, SKY_TOTAL_IDX);
+    return qtrue;
+}
+
+void VK_DestroySkyStatic(void) {
+    if (vk_skyStatic.vbo) {
+        vkDestroyBuffer(vk_state.dev, vk_skyStatic.vbo, NULL);
+        vk_skyStatic.vbo = VK_NULL_HANDLE;
+    }
+    if (vk_skyStatic.vboMemory) {
+        vkFreeMemory(vk_state.dev, vk_skyStatic.vboMemory, NULL);
+        vk_skyStatic.vboMemory = VK_NULL_HANDLE;
+    }
+    if (vk_skyStatic.ibo) {
+        vkDestroyBuffer(vk_state.dev, vk_skyStatic.ibo, NULL);
+        vk_skyStatic.ibo = VK_NULL_HANDLE;
+    }
+    if (vk_skyStatic.iboMemory) {
+        vkFreeMemory(vk_state.dev, vk_skyStatic.iboMemory, NULL);
+        vk_skyStatic.iboMemory = VK_NULL_HANDLE;
+    }
+    vk_skyStatic.ready = qfalse;
+}
+
 static void VK_DrawSkyBoxSide(image_t *image, int axis, VkCommandBuffer cmd,
                               vk_push_constants_t *pc, int pipelineIdx) {
-    int sky_mins_subd[2], sky_maxs_subd[2];
-    int s, t;
-    int baseVert, baseIdx;
-    int tHeight, sWidth;
     VkDescriptorSet descSet;
+    float mins0, mins1, maxs0, maxs1;
 
-    sky_mins[0][axis] = floorf(sky_mins[0][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
-    sky_mins[1][axis] = floorf(sky_mins[1][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
-    sky_maxs[0][axis] = ceilf(sky_maxs[0][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
-    sky_maxs[1][axis] = ceilf(sky_maxs[1][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
-
-    if (sky_mins[0][axis] >= sky_maxs[0][axis] ||
-        sky_mins[1][axis] >= sky_maxs[1][axis]) {
+    if (!image || image == tr.defaultImage) {
         return;
     }
 
-    sky_mins_subd[0] = (int)(sky_mins[0][axis] * HALF_SKY_SUBDIVISIONS);
-    sky_mins_subd[1] = (int)(sky_mins[1][axis] * HALF_SKY_SUBDIVISIONS);
-    sky_maxs_subd[0] = (int)(sky_maxs[0][axis] * HALF_SKY_SUBDIVISIONS);
-    sky_maxs_subd[1] = (int)(sky_maxs[1][axis] * HALF_SKY_SUBDIVISIONS);
+    mins0 = floorf(sky_mins[0][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
+    mins1 = floorf(sky_mins[1][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
+    maxs0 = ceilf(sky_maxs[0][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
+    maxs1 = ceilf(sky_maxs[1][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
 
-    if (sky_mins_subd[0] < -HALF_SKY_SUBDIVISIONS) sky_mins_subd[0] = -HALF_SKY_SUBDIVISIONS;
-    else if (sky_mins_subd[0] > HALF_SKY_SUBDIVISIONS) sky_mins_subd[0] = HALF_SKY_SUBDIVISIONS;
-    if (sky_mins_subd[1] < -HALF_SKY_SUBDIVISIONS) sky_mins_subd[1] = -HALF_SKY_SUBDIVISIONS;
-    else if (sky_mins_subd[1] > HALF_SKY_SUBDIVISIONS) sky_mins_subd[1] = HALF_SKY_SUBDIVISIONS;
-
-    if (sky_maxs_subd[0] < -HALF_SKY_SUBDIVISIONS) sky_maxs_subd[0] = -HALF_SKY_SUBDIVISIONS;
-    else if (sky_maxs_subd[0] > HALF_SKY_SUBDIVISIONS) sky_maxs_subd[0] = HALF_SKY_SUBDIVISIONS;
-    if (sky_maxs_subd[1] < -HALF_SKY_SUBDIVISIONS) sky_maxs_subd[1] = -HALF_SKY_SUBDIVISIONS;
-    else if (sky_maxs_subd[1] > HALF_SKY_SUBDIVISIONS) sky_maxs_subd[1] = HALF_SKY_SUBDIVISIONS;
+    /* Skip faces with no visible sky projection (portal / partial sky). */
+    if (mins0 >= maxs0 || mins1 >= maxs1) {
+        return;
+    }
 
     descSet = VK_GetDescriptorSetForImage(image);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipelineIdx]);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
 
-    baseVert = tess.numVertexes;
-    baseIdx = tess.numIndexes;
-
-    tHeight = sky_maxs_subd[1] - sky_mins_subd[1] + 1;
-    sWidth = sky_maxs_subd[0] - sky_mins_subd[0] + 1;
-
-    for (t = 0; t < tHeight; t++) {
-        for (s = 0; s < sWidth; s++) {
-            float s_norm = (sky_mins_subd[0] + s) / (float)HALF_SKY_SUBDIVISIONS;
-            float t_norm = (sky_mins_subd[1] + t) / (float)HALF_SKY_SUBDIVISIONS;
-            vec3_t skyVec;
-            float st[2];
-
-            VK_MakeSkyVec(s_norm, t_norm, axis, st, skyVec);
-            VectorAdd(skyVec, backEnd.viewParms.or.origin, tess.xyz[tess.numVertexes]);
-            tess.texCoords[tess.numVertexes][0][0] = st[0];
-            tess.texCoords[tess.numVertexes][0][1] = st[1];
-            tess.texCoords[tess.numVertexes][1][0] = 0.0f;
-            tess.texCoords[tess.numVertexes][1][1] = 0.0f;
-            VectorSet(tess.normal[tess.numVertexes], 0.0f, 0.0f, 1.0f);
-            tess.vertexColors[tess.numVertexes][0] = 255;
-            tess.vertexColors[tess.numVertexes][1] = 255;
-            tess.vertexColors[tess.numVertexes][2] = 255;
-            tess.vertexColors[tess.numVertexes][3] = 255;
-            tess.numVertexes++;
-        }
+    if (!vk_skyStatic.ready) {
+        return;
     }
 
-    for (t = 0; t < tHeight - 1; t++) {
-        for (s = 0; s < sWidth - 1; s++) {
-            tess.indexes[tess.numIndexes++] = baseVert + s + t * sWidth;
-            tess.indexes[tess.numIndexes++] = baseVert + s + (t + 1) * sWidth;
-            tess.indexes[tess.numIndexes++] = baseVert + s + 1 + t * sWidth;
-
-            tess.indexes[tess.numIndexes++] = baseVert + s + (t + 1) * sWidth;
-            tess.indexes[tess.numIndexes++] = baseVert + s + 1 + (t + 1) * sWidth;
-            tess.indexes[tess.numIndexes++] = baseVert + s + 1 + t * sWidth;
-        }
-    }
-
-    VK_DrawTessRange(baseVert, baseIdx);
-
-    tess.numVertexes = baseVert;
-    tess.numIndexes = baseIdx;
+    VK_BindMeshVertexBuffers(cmd, vk_skyStatic.vbo, 0, VK_NULL_HANDLE, 0);
+    vkCmdBindIndexBuffer(cmd, vk_skyStatic.ibo, 0, VK_INDEX_TYPE_UINT32);
+    VK_CmdPushMaterial(cmd, pc);
+    vkCmdDrawIndexed(cmd, vk_skyStatic.faceIndexCount, 1,
+                     vk_skyStatic.faceFirstIndex[axis], 0, 0);
 }
 
 static void VK_DrawSkyBoxFaces(const shader_t *shader, image_t *images[6],
@@ -169,8 +263,7 @@ static void VK_DrawSkyBoxFaces(const shader_t *shader, image_t *images[6],
     static const int sky_texorder[6] = {0, 2, 1, 3, 4, 5};
     int i;
 
-    vk_sky_min = 0.0f;
-    vk_sky_max = 1.0f;
+    (void)shader;
 
     for (i = 0; i < 6; i++) {
         int imgIdx = sky_texorder[i];
@@ -185,33 +278,15 @@ static void VK_DrawSkyBoxFaces(const shader_t *shader, image_t *images[6],
 
 static void VK_DrawCloudLayers(shader_t *shader, VkCommandBuffer cmd,
                                vk_push_constants_t *pc) {
-    int i, v;
-    int baseVert, baseIdx;
+    int i, axis;
 
     if (!shader->sky.cloudHeight) {
         return;
     }
 
-    tess.numIndexes = 0;
-    tess.numVertexes = 0;
-    R_BuildCloudData(&tess);
-
-    if (tess.numIndexes <= 0 || tess.numVertexes <= 0) {
+    if (!vk_skyStatic.ready) {
         return;
     }
-
-    for (v = 0; v < tess.numVertexes; v++) {
-        VectorSet(tess.normal[v], 0.0f, 0.0f, 1.0f);
-        tess.texCoords[v][1][0] = 0.0f;
-        tess.texCoords[v][1][1] = 0.0f;
-        tess.vertexColors[v][0] = 255;
-        tess.vertexColors[v][1] = 255;
-        tess.vertexColors[v][2] = 255;
-        tess.vertexColors[v][3] = 255;
-    }
-
-    baseVert = 0;
-    baseIdx = 0;
 
     for (i = 0; i < MAX_SHADER_STAGES && shader->stages[i]; i++) {
         shaderStage_t *stage = shader->stages[i];
@@ -226,8 +301,6 @@ static void VK_DrawCloudLayers(shader_t *shader, VkCommandBuffer cmd,
         VK_FillSkyPushConstants(shader, pc);
         VK_SetSkyPushConstants(shader, stage, pc, qtrue);
 
-        VK_CmdPushMaterial(cmd, pc);
-
         pipeIdx = VK_StageIsBlended(stage) ? VK_PipelineForStage(stage) : VK_PIPELINE_SKY;
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipeIdx]);
 
@@ -235,7 +308,25 @@ static void VK_DrawCloudLayers(shader_t *shader, VkCommandBuffer cmd,
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
 
-        VK_DrawTessRange(baseVert, baseIdx);
+        VK_BindMeshVertexBuffers(cmd, vk_skyStatic.vbo, 0, VK_NULL_HANDLE, 0);
+        vkCmdBindIndexBuffer(cmd, vk_skyStatic.ibo, 0, VK_INDEX_TYPE_UINT32);
+        VK_CmdPushMaterial(cmd, pc);
+
+        /* Faces 0..4 only — match FillCloudBox (skip bottom). */
+        for (axis = 0; axis < 5; axis++) {
+            float mins0, mins1, maxs0, maxs1;
+
+            mins0 = floorf(sky_mins[0][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
+            mins1 = floorf(sky_mins[1][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
+            maxs0 = ceilf(sky_maxs[0][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
+            maxs1 = ceilf(sky_maxs[1][axis] * HALF_SKY_SUBDIVISIONS) / HALF_SKY_SUBDIVISIONS;
+            if (mins0 >= maxs0 || mins1 >= maxs1) {
+                continue;
+            }
+
+            vkCmdDrawIndexed(cmd, vk_skyStatic.faceIndexCount, 1,
+                             vk_skyStatic.faceFirstIndex[axis], 0, 0);
+        }
     }
 }
 
@@ -322,8 +413,6 @@ void VK_DrawSky(shader_t *shader, surfaceType_t *surf, VkCommandBuffer cmd) {
         VK_FillSkyPushConstants(shader, &pc);
         VK_SetSkyPushConstants(shader, NULL, &pc, qfalse);
 
-        VK_CmdPushMaterial(cmd, &pc);
-
         VK_DrawSkyBoxFaces(shader, shader->sky.outerbox, cmd, &pc, VK_PIPELINE_SKY);
     }
 
@@ -338,8 +427,6 @@ void VK_DrawSky(shader_t *shader, surfaceType_t *surf, VkCommandBuffer cmd) {
         VK_SetStageStateFromShader(shader, NULL);
         VK_FillSkyPushConstants(shader, &pc);
         VK_SetSkyPushConstants(shader, NULL, &pc, qfalse);
-
-        VK_CmdPushMaterial(cmd, &pc);
 
         VK_DrawSkyBoxFaces(shader, shader->sky.innerbox, cmd, &pc, VK_PIPELINE_ALPHA);
     }

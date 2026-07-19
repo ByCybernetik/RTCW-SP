@@ -1627,6 +1627,9 @@ ANIMATED MODELS
 void R_MakeAnimModel( model_t *model );
 void R_AddAnimSurfaces( trRefEntity_t *ent );
 void RB_SurfaceAnim( mdsSurface_t *surfType );
+void R_CalcBones( mdsHeader_t *header, const refEntity_t *refent, int *boneList, int numBones );
+float R_CalcMDSLod( refEntity_t *refent, vec3_t origin, float radius, float modelBias, float modelScale );
+const mdsBoneFrame_t *RB_GetAnimBones( void );
 void RB_SurfaceEntity( surfaceType_t *surfType );
 int R_GetBoneTag( orientation_t *outTag, mdsHeader_t *mds, int startTagIndex, const refEntity_t *refent, const char *tagName );
 

@@ -13,6 +13,11 @@ static float vk_originalTime;
 static int vk_oldEntityNum = -1;
 static cvar_t *r_vkVolumetricFog;
 
+/* Mesh/MDS Surface* re-push materials; FogPass sets these so they preserve
+ * volumetric fog params (mode 4 + fog vectors) instead of wiping them. */
+int vk_volumetricFogPass;
+vk_push_constants_t vk_fogPassPush;
+
 static void VK_FillStagePushConstants(const shader_t *shader, vk_push_constants_t *pc) {
     /* The MVP comes from the per-view UBO slot computed once per entity; only
      * the 4-byte slot index and the stage parameters go through push
@@ -132,9 +137,14 @@ static void VK_FogPass(drawSurf_t *drawSurf, surfaceType_t type, VkCommandBuffer
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             vk_state.pipelineLayout, 0, 1, &vk_state.fogDescSet, 0, NULL);
 
+    /* Mesh/MDS draw paths call FillPushConstants again; keep a copy so they
+     * can re-push without losing volumetric fog mode/vectors. */
+    vk_fogPassPush = pc;
+    vk_volumetricFogPass = 1;
     tess.numVertexes = 0;
     tess.numIndexes = 0;
     vk_surfaceTable[type](drawSurf->surface);
+    vk_volumetricFogPass = 0;
 }
 
 static qboolean vk_depthRange = qfalse;
@@ -186,12 +196,14 @@ static void VK_SetupEntity(int entityNum) {
         R_RotateForEntity(backEnd.currentEntity, &backEnd.viewParms, &backEnd.or);
         if (backEnd.currentEntity->needDlights) {
             R_TransformDlights(backEnd.refdef.num_dlights, backEnd.refdef.dlights, &backEnd.or);
+            VK_UploadDlights();
         }
     } else {
         backEnd.currentEntity = &tr.worldEntity;
         backEnd.refdef.floatTime = vk_originalTime;
         backEnd.or = backEnd.viewParms.world;
         R_TransformDlights(backEnd.refdef.num_dlights, backEnd.refdef.dlights, &backEnd.or);
+        VK_UploadDlights();
     }
 
     /* One MVP slot per (view, entity): computed here once instead of per
@@ -222,18 +234,14 @@ static int VK_SurfaceDlightBits(surfaceType_t *surf) {
     }
 }
 
-static void VK_FillDlightPushConstants(const dlight_t *dl, vk_push_constants_t *pc) {
+static void VK_FillDlightPushConstants(int dlightBits, vk_push_constants_t *pc) {
+    /* Zero everything: leftover pad[1]/meshShortMode from the stack used to
+     * enable the MD3 short path on world verts and scramble vWorldPos. */
+    memset(pc, 0, sizeof(*pc));
     pc->mvpIndex = vk_currentMvpSlot;
-    memset(pc->params, 0, sizeof(pc->params));
-
-    pc->params[1][0] = dl->transformed[0];
-    pc->params[1][1] = dl->transformed[1];
-    pc->params[1][2] = dl->transformed[2];
-    pc->params[1][3] = dl->radius;
-
-    pc->params[2][0] = dl->color[0];
-    pc->params[2][1] = dl->color[1];
-    pc->params[2][2] = dl->color[2];
+    /* pad[0]/boneSet carries the surface light mask as a raw uint (safe;
+     * floatBitsToUint via params[0] can be NaN-canonicalized by some GPUs). */
+    pc->pad[0] = (uint32_t)dlightBits;
 
     pc->params[14][0] = backEnd.or.viewOrigin[0];
     pc->params[14][1] = backEnd.or.viewOrigin[1];
@@ -241,12 +249,21 @@ static void VK_FillDlightPushConstants(const dlight_t *dl, vk_push_constants_t *
     pc->params[14][3] = 1.0f; /* dlight pass flag */
 }
 
+static void VK_SetDlightDepthBias(VkCommandBuffer cmd) {
+    /* Must match the opaque pass depth that DEPTH_EQUAL tests against. */
+    if (VK_MaterialPolygonOffset()) {
+        vkCmdSetDepthBias(cmd, VK_MaterialPolyOffsetUnits(), 0.0f,
+                          VK_MaterialPolyOffsetFactor());
+    } else {
+        vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
+    }
+}
+
 static void VK_ProjectDlightTexture(drawSurf_t *drawSurf, int dlightBits) {
     surfaceType_t *surf;
     surfaceType_t type;
     VkCommandBuffer cmd;
     vk_push_constants_t pc;
-    int i;
 
     surf = drawSurf->surface;
     if (!surf) {
@@ -268,31 +285,20 @@ static void VK_ProjectDlightTexture(drawSurf_t *drawSurf, int dlightBits) {
     }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[VK_PIPELINE_DLIGHT]);
-    vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
+    VK_SetDlightDepthBias(cmd);
 
     {
-        VkDescriptorSet descSet = VK_GetDescriptorSetForImages(tr.whiteImage, tr.whiteImage);
+        VkDescriptorSet descSet = VK_GetDescriptorSetForImages(tr.dlightImage, tr.whiteImage);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
     }
 
-    for (i = 0; i < backEnd.refdef.num_dlights; i++) {
-        const dlight_t *dl;
+    VK_FillDlightPushConstants(dlightBits, &pc);
+    VK_CmdPushMaterial(cmd, &pc);
 
-        if (!(dlightBits & (1 << i))) {
-            continue;
-        }
-
-        dl = &backEnd.refdef.dlights[i];
-
-        VK_FillDlightPushConstants(dl, &pc);
-        VK_CmdPushMaterial(cmd, &pc);
-
-        /* Surface functions append geometry and issue the draw call. */
-        tess.numVertexes = 0;
-        tess.numIndexes = 0;
-        vk_surfaceTable[type](surf);
-    }
+    tess.numVertexes = 0;
+    tess.numIndexes = 0;
+    vk_surfaceTable[type](surf);
 }
 
 /* ---------------------------------------------------------------------------
@@ -403,7 +409,7 @@ static void VK_BatchDrawGeometry(VkCommandBuffer cmd) {
         return;
     }
 
-    vkCmdBindVertexBuffers(cmd, 0, 1, &vk_world.vbo, &vboOffset);
+    VK_BindMeshVertexBuffers(cmd, vk_world.vbo, vboOffset, VK_NULL_HANDLE, 0);
     vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)vk_batch.iboStart,
                          VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(cmd, (uint32_t)vk_batch.numIdx, 1, 0, 0, 0);
@@ -412,7 +418,6 @@ static void VK_BatchDrawGeometry(VkCommandBuffer cmd) {
 
 static void VK_FlushBatchDlights(VkCommandBuffer cmd) {
     vk_push_constants_t pc;
-    int i;
 
     if (!vk_batch.dlightBits || !backEnd.refdef.num_dlights) {
         return;
@@ -420,26 +425,17 @@ static void VK_FlushBatchDlights(VkCommandBuffer cmd) {
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       vk_state.pipelines[VK_PIPELINE_DLIGHT]);
-    vkCmdSetDepthBias(cmd, 0.0f, 0.0f, 0.0f);
+    VK_SetDlightDepthBias(cmd);
 
     {
-        VkDescriptorSet descSet = VK_GetDescriptorSetForImages(tr.whiteImage, tr.whiteImage);
+        VkDescriptorSet descSet = VK_GetDescriptorSetForImages(tr.dlightImage, tr.whiteImage);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
     }
 
-    for (i = 0; i < backEnd.refdef.num_dlights; i++) {
-        const dlight_t *dl;
-
-        if (!(vk_batch.dlightBits & (1 << i))) {
-            continue;
-        }
-
-        dl = &backEnd.refdef.dlights[i];
-        VK_FillDlightPushConstants(dl, &pc);
-        VK_CmdPushMaterial(cmd, &pc);
-        VK_BatchDrawGeometry(cmd);
-    }
+    VK_FillDlightPushConstants(vk_batch.dlightBits, &pc);
+    VK_CmdPushMaterial(cmd, &pc);
+    VK_BatchDrawGeometry(cmd);
 }
 
 static void VK_FlushBatchFog(VkCommandBuffer cmd) {
@@ -794,10 +790,22 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
     VkRect2D sc;
     int vpX, vpY, vpYBottom, vpW, vpH;
     uint32_t flareMvpSlot = 0;
+    typedef struct {
+        flare_t *flare;
+        int pipelineIdx;
+        image_t *image;
+        float x0, y0, x1, y1;
+        byte color[4];
+    } vk_flare_item_t;
+    vk_flare_item_t items[128];
+    int itemCount;
+    int runStart;
 
     if (!cmd || !vk_state.renderPassActive) {
         return;
     }
+
+    VK_Flush2DBatch();
 
     if (!r_flares->integer) {
         return;
@@ -892,22 +900,16 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         flareMvpSlot = VK_ViewAllocMvp(mvp);
     }
 
-    for (f = r_activeFlares; f; f = f->next) {
+    /* Build draw list (screen quads + pipeline/image key). */
+    itemCount = 0;
+    for (f = r_activeFlares; f && itemCount < (int)(sizeof(items) / sizeof(items[0])); f = f->next) {
         shader_t *shader;
         shaderStage_t *stage;
         float size;
-        float x0, x1, y0, y1;
-        int vboSize, iboSize, vboOff, iboOff;
-        drawVert_t *verts;
-        int *idx;
-        VkDeviceSize offsets[1];
-        int pipelineIdx;
-        image_t *image;
-        VkDescriptorSet descSet;
-        byte alpha;
         vec3_t color;
         int iColor[3];
-        int i;
+        int srcBlend, dstBlend;
+        vk_flare_item_t *it;
 
         if (f->frameSceneNum != backEnd.viewParms.frameSceneNum
             || f->inPortal != backEnd.viewParms.isPortal
@@ -925,35 +927,75 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         iColor[0] = (int)(color[0] * 255.0f);
         iColor[1] = (int)(color[1] * 255.0f);
         iColor[2] = (int)(color[2] * 255.0f);
-        alpha = (byte)(f->drawIntensity * 255.0f);
 
         size = backEnd.viewParms.viewportWidth *
                ((r_flareSize->value * f->scale) / 640.0f + 8.0f / -f->eyeZ);
 
-        x0 = f->windowXF - size;
-        x1 = f->windowXF + size;
-        y0 = f->windowYF - size;
-        y1 = f->windowYF + size;
-
-        /* Pick the 2D pipeline that matches the flare shader's blend mode.
-         * flareShader uses GL_SRC_ALPHA GL_ONE; spotLight uses
-         * GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA. */
-        {
-            int srcBlend = stage->stateBits & GLS_SRCBLEND_BITS;
-            int dstBlend = stage->stateBits & GLS_DSTBLEND_BITS;
-            if (srcBlend == GLS_SRCBLEND_SRC_ALPHA && dstBlend == GLS_DSTBLEND_ONE) {
-                pipelineIdx = VK_PIPELINE_2D_SRC_ALPHA_ONE;
-            } else if (dstBlend == GLS_DSTBLEND_ONE) {
-                pipelineIdx = VK_PIPELINE_2D_ADDITIVE;
-            } else {
-                pipelineIdx = VK_PIPELINE_2D;
-            }
+        it = &items[itemCount++];
+        it->flare = f;
+        it->x0 = f->windowXF - size;
+        it->x1 = f->windowXF + size;
+        it->y0 = f->windowYF - size;
+        it->y1 = f->windowYF + size;
+        it->color[0] = (byte)iColor[0];
+        it->color[1] = (byte)iColor[1];
+        it->color[2] = (byte)iColor[2];
+        it->color[3] = (byte)(f->drawIntensity * 255.0f);
+        it->image = VK_BundleImage(&stage->bundle[0], shader);
+        if (!it->image) {
+            it->image = tr.whiteImage;
         }
 
-        vboSize = 4 * (int)sizeof(drawVert_t);
-        iboSize = 6 * (int)sizeof(int);
+        srcBlend = stage->stateBits & GLS_SRCBLEND_BITS;
+        dstBlend = stage->stateBits & GLS_DSTBLEND_BITS;
+        if (srcBlend == GLS_SRCBLEND_SRC_ALPHA && dstBlend == GLS_DSTBLEND_ONE) {
+            it->pipelineIdx = VK_PIPELINE_2D_SRC_ALPHA_ONE;
+        } else if (dstBlend == GLS_DSTBLEND_ONE) {
+            it->pipelineIdx = VK_PIPELINE_2D_ADDITIVE;
+        } else {
+            it->pipelineIdx = VK_PIPELINE_2D;
+        }
+    }
+
+    /* Sort by (pipeline, image) so consecutive flares share one draw. */
+    {
+        int a, b;
+        for (a = 0; a < itemCount - 1; a++) {
+            for (b = a + 1; b < itemCount; b++) {
+                if (items[b].pipelineIdx < items[a].pipelineIdx ||
+                    (items[b].pipelineIdx == items[a].pipelineIdx &&
+                     items[b].image < items[a].image)) {
+                    vk_flare_item_t tmp = items[a];
+                    items[a] = items[b];
+                    items[b] = tmp;
+                }
+            }
+        }
+    }
+
+    runStart = 0;
+    while (runStart < itemCount) {
+        int runEnd = runStart + 1;
+        int nQuads;
+        int vboSize, iboSize, vboOff, iboOff;
+        drawVert_t *verts;
+        int *idx;
+        VkDeviceSize offsets[1];
+        VkDescriptorSet descSet;
+        int q;
+
+        while (runEnd < itemCount &&
+               items[runEnd].pipelineIdx == items[runStart].pipelineIdx &&
+               items[runEnd].image == items[runStart].image) {
+            runEnd++;
+        }
+
+        nQuads = runEnd - runStart;
+        vboSize = nQuads * 4 * (int)sizeof(drawVert_t);
+        iboSize = nQuads * 6 * (int)sizeof(int);
         vboOff = VK_ReserveDynamicVBO(vboSize + iboSize);
         if (vboOff < 0) {
+            runStart = runEnd;
             continue;
         }
         iboOff = vboOff + vboSize;
@@ -961,40 +1003,49 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         verts = (drawVert_t *)((uint8_t *)vk_dyn.mapped + vboOff);
         idx = (int *)((uint8_t *)vk_dyn.mapped + iboOff);
 
-        verts[0].xyz[0] = x0; verts[0].xyz[1] = y0; verts[0].xyz[2] = 0.0f;
-        verts[0].st[0] = 0.0f; verts[0].st[1] = 0.0f;
-        verts[1].xyz[0] = x0; verts[1].xyz[1] = y1; verts[1].xyz[2] = 0.0f;
-        verts[1].st[0] = 0.0f; verts[1].st[1] = 1.0f;
-        verts[2].xyz[0] = x1; verts[2].xyz[1] = y1; verts[2].xyz[2] = 0.0f;
-        verts[2].st[0] = 1.0f; verts[2].st[1] = 1.0f;
-        verts[3].xyz[0] = x1; verts[3].xyz[1] = y0; verts[3].xyz[2] = 0.0f;
-        verts[3].st[0] = 1.0f; verts[3].st[1] = 0.0f;
+        for (q = 0; q < nQuads; q++) {
+            const vk_flare_item_t *it = &items[runStart + q];
+            drawVert_t *v = verts + q * 4;
+            int *ii = idx + q * 6;
+            int base = q * 4;
+            int c;
 
-        for (i = 0; i < 4; i++) {
-            verts[i].lightmap[0] = 0.0f;
-            verts[i].lightmap[1] = 0.0f;
-            VectorClear(verts[i].normal);
-            verts[i].color[0] = (byte)iColor[0];
-            verts[i].color[1] = (byte)iColor[1];
-            verts[i].color[2] = (byte)iColor[2];
-            verts[i].color[3] = alpha;
+            v[0].xyz[0] = it->x0; v[0].xyz[1] = it->y0; v[0].xyz[2] = 0.0f;
+            v[0].st[0] = 0.0f; v[0].st[1] = 0.0f;
+            v[1].xyz[0] = it->x0; v[1].xyz[1] = it->y1; v[1].xyz[2] = 0.0f;
+            v[1].st[0] = 0.0f; v[1].st[1] = 1.0f;
+            v[2].xyz[0] = it->x1; v[2].xyz[1] = it->y1; v[2].xyz[2] = 0.0f;
+            v[2].st[0] = 1.0f; v[2].st[1] = 1.0f;
+            v[3].xyz[0] = it->x1; v[3].xyz[1] = it->y0; v[3].xyz[2] = 0.0f;
+            v[3].st[0] = 1.0f; v[3].st[1] = 0.0f;
+
+            for (c = 0; c < 4; c++) {
+                v[c].lightmap[0] = 0.0f;
+                v[c].lightmap[1] = 0.0f;
+                VectorClear(v[c].normal);
+                v[c].color[0] = it->color[0];
+                v[c].color[1] = it->color[1];
+                v[c].color[2] = it->color[2];
+                v[c].color[3] = it->color[3];
+            }
+
+            ii[0] = base + 0; ii[1] = base + 1; ii[2] = base + 2;
+            ii[3] = base + 0; ii[4] = base + 2; ii[5] = base + 3;
         }
 
-        idx[0] = 0; idx[1] = 1; idx[2] = 2;
-        idx[3] = 0; idx[4] = 2; idx[5] = 3;
-
-        image = VK_BundleImage(&stage->bundle[0], shader);
-        descSet = VK_GetDescriptorSetForImage(image ? image : tr.whiteImage);
-
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipelineIdx]);
+        descSet = VK_GetDescriptorSetForImage(items[runStart].image);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          vk_state.pipelines[items[runStart].pipelineIdx]);
         offsets[0] = (VkDeviceSize)vboOff;
-        vkCmdBindVertexBuffers(cmd, 0, 1, &vk_dyn.buffer, offsets);
+        VK_BindMeshVertexBuffers(cmd, vk_dyn.buffer, offsets[0], VK_NULL_HANDLE, 0);
         vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
         vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
                            0, sizeof(flareMvpSlot), &flareMvpSlot);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
-        vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmd, (uint32_t)(nQuads * 6), 1, 0, 0, 0);
+
+        runStart = runEnd;
     }
 
     tess = savedTess;
@@ -1033,6 +1084,8 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
     if (!vk_state.renderPassActive || numDrawSurfs <= 0) {
         return;
     }
+
+    VK_Flush2DBatch();
 
     cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
 
@@ -1104,8 +1157,9 @@ void VK_DrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int cmdGlfogNum, c
 
         surfType = drawSurfs[i].surface ? *drawSurfs[i].surface : SF_BAD;
 
-        /* Sky and non-static surface types use the per-surface path. */
-        if (shader->isSky || !VK_SurfaceIsBatchable(surfType)) {
+        /* Sky, CPU-deform shaders, and non-static types use the per-surface path. */
+        if (shader->isSky || VK_ShaderNeedsCpuDeform(shader) ||
+            !VK_SurfaceIsBatchable(surfType)) {
             VK_FlushWorldBatch(cmd);
             if (entityNum != vk_oldEntityNum) {
                 VK_SwitchEntity(entityNum);

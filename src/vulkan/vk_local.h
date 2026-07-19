@@ -10,13 +10,20 @@
 #define VK_MAX_PIPELINES 41
 #define VK_MAX_DESCRIPTOR_SETS 4096
 #define VK_MAX_TEXTURES 2048
-/* CPU-side fill array still has 21 slots; params[15..20] are uploaded to the
- * ViewUBO drawParams block. Only the first 15 vec4s are real push constants
- * so the GPU block stays within maxPushConstantsSize (256 on AMD). */
-#define VK_PUSH_PARAMS 21
+/* CPU-side fill array: params[15..23] upload to ViewUBO drawParams (9 vec4s).
+ * Only params[0..14] are real push constants (maxPushConstantsSize 256 on AMD).
+ * Slot layout in ViewUBO (drawParamIndex * 9 + i):
+ *   0..5 = former params15..20 (fade / fog / NV)
+ *   6    = ambient.rgb + meshLightEnable (.w)
+ *   7    = directed.rgb + mdsSkinEnable (.w)
+ *   8    = lightDir.xyz + meshBacklerp (.w) */
+#define VK_PUSH_PARAMS 24
 #define VK_PUSH_PARAMS_GPU 15
 #define VK_PUSH_CONSTANTS_GPU_SIZE (16 + (VK_PUSH_PARAMS_GPU) * 16) /* 256 */
-#define VK_DRAW_UBO_PARAMS 6
+#define VK_DRAW_UBO_PARAMS 9
+#define VK_MESH_LIGHT_PARAM   21
+#define VK_MESH_DIRECT_PARAM  22
+#define VK_MESH_LIGHTDIR_PARAM 23
 
 typedef enum {
     VK_PIPELINE_OPAQUE = 0,
@@ -194,6 +201,7 @@ uint32_t VK_ViewAllocDrawParams(const float *drawParams);
 void VK_ViewSetEntityMvp(void);
 uint32_t VK_ViewGet2DMvpSlot(void);
 void VK_ViewBindSet(VkCommandBuffer cmd);
+void VK_ViewBindBones(VkCommandBuffer cmd, uint32_t boneSet);
 void VK_CmdPushMaterial(VkCommandBuffer cmd, const vk_push_constants_t *pc);
 
 /* Fog layout in params[16]..params[17] (CPU fill → draw-param slot vec4[1..2]).
@@ -218,6 +226,73 @@ typedef struct {
     int32_t vertexOffset;
     uint32_t indexCount;
 } vk_world_surf_t;
+
+/* Secondary vertex stream (binding 1), 64 bytes:
+ * MD3/MDC lerp: a.xyz=oldPos, b.xyz=oldNormal
+ * MDS skin:     a=off0+w0, b=off1+w1, c=off2+w2, d=off3+w3
+ *               bone indices in drawVert lightmap.xy + color.rg */
+typedef struct {
+    float a[4];
+    float b[4];
+    float c[4];
+    float d[4];
+} vk_meshAttrib1_t;
+
+#define VK_MESH_ATTRIB1_SIZE ((int)sizeof(vk_meshAttrib1_t))
+
+extern vk_buffer_t vk_meshDummyFrame;
+
+void VK_BindMeshVertexBuffers(VkCommandBuffer cmd, VkBuffer primary, VkDeviceSize primaryOff,
+                              VkBuffer oldFrame, VkDeviceSize oldFrameOff);
+void VK_BindMeshVertexBuffers4(VkCommandBuffer cmd,
+                               VkBuffer b0, VkDeviceSize o0,
+                               VkBuffer b1, VkDeviceSize o1,
+                               VkBuffer b2, VkDeviceSize o2,
+                               VkBuffer b3, VkDeviceSize o3);
+qboolean VK_InitMeshDummyFrame(void);
+void VK_DestroyMeshDummyFrame(void);
+
+extern vk_buffer_t vk_meshDummyShort;
+
+/* Per-draw MDS bone matrices (set 1, binding 1, dynamic offset). */
+#define VK_BONE_MAX_SETS     64
+#define VK_BONE_COUNT        MDS_MAX_BONES
+#define VK_BONE_VEC4S        (VK_BONE_COUNT * 3)
+#define VK_BONE_SET_BYTES    (VK_BONE_VEC4S * 16)
+#define VK_BONE_UBO_REGION_SIZE (VK_BONE_MAX_SETS * VK_BONE_SET_BYTES)
+
+typedef struct {
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    uint8_t *mapped;
+    uint32_t setCount;
+} vk_bone_ubo_t;
+
+extern vk_bone_ubo_t vk_boneUbo;
+extern uint32_t vk_currentBoneSet;
+
+qboolean VK_SetupBoneUbo(void);
+void VK_DestroyBoneUbo(void);
+void VK_BoneFrameBegin(void);
+uint32_t VK_BoneAllocSet(const mdsBoneFrame_t *bones, int numBones);
+
+/* Dlight UBO (set 1, binding 2): all lights for one multi-light FS pass.
+ * Region size is aligned to 256 for minUniformBufferOffsetAlignment. */
+#define VK_DLIGHT_MAX            32
+#define VK_DLIGHT_UBO_RAW_BYTES  (16 + VK_DLIGHT_MAX * 32)
+#define VK_DLIGHT_UBO_BYTES      ((VK_DLIGHT_UBO_RAW_BYTES + 255) & ~255)
+
+typedef struct {
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    uint8_t *mapped;
+} vk_dlight_ubo_t;
+
+extern vk_dlight_ubo_t vk_dlightUbo;
+
+void VK_UploadDlights(void);
+qboolean VK_InitSkyStatic(void);
+void VK_DestroySkyStatic(void);
 
 typedef struct {
     VkBuffer vbo;
@@ -291,6 +366,7 @@ void VK_DrawTessRange(int baseVert, int baseIdx);
 void VK_BeginFrame(stereoFrame_t stereoFrame);
 void VK_EndFrame(int *frontEndMsec, int *backEndMsec);
 void VK_SetColor(const float *rgba);
+void VK_Flush2DBatch(void);
 void VK_StretchPic(float x, float y, float w, float h,
                    float s1, float t1, float s2, float t2, shader_t *shader);
 void VK_StretchPicGradient(float x, float y, float w, float h,
@@ -325,6 +401,12 @@ void VK_BuildWorldStaticBuffers(void);
 void VK_DestroyWorldStaticBuffers(void);
 const vk_world_surf_t *VK_WorldGetStaticSurf(void *surfData);
 const uint32_t *VK_WorldGetCpuIndices(void);
+
+void VK_DestroyMeshCaches(void);
+
+/* Set while VK_FogPass draws surfaces: mesh paths must not wipe fog push state. */
+extern int vk_volumetricFogPass;
+extern vk_push_constants_t vk_fogPassPush;
 
 extern void (*vk_surfaceTable[SF_NUM_SURFACE_TYPES])(void *);
 

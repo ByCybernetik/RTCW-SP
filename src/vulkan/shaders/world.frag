@@ -12,6 +12,8 @@ layout(binding = 1) uniform sampler2D uLightmapTex;
 layout(push_constant) uniform PushConstants {
     uint mvpIndex;
     uint drawParamIndex;
+    uint boneSet;
+    uint meshShortMode;
     vec4 params0;
     vec4 params1;
     vec4 params2;
@@ -31,8 +33,14 @@ layout(push_constant) uniform PushConstants {
 
 layout(set = 1, binding = 0) uniform ViewUBO {
     mat4 mvps[256];
-    vec4 drawParams[12288];
+    vec4 drawParams[18432];
 } view;
+
+layout(set = 1, binding = 2) uniform DlightUBO {
+    uvec4 header; /* .x = count */
+    vec4 posRadius[32];
+    vec4 color[32];
+} dlightUbo;
 
 float evalWave(float waveFunc, float x) {
     float t = fract(x);
@@ -55,9 +63,9 @@ float evalWave(float waveFunc, float x) {
 /* Replicates R_FogFactor from the GL renderer using the same
  * fog table curve (exp == 0.5, i.e. sqrt). */
 float calcFogDensity(vec3 worldPos) {
-    float s = dot(worldPos, view.drawParams[pc.drawParamIndex * 6u + 3u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 3u].w;
-    float eyeT = dot(pc.params14.xyz, view.drawParams[pc.drawParamIndex * 6u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 4u].w;
-    float t = dot(worldPos, view.drawParams[pc.drawParamIndex * 6u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 6u + 4u].w;
+    float s = dot(worldPos, view.drawParams[pc.drawParamIndex * 9u + 3u].xyz) + view.drawParams[pc.drawParamIndex * 9u + 3u].w;
+    float eyeT = dot(pc.params14.xyz, view.drawParams[pc.drawParamIndex * 9u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 9u + 4u].w;
+    float t = dot(worldPos, view.drawParams[pc.drawParamIndex * 9u + 4u].xyz) + view.drawParams[pc.drawParamIndex * 9u + 4u].w;
     bool eyeOutside = eyeT < 0.0;
     if (eyeOutside) {
         if (t < 1.0) {
@@ -89,23 +97,61 @@ float calcFogDensity(vec3 worldPos) {
 
 void main() {
     if (pc.params14.w > 0.5) {
-        vec3 dist = pc.params1.xyz - vWorldPos;
-        float radius = max(pc.params1.w, 1.0);
-        vec2 dlightUv = vec2(0.5) + dist.xy / radius;
-        if (dlightUv.x < 0.0 || dlightUv.x > 1.0 || dlightUv.y < 0.0 || dlightUv.y > 1.0) {
+        /* Multi-light pass: mask in boneSet (uint). uBaseTex is tr.dlightImage. */
+        uint mask = pc.boneSet;
+        uint count = dlightUbo.header.x;
+        vec3 accum = vec3(0.0);
+        uint i;
+
+        for (i = 0u; i < count && i < 32u; i++) {
+            if ((mask & (1u << i)) == 0u) {
+                continue;
+            }
+            vec3 dist = dlightUbo.posRadius[i].xyz - vWorldPos;
+            float radius = max(dlightUbo.posRadius[i].w, 1.0);
+            vec2 dlightUv = vec2(0.5) + dist.xy / radius;
+            if (dlightUv.x < 0.0 || dlightUv.x > 1.0 || dlightUv.y < 0.0 || dlightUv.y > 1.0) {
+                continue;
+            }
+            float z = abs(dist.z);
+            if (z > radius) {
+                continue;
+            }
+            float modulate = (z < radius * 0.5) ? 1.0 : 2.0 * (radius - z) / radius;
+            vec3 falloff = texture(uBaseTex, dlightUv).rgb;
+            accum += dlightUbo.color[i].xyz * modulate * falloff;
+        }
+        if (dot(accum, accum) < 0.0001) {
             discard;
         }
-        float z = abs(dist.z);
-        if (z > radius) {
-            discard;
+        outColor = vec4(accum, 1.0);
+        return;
+    }
+
+    /* UI / StretchPic via world pipeline (params14.w ≈ 0.2): match 2d_frag —
+     * always modulate by vertex color (identityLight, waveform, const, etc.).
+     * Without this, CGEN_IDENTITY_LIGHTING colors baked into verts are ignored
+     * and console/background shaders look ~2× too bright. */
+    if (pc.params14.w > 0.1 && pc.params14.w < 0.5) {
+        vec4 tex = texture(uBaseTex, vTexCoord);
+        vec4 color = tex * vColor;
+        if (pc.params0.z > 0.5) {
+            float ref = pc.params0.w;
+            int func = int(pc.params9.x + 0.5);
+            float alpha = color.a;
+            bool discardPixel = false;
+            if (func == 1) {
+                if (alpha <= 0.0) discardPixel = true;
+            } else if (func == 2) {
+                if (alpha >= ref) discardPixel = true;
+            } else if (func == 3) {
+                if (alpha < ref - 0.001) discardPixel = true;
+            } else {
+                if (alpha <= ref) discardPixel = true;
+            }
+            if (discardPixel) discard;
         }
-        float modulate = (z < radius * 0.5) ? 1.0 : 2.0 * (radius - z) / radius;
-        vec2 radial = dlightUv - vec2(0.5);
-        float radialFade = clamp(1.0 - dot(radial, radial) * 4.0, 0.0, 1.0);
-        if (radialFade <= 0.0) {
-            discard;
-        }
-        outColor = vec4(pc.params2.xyz * modulate * radialFade, 1.0);
+        outColor = color;
         return;
     }
 
@@ -117,21 +163,11 @@ void main() {
         }
     }
 
-    /* Volumetric fog volume pass: draw the fog texture modulated by fog color.
-     * The fog texture is white with alpha equal to fog density.
-     * For UVs outside the texture we keep a physically reasonable fallback:
-     * close to the eye (s < 0) means no fog, far/behind the clipping plane
-     * (s > 1 or t out of bounds) means fully fogged. Vertex alpha is preserved
-     * so a future non-opaque fog color behaves like OpenGL's modulate path. */
-    if (view.drawParams[pc.drawParamIndex * 6u + 1u].w > 3.5) {
-        float fogAlpha;
-        if (vTexCoord.s < 0.0) {
-            fogAlpha = 0.0;
-        } else if (vTexCoord.s > 1.0 || vTexCoord.t < 0.0 || vTexCoord.t > 1.0) {
-            fogAlpha = 1.0;
-        } else {
-            fogAlpha = texture(uBaseTex, vTexCoord).a;
-        }
+    /* Always sample the fog image (GL_CLAMP edge = densest fog). The previous
+     * s>1 / t-out-of-range → alpha=1 shortcut painted solid fog color on any
+     * bad coord and washed MD3/MDS white when fog UVs were wrong. */
+    if (view.drawParams[pc.drawParamIndex * 9u + 1u].w > 3.5) {
+        float fogAlpha = texture(uBaseTex, vTexCoord).a;
         outColor = vec4(vColor.rgb, vColor.a * fogAlpha);
         return;
     }
@@ -144,8 +180,8 @@ void main() {
     bool skyMode = pc.params11.w > 0.5;
     vec3 vertexRgb = (pc.params7.x > 0.5) ? vColor.rgb : vec3(1.0);
     float vertexAlpha = (pc.params7.y > 0.5) ? vColor.a : 1.0;
-    if (view.drawParams[pc.drawParamIndex * 6u + 0u].w > 0.0) {
-        vertexAlpha *= vNormalZFadeAlpha * view.drawParams[pc.drawParamIndex * 6u + 0u].w;
+    if (view.drawParams[pc.drawParamIndex * 9u + 0u].w > 0.0) {
+        vertexAlpha *= vNormalZFadeAlpha * view.drawParams[pc.drawParamIndex * 9u + 0u].w;
     }
     if (skyMode) {
         int rgbMode = int(pc.params1.x + 0.5);
@@ -161,9 +197,7 @@ void main() {
         vertexAlpha = sqrt(clamp(vertexAlpha, 0.0, 1.0));
     }
     vec3 lit = base4.rgb * lm * vertexRgb;
-    if (pc.params13.w > 0.0) {
-        lit = mix(lit, pc.params13.xyz, clamp(pc.params13.w, 0.0, 0.95));
-    } else if (skyMode && pc.params3.w > 0.0) {
+    if (skyMode && pc.params3.w > 0.0) {
         lit = mix(lit, pc.params3.xyz, clamp(pc.params3.w, 0.0, 0.75));
     } else if (pc.params11.z > 0.5) {
         vec3 fogColor = vec3(0.42, 0.58, 0.52);
@@ -174,8 +208,8 @@ void main() {
      * params17.w encodes the mode: 2 = RGB, 3 = RGBA, 4 = ALPHA. */
     float fogModFactor = 1.0;
     int fogModMode = 0;
-    if (view.drawParams[pc.drawParamIndex * 6u + 2u].w > 1.5) {
-        fogModMode = int(view.drawParams[pc.drawParamIndex * 6u + 2u].w + 0.5);
+    if (view.drawParams[pc.drawParamIndex * 9u + 2u].w > 1.5) {
+        fogModMode = int(view.drawParams[pc.drawParamIndex * 9u + 2u].w + 0.5);
         fogModFactor = 1.0 - calcFogDensity(vWorldPos);
         if (fogModMode == 2 || fogModMode == 3) {
             lit *= fogModFactor;
@@ -188,8 +222,8 @@ void main() {
      * artifacts on large brush polygons.  Active whenever params16.w selects a
      * distance-fog mode (1=linear, 2=exp, 3=exp2), even if volumetric modulation
      * is also on. */
-    if (view.drawParams[pc.drawParamIndex * 6u + 2u].w > 0.5 && view.drawParams[pc.drawParamIndex * 6u + 1u].w > 0.0 && view.drawParams[pc.drawParamIndex * 6u + 1u].w < 4.0) {
-        lit = mix(view.drawParams[pc.drawParamIndex * 6u + 1u].xyz, lit, vFogFactor);
+    if (view.drawParams[pc.drawParamIndex * 9u + 2u].w > 0.5 && view.drawParams[pc.drawParamIndex * 9u + 1u].w > 0.0 && view.drawParams[pc.drawParamIndex * 9u + 1u].w < 4.0) {
+        lit = mix(view.drawParams[pc.drawParamIndex * 9u + 1u].xyz, lit, vFogFactor);
     }
 
     if (pc.params12.z > 0.5) {
@@ -226,9 +260,7 @@ void main() {
         if (discardPixel) discard;
     }
 
-    if (pc.params14.w > 0.1 && pc.params14.w < 0.5) {
-        outColor = vec4(lit, outAlpha);
-    } else if (pc.params0.x > 0.5) {
+    if (pc.params0.x > 0.5) {
         outColor = vec4(alpha, alpha, alpha, 1.0);
     } else if (skyMode) {
         outColor = vec4(lit, outAlpha);

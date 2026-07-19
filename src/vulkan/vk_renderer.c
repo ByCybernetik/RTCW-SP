@@ -4,6 +4,14 @@
 
 extern void (*vk_surfaceTable[SF_NUM_SURFACE_TYPES])(void *);
 
+#define VK_2D_BATCH_MAX 256
+
+static drawVert_t vk_2dBatchVerts[VK_2D_BATCH_MAX * 4];
+static int vk_2dBatchCount;
+static int vk_2dBatchPipe = -1;
+static VkDescriptorSet vk_2dBatchDesc = VK_NULL_HANDLE;
+static uint32_t vk_2dBatchMvp;
+
 void VK_BeginFrame(stereoFrame_t stereoFrame) {
     (void)stereoFrame;
 
@@ -121,6 +129,9 @@ void VK_BeginFrame(stereoFrame_t stereoFrame) {
     VK_ViewBindSet(cmd);
 
     VK_ResetDynamicVBO();
+    vk_2dBatchCount = 0;
+    vk_2dBatchPipe = -1;
+    vk_2dBatchDesc = VK_NULL_HANDLE;
 }
 
 void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
@@ -137,6 +148,8 @@ void VK_EndFrame(int *frontEndMsec, int *backEndMsec) {
         vk_state.renderPassActive = qfalse;
         return;
     }
+
+    VK_Flush2DBatch();
 
     vkCmdEndRenderPass(cmd);
     res = vkEndCommandBuffer(cmd);
@@ -227,6 +240,60 @@ void VK_ViewFrameBegin(void) {
     vk_viewUbo.slotCount = 0;
     vk_viewUbo.drawSlotCount = 0;
     vk_2dMvpSlot = -1;
+    VK_BoneFrameBegin();
+}
+
+void VK_BoneFrameBegin(void) {
+    vk_boneUbo.setCount = 0;
+    vk_currentBoneSet = 0;
+}
+
+uint32_t VK_BoneAllocSet(const mdsBoneFrame_t *bones, int numBones) {
+    uint32_t slot;
+    float *dst;
+    int i;
+    int n;
+
+    if (!vk_boneUbo.mapped || !bones || numBones <= 0) {
+        return 0;
+    }
+
+    if (vk_boneUbo.setCount >= VK_BONE_MAX_SETS) {
+        static int overflowLogged = 0;
+        if (!overflowLogged) {
+            overflowLogged = 1;
+            ri.Printf(PRINT_WARNING, "VK_BoneAllocSet: overflow, reusing last set\n");
+        }
+        return vk_boneUbo.setCount > 0 ? vk_boneUbo.setCount - 1 : 0;
+    }
+
+    slot = vk_boneUbo.setCount++;
+    dst = (float *)(vk_boneUbo.mapped +
+                    (size_t)vk_state.frameIndex * VK_BONE_UBO_REGION_SIZE +
+                    (size_t)slot * VK_BONE_SET_BYTES);
+
+    n = numBones;
+    if (n > VK_BONE_COUNT) {
+        n = VK_BONE_COUNT;
+    }
+    memset(dst, 0, VK_BONE_SET_BYTES);
+    for (i = 0; i < n; i++) {
+        float *row = dst + i * 12;
+        /* mat3x4 rows: (m[0], tx), (m[1], ty), (m[2], tz) */
+        row[0] = bones[i].matrix[0][0];
+        row[1] = bones[i].matrix[0][1];
+        row[2] = bones[i].matrix[0][2];
+        row[3] = bones[i].translation[0];
+        row[4] = bones[i].matrix[1][0];
+        row[5] = bones[i].matrix[1][1];
+        row[6] = bones[i].matrix[1][2];
+        row[7] = bones[i].translation[1];
+        row[8] = bones[i].matrix[2][0];
+        row[9] = bones[i].matrix[2][1];
+        row[10] = bones[i].matrix[2][2];
+        row[11] = bones[i].translation[2];
+    }
+    return slot;
 }
 
 uint32_t VK_ViewAllocMvp(const float mvp[16]) {
@@ -307,6 +374,7 @@ void VK_ViewBegin(void) {
 
     vk_worldMvpSlot = VK_ViewAllocMvp(mvp);
     vk_currentMvpSlot = vk_worldMvpSlot;
+    VK_UploadDlights();
 }
 
 void VK_ViewSetEntityMvp(void) {
@@ -332,11 +400,67 @@ uint32_t VK_ViewGet2DMvpSlot(void) {
 }
 
 void VK_ViewBindSet(VkCommandBuffer cmd) {
-    uint32_t dynamicOffset = vk_state.frameIndex * VK_VIEW_UBO_REGION_SIZE;
+    VK_ViewBindBones(cmd, 0);
+}
+
+void VK_ViewBindBones(VkCommandBuffer cmd, uint32_t boneSet) {
+    uint32_t dynamicOffsets[3];
+
+    if (boneSet >= VK_BONE_MAX_SETS) {
+        boneSet = 0;
+    }
+
+    dynamicOffsets[0] = vk_state.frameIndex * VK_VIEW_UBO_REGION_SIZE;
+    dynamicOffsets[1] = vk_state.frameIndex * VK_BONE_UBO_REGION_SIZE +
+                        boneSet * VK_BONE_SET_BYTES;
+    dynamicOffsets[2] = vk_state.frameIndex * VK_DLIGHT_UBO_BYTES;
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             vk_state.pipelineLayout, 1, 1, &vk_viewUbo.set,
-                            1, &dynamicOffset);
+                            3, dynamicOffsets);
+}
+
+void VK_UploadDlights(void) {
+    uint8_t *base;
+    uint32_t *header;
+    float *posRadius;
+    float *colors;
+    int i;
+    int n;
+
+    if (!vk_dlightUbo.mapped) {
+        return;
+    }
+
+    base = vk_dlightUbo.mapped + (size_t)vk_state.frameIndex * VK_DLIGHT_UBO_BYTES;
+    header = (uint32_t *)base;
+    posRadius = (float *)(base + 16);
+    colors = posRadius + VK_DLIGHT_MAX * 4;
+
+    n = backEnd.refdef.num_dlights;
+    if (n > VK_DLIGHT_MAX) {
+        n = VK_DLIGHT_MAX;
+    }
+    header[0] = (uint32_t)n;
+    header[1] = 0;
+    header[2] = 0;
+    header[3] = 0;
+
+    memset(posRadius, 0, VK_DLIGHT_MAX * 32);
+    for (i = 0; i < n; i++) {
+        const dlight_t *dl = &backEnd.refdef.dlights[i];
+        float *pr = posRadius + i * 4;
+        float *col = colors + i * 4;
+
+        pr[0] = dl->transformed[0];
+        pr[1] = dl->transformed[1];
+        pr[2] = dl->transformed[2];
+        pr[3] = dl->radius;
+        col[0] = dl->color[0];
+        col[1] = dl->color[1];
+        col[2] = dl->color[2];
+        col[3] = 1.0f;
+    }
 }
 
 void VK_CmdPushMaterial(VkCommandBuffer cmd, const vk_push_constants_t *pcIn) {
@@ -350,8 +474,7 @@ void VK_CmdPushMaterial(VkCommandBuffer cmd, const vk_push_constants_t *pcIn) {
     /* One immutable slot per push: GPU reads it later when the CB runs, so a
      * single shared drawParams cell would make fog flicker (last write wins). */
     pc.drawParamIndex = VK_ViewAllocDrawParams(&pc.params[15][0]);
-    pc.pad[0] = 0;
-    pc.pad[1] = 0;
+    /* pad[0] = MDS bone set (bind offset); pad[1] = MD3 shortMode — keep from caller. */
     vkCmdPushConstants(cmd, vk_state.pipelineLayout,
                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, VK_PUSH_CONSTANTS_GPU_SIZE, &pc);
@@ -532,6 +655,11 @@ static qboolean VK_UIStageUses2DPipeline(const shader_t *shader, const shaderSta
         return qfalse;
     }
 
+    /* tcMod runs in world.vert via push constants — keep 2D path texcoord-free. */
+    if (stage->bundle[0].numTexMods > 0) {
+        return qfalse;
+    }
+
     if (stage->bundle[0].tcGen == TCGEN_ENVIRONMENT_MAPPED ||
         stage->bundle[0].tcGen == TCGEN_FIRERISEENV_MAPPED) {
         return qfalse;
@@ -542,6 +670,78 @@ static qboolean VK_UIStageUses2DPipeline(const shader_t *shader, const shaderSta
     }
 
     return qtrue;
+}
+
+void VK_Flush2DBatch(void) {
+    VkCommandBuffer cmd;
+    int vboSize, iboSize, vboOff, iboOff;
+    drawVert_t *dst;
+    int *idx;
+    VkDeviceSize offsets[1];
+    int q;
+
+    if (vk_2dBatchCount <= 0) {
+        return;
+    }
+
+    cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
+    if (!cmd || !vk_state.renderPassActive) {
+        vk_2dBatchCount = 0;
+        vk_2dBatchPipe = -1;
+        vk_2dBatchDesc = VK_NULL_HANDLE;
+        return;
+    }
+
+    vboSize = vk_2dBatchCount * 4 * (int)sizeof(drawVert_t);
+    iboSize = vk_2dBatchCount * 6 * (int)sizeof(int);
+    vboOff = VK_ReserveDynamicVBO(vboSize + iboSize);
+    if (vboOff < 0) {
+        vk_2dBatchCount = 0;
+        return;
+    }
+    iboOff = vboOff + vboSize;
+
+    dst = (drawVert_t *)((uint8_t *)vk_dyn.mapped + vboOff);
+    idx = (int *)((uint8_t *)vk_dyn.mapped + iboOff);
+    Com_Memcpy(dst, vk_2dBatchVerts, (size_t)vboSize);
+
+    for (q = 0; q < vk_2dBatchCount; q++) {
+        int base = q * 4;
+        int *ii = idx + q * 6;
+        ii[0] = base + 0; ii[1] = base + 1; ii[2] = base + 2;
+        ii[3] = base + 0; ii[4] = base + 2; ii[5] = base + 3;
+    }
+
+    VK_SetPicViewport(cmd);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      vk_state.pipelines[vk_2dBatchPipe]);
+    offsets[0] = (VkDeviceSize)vboOff;
+    VK_BindMeshVertexBuffers(cmd, vk_dyn.buffer, offsets[0], VK_NULL_HANDLE, 0);
+    vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
+    vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                       0, sizeof(vk_2dBatchMvp), &vk_2dBatchMvp);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            vk_state.pipelineLayout, 0, 1, &vk_2dBatchDesc, 0, NULL);
+    vkCmdDrawIndexed(cmd, (uint32_t)(vk_2dBatchCount * 6), 1, 0, 0, 0);
+
+    vk_2dBatchCount = 0;
+}
+
+static void VK_Append2DQuad(int pipeIdx, VkDescriptorSet descSet, uint32_t mvpSlot,
+                            const drawVert_t verts[4]) {
+    if (vk_2dBatchCount > 0 &&
+        (pipeIdx != vk_2dBatchPipe || descSet != vk_2dBatchDesc || mvpSlot != vk_2dBatchMvp)) {
+        VK_Flush2DBatch();
+    }
+    if (vk_2dBatchCount >= VK_2D_BATCH_MAX) {
+        VK_Flush2DBatch();
+    }
+
+    vk_2dBatchPipe = pipeIdx;
+    vk_2dBatchDesc = descSet;
+    vk_2dBatchMvp = mvpSlot;
+    Com_Memcpy(vk_2dBatchVerts + vk_2dBatchCount * 4, verts, 4 * sizeof(drawVert_t));
+    vk_2dBatchCount++;
 }
 
 static void VK_DrawPicQuad(float x, float y, float w, float h,
@@ -564,6 +764,7 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
     int corner;
     VkDeviceSize offsets[1];
     byte stageColors[4][4];
+    qboolean reservedSharedIbo = qfalse;
 
     if (!cmd || !vk_state.renderPassActive || !shader) {
         return;
@@ -594,15 +795,6 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
         VectorClear(baseVerts[corner].normal);
     }
 
-    iboOff = VK_ReserveDynamicVBO(iboSize);
-    if (iboOff < 0) {
-        return;
-    }
-    idx = (int *)((uint8_t *)vk_dyn.mapped + iboOff);
-    idx[0] = 0; idx[1] = 1; idx[2] = 2;
-    idx[3] = 0; idx[4] = 2; idx[5] = 3;
-    vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
-
     currentPipe = -1;
     for (stageIdx = 0; stageIdx < MAX_SHADER_STAGES && state->stages[stageIdx]; stageIdx++) {
         shaderStage_t *stage = state->stages[stageIdx];
@@ -628,7 +820,11 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
             stageVerts[corner].lightmap[1] = 0;
             VectorClear(stageVerts[corner].normal);
         }
-        VK_ApplyPicTexMods(state, stage, stageVerts);
+
+        use2D = VK_UIStageUses2DPipeline(state, stage);
+        if (use2D) {
+            VK_ApplyPicTexMods(state, stage, stageVerts);
+        }
 
         VK_FillPicStageColors(state, stage, color0, color1, color2, color3, stageColors);
 
@@ -639,6 +835,30 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
             stageVerts[corner].color[3] = stageColors[corner][3];
         }
 
+        if (use2D) {
+            image_t *img = VK_BundleImage(&stage->bundle[0], state);
+
+            pipeIdx = VK_PipelineFor2DPic(stage);
+            descSet = VK_GetDescriptorSetForImage(img ? img : tr.whiteImage);
+            VK_Append2DQuad(pipeIdx, descSet, VK_ViewGet2DMvpSlot(), stageVerts);
+            continue;
+        }
+
+        /* World-pipeline UI: flush lean 2D batch first. */
+        VK_Flush2DBatch();
+
+        if (!reservedSharedIbo) {
+            iboOff = VK_ReserveDynamicVBO(iboSize);
+            if (iboOff < 0) {
+                continue;
+            }
+            idx = (int *)((uint8_t *)vk_dyn.mapped + iboOff);
+            idx[0] = 0; idx[1] = 1; idx[2] = 2;
+            idx[3] = 0; idx[4] = 2; idx[5] = 3;
+            vkCmdBindIndexBuffer(cmd, vk_dyn.buffer, (VkDeviceSize)iboOff, VK_INDEX_TYPE_UINT32);
+            reservedSharedIbo = qtrue;
+        }
+
         stageVboOff = VK_ReserveDynamicVBO(vboSize);
         if (stageVboOff < 0) {
             continue;
@@ -646,29 +866,6 @@ static void VK_DrawPicQuad(float x, float y, float w, float h,
         Com_Memcpy((uint8_t *)vk_dyn.mapped + stageVboOff, stageVerts, vboSize);
         offsets[0] = (VkDeviceSize)stageVboOff;
         vkCmdBindVertexBuffers(cmd, 0, 1, &vk_dyn.buffer, offsets);
-
-        use2D = VK_UIStageUses2DPipeline(state, stage);
-        if (use2D) {
-            image_t *img = VK_BundleImage(&stage->bundle[0], state);
-
-            pipeIdx = VK_PipelineFor2DPic(stage);
-            if (currentPipe != pipeIdx) {
-                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state.pipelines[pipeIdx]);
-                currentPipe = pipeIdx;
-            }
-
-            {
-                uint32_t slot = VK_ViewGet2DMvpSlot();
-                vkCmdPushConstants(cmd, vk_state.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-                                   0, sizeof(slot), &slot);
-            }
-
-            descSet = VK_GetDescriptorSetForImage(img ? img : tr.whiteImage);
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    vk_state.pipelineLayout, 0, 1, &descSet, 0, NULL);
-            vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
-            continue;
-        }
 
         VK_SetUIStageStateFromShader(state, stage);
         VK_FillPushConstants(VK_ViewGet2DMvpSlot(), state, &pc);
@@ -754,6 +951,8 @@ void VK_DrawStretchRaw(int x, int y, int w, int h, int cols, int rows, int clien
     if (!image || !vk_state.renderPassActive) {
         return;
     }
+
+    VK_Flush2DBatch();
 
     cmd = vk_state.cmdBuffers[vk_state.currentImageIndex];
     if (!cmd) {

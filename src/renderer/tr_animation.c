@@ -57,6 +57,10 @@ static mdsVertex_t     *v;
 static mdsBoneFrame_t bones[MDS_MAX_BONES], rawBones[MDS_MAX_BONES], oldBones[MDS_MAX_BONES];
 static char validBones[MDS_MAX_BONES];
 static char newBones[ MDS_MAX_BONES ];
+
+const mdsBoneFrame_t *RB_GetAnimBones( void ) {
+	return bones;
+}
 static mdsBoneFrame_t  *bonePtr, *bone, *parentBone;
 static mdsBoneFrameCompressed_t    *cBonePtr, *cTBonePtr, *cOldBonePtr, *cOldTBonePtr, *cBoneList, *cOldBoneList, *cBoneListTorso, *cOldBoneListTorso;
 static mdsBoneInfo_t   *boneInfo, *thisBoneInfo, *parentBoneInfo;

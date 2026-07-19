@@ -7,6 +7,7 @@ static int g_alphaTestFunc;
 static float g_alphaTestRef;
 static int g_materialBlendEnabled;
 static int g_rgbGenVertex;
+static int g_lightingDiffuse;
 static int g_alphaGenVertex;
 static int g_alphaGenPortal;
 static float g_alphaGenPortalRange;
@@ -35,6 +36,10 @@ static float g_deformWaveAmp;
 static float g_deformWavePhase;
 static float g_deformWaveFreq;
 static int g_deformType;
+static float g_bulgeWidth;
+static float g_bulgeHeight;
+static float g_bulgeSpeed;
+static vec3_t g_moveVector;
 static int g_waterFog;
 static float g_waterFogStrength;
 static int g_polygonOffset;
@@ -56,6 +61,7 @@ static float MapWaveFunc(genFunc_t func) {
 
 static void ResetMaterialStageState(void) {
     g_rgbGenVertex = 0;
+    g_lightingDiffuse = 0;
     g_alphaGenVertex = 0;
     g_alphaGenPortal = 0;
     g_alphaGenPortalRange = 256.0f;
@@ -98,6 +104,10 @@ static void ResetMaterialStageState(void) {
     g_deformWavePhase = 0.0f;
     g_deformWaveFreq = 1.0f;
     g_deformType = 0;
+    g_bulgeWidth = 0.0f;
+    g_bulgeHeight = 0.0f;
+    g_bulgeSpeed = 0.0f;
+    VectorClear(g_moveVector);
     g_waterFog = 0;
     g_waterFogStrength = 0.0f;
     g_polygonOffset = 0;
@@ -312,16 +322,36 @@ void VK_SetStageStateFromShader(const shader_t *shader, const shaderStage_t *sta
 
     for (i = 0; i < shader->numDeforms; i++) {
         const deformStage_t *ds = &shader->deforms[i];
-        if (ds->deformation == DEFORM_WAVE || ds->deformation == DEFORM_NORMALS) {
+
+        if (ds->deformation == DEFORM_WAVE) {
             g_deformWaveDiv = ds->deformationSpread > 0.0f ? ds->deformationSpread : 1.0f;
             g_deformWaveFunc = MapWaveFunc(ds->deformationWave.func);
             g_deformWaveBase = ds->deformationWave.base;
             g_deformWaveAmp = ds->deformationWave.amplitude;
             g_deformWavePhase = ds->deformationWave.phase;
             g_deformWaveFreq = ds->deformationWave.frequency;
-            g_deformType = ds->deformation;
+            g_deformType = DEFORM_WAVE;
             break;
         }
+        if (ds->deformation == DEFORM_BULGE) {
+            g_bulgeWidth = ds->bulgeWidth;
+            g_bulgeHeight = ds->bulgeHeight;
+            g_bulgeSpeed = ds->bulgeSpeed;
+            g_deformType = DEFORM_BULGE;
+            break;
+        }
+        if (ds->deformation == DEFORM_MOVE) {
+            VectorCopy(ds->moveVector, g_moveVector);
+            g_deformWaveFunc = MapWaveFunc(ds->deformationWave.func);
+            g_deformWaveBase = ds->deformationWave.base;
+            g_deformWaveAmp = ds->deformationWave.amplitude;
+            g_deformWavePhase = ds->deformationWave.phase;
+            g_deformWaveFreq = ds->deformationWave.frequency;
+            g_deformType = DEFORM_MOVE;
+            break;
+        }
+        /* DEFORM_NORMALS: noise on normals for envmap — skip vertex displace.
+         * AUTOSPRITE*: handled via CPU tess path (VK_ShaderNeedsCpuDeform). */
     }
 
     if (!stage) {
@@ -334,6 +364,7 @@ void VK_SetStageStateFromShader(const shader_t *shader, const shaderStage_t *sta
     g_stageIsLightmap = stage->bundle[0].isLightmap ? 1 : 0;
     g_rgbGenVertex = (stage->rgbGen == CGEN_VERTEX || stage->rgbGen == CGEN_EXACT_VERTEX ||
                       stage->rgbGen == CGEN_LIGHTING_DIFFUSE) ? 1 : 0;
+    g_lightingDiffuse = (stage->rgbGen == CGEN_LIGHTING_DIFFUSE) ? 1 : 0;
     g_alphaGenVertex = (stage->alphaGen == AGEN_VERTEX || stage->alphaGen == AGEN_ONE_MINUS_VERTEX ||
                         stage->alphaGen == AGEN_CONST) ? 1 : 0;
     g_alphaGenPortal = (stage->alphaGen == AGEN_PORTAL) ? 1 : 0;
@@ -524,7 +555,8 @@ void VK_FillPicStageColors(const shader_t *shader, const shaderStage_t *stage,
             outColors[i][0] = stage->constantColor[0];
             outColors[i][1] = stage->constantColor[1];
             outColors[i][2] = stage->constantColor[2];
-            outColors[i][3] = (byte)((inputs[i][3] * stage->constantColor[3]) / 255);
+            /* rgbGen const only sets RGB; parser leaves constantColor[3] at 0.
+             * Do not fold that into alpha — AGEN_* below owns alpha. */
         }
     }
 
@@ -548,7 +580,13 @@ int VK_PipelineForUIStage(const shaderStage_t *stage) {
     }
 
     pipe = VK_PipelineForStage(stage);
-    if (pipe == VK_PIPELINE_OPAQUE || pipe == VK_PIPELINE_ALPHA ||
+    /* Opaque UI (e.g. console GL_ONE GL_ZERO) must not use SRC_ALPHA blending:
+     * rgbGen const often leaves vertex alpha at 0, which would erase the draw.
+     * SKY pipeline is depth-test off + blend off — correct for opaque 2D. */
+    if (pipe == VK_PIPELINE_OPAQUE) {
+        return VK_PIPELINE_SKY;
+    }
+    if (pipe == VK_PIPELINE_ALPHA ||
         pipe == VK_PIPELINE_SRC_ALPHA_ONE ||
         pipe == VK_PIPELINE_ONE_ONE_MINUS_SRC_COLOR ||
         pipe == VK_PIPELINE_SRC_ALPHA_ONE_MINUS_SRC_COLOR ||
@@ -633,10 +671,30 @@ void VK_FillPushConstants(uint32_t mvpIndex, const shader_t *shader, vk_push_con
      * the offset along the fire-rise direction.  params[2][3] becomes the
      * world-space Z scale factor for that path; for all other deform modes it
      * simply flags that a deformation is active. */
-    if ( g_deformWaveFreq < 0.0f && backEnd.currentEntity ) {
-        pc->params[2][3] = 0.4f + 0.6f * fabs( backEnd.currentEntity->e.fireRiseDir[2] );
+    if (g_deformType == DEFORM_WAVE && g_deformWaveFreq < 0.0f && backEnd.currentEntity) {
+        pc->params[2][3] = 0.4f + 0.6f * fabs(backEnd.currentEntity->e.fireRiseDir[2]);
     } else {
         pc->params[2][3] = (g_deformType != 0) ? 1.0f : 0.0f;
+    }
+
+    if (g_deformType == DEFORM_BULGE) {
+        pc->params[1][0] = g_bulgeWidth;
+        pc->params[1][1] = g_bulgeSpeed;
+        pc->params[1][2] = 0.0f;
+        pc->params[1][3] = g_bulgeHeight;
+        pc->params[2][0] = 0.0f;
+        pc->params[2][1] = 0.0f;
+        pc->params[2][2] = (float)DEFORM_BULGE;
+        pc->params[2][3] = 1.0f;
+    } else if (g_deformType == DEFORM_MOVE) {
+        pc->params[1][0] = g_moveVector[0];
+        pc->params[1][1] = g_moveVector[1];
+        pc->params[1][2] = g_moveVector[2];
+        pc->params[1][3] = g_deformWaveFunc;
+        pc->params[2][0] = g_deformWavePhase;
+        pc->params[2][1] = g_deformWaveFreq;
+        pc->params[2][2] = (float)DEFORM_MOVE;
+        pc->params[2][3] = g_deformWaveAmp;
     }
 
     pc->params[3][0] = g_tcModTransform[0];
@@ -667,6 +725,7 @@ void VK_FillPushConstants(uint32_t mvpIndex, const shader_t *shader, vk_push_con
     pc->params[8][0] = g_tcModRotate;
     pc->params[8][1] = timeSec;
     pc->params[8][2] = (float)g_stageIsLightmap;
+    pc->params[8][3] = (g_deformType == DEFORM_MOVE) ? g_deformWaveBase : 0.0f;
 
     pc->params[9][0] = (float)g_alphaTestFunc;
     pc->params[9][1] = (float)g_materialBlendEnabled;
@@ -701,6 +760,35 @@ void VK_FillPushConstants(uint32_t mvpIndex, const shader_t *shader, vk_push_con
     pc->params[15][1] = g_normalZFadeFireRiseDir[1];
     pc->params[15][2] = g_normalZFadeFireRiseDir[2];
     pc->params[15][3] = g_normalZFadeMaxAlpha;
+
+    /* Mesh entity lighting + MD3/MDC backlerp (ViewUBO drawParams slots 6..8). */
+    {
+        trRefEntity_t *ent = backEnd.currentEntity;
+        float backlerp = 0.0f;
+
+        if (ent && ent != &tr.worldEntity &&
+            ent->e.oldframe != ent->e.frame) {
+            backlerp = ent->e.backlerp;
+        }
+        pc->params[VK_MESH_LIGHTDIR_PARAM][3] = backlerp;
+
+        if (g_lightingDiffuse && ent && ent != &tr.worldEntity) {
+            const float inv255 = 1.0f / 255.0f;
+            pc->params[VK_MESH_LIGHT_PARAM][0] = ent->ambientLight[0] * inv255;
+            pc->params[VK_MESH_LIGHT_PARAM][1] = ent->ambientLight[1] * inv255;
+            pc->params[VK_MESH_LIGHT_PARAM][2] = ent->ambientLight[2] * inv255;
+            pc->params[VK_MESH_LIGHT_PARAM][3] = 1.0f;
+            pc->params[VK_MESH_DIRECT_PARAM][0] = ent->directedLight[0] * inv255;
+            pc->params[VK_MESH_DIRECT_PARAM][1] = ent->directedLight[1] * inv255;
+            pc->params[VK_MESH_DIRECT_PARAM][2] = ent->directedLight[2] * inv255;
+            pc->params[VK_MESH_DIRECT_PARAM][3] = 0.0f;
+            pc->params[VK_MESH_LIGHTDIR_PARAM][0] = ent->lightDir[0];
+            pc->params[VK_MESH_LIGHTDIR_PARAM][1] = ent->lightDir[1];
+            pc->params[VK_MESH_LIGHTDIR_PARAM][2] = ent->lightDir[2];
+        } else {
+            pc->params[VK_MESH_LIGHT_PARAM][3] = 0.0f;
+        }
+    }
 
     VK_FillFogPushConstants(pc);
 
@@ -827,6 +915,7 @@ void VK_FillFogPushConstants(vk_push_constants_t *pc) {
 void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
                             vk_push_constants_t *pc, qboolean cloudLayer) {
     float timeSec;
+    float boxSize;
 
     if (!shader || !pc) {
         return;
@@ -836,6 +925,18 @@ void VK_SetSkyPushConstants(const shader_t *shader, const shaderStage_t *stage,
     pc->params[11][3] = 1.0f;
     pc->params[12][0] = shader->sky.cloudHeight > 0.0f ? shader->sky.cloudHeight : 512.0f;
     pc->params[12][1] = cloudLayer ? 1.0f : 0.0f;
+
+    /* Both skybox and cloud layers use the static unit-cube VBO; scale here. */
+    if (glfogsettings[FOG_SKY].registered) {
+        boxSize = glfogsettings[FOG_SKY].end;
+    } else {
+        boxSize = backEnd.viewParms.zFar / 1.75f;
+    }
+    if (boxSize < r_znear->value * 2.0f) {
+        boxSize = r_znear->value * 2.0f;
+    }
+    pc->params[12][2] = boxSize;
+    pc->params[12][3] = 0.0f;
 
     /*
      * params1.x selects the sky rgbGen mode in world.frag.
@@ -951,6 +1052,24 @@ VkDescriptorSet VK_StageDescriptorSet(const shader_t *shader, const shaderStage_
         light = VK_StageLightmapImage(shader);
     }
     return VK_GetDescriptorSetForImages(base, light);
+}
+
+qboolean VK_ShaderNeedsCpuDeform(const shader_t *shader) {
+    int i;
+
+    if (!shader) {
+        return qfalse;
+    }
+
+    for (i = 0; i < shader->numDeforms; i++) {
+        deform_t d = shader->deforms[i].deformation;
+        if (d == DEFORM_AUTOSPRITE || d == DEFORM_AUTOSPRITE2 ||
+            d == DEFORM_PROJECTION_SHADOW ||
+            (d >= DEFORM_TEXT0 && d <= DEFORM_TEXT7)) {
+            return qtrue;
+        }
+    }
+    return qfalse;
 }
 
 int VK_MaterialPolygonOffset(void) {
