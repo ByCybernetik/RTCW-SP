@@ -39,6 +39,7 @@ If you have questions concerning this license or the applicable additional terms
 extern qboolean vk_active;
 #endif
 
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "ktx_load.h"
@@ -46,6 +47,7 @@ extern qboolean vk_active;
 
 static void R_LoadImage_STB( const char *name, byte **pic, int *width, int *height );
 static qboolean R_LoadKTXImage( const char *name, ktx_texture_t *out );
+
 
 static byte s_intensitytable[256];
 static unsigned char s_gammatable[256];
@@ -1170,8 +1172,11 @@ static qboolean R_LoadKTXImage( const char *name, ktx_texture_t *out ) {
 	return qtrue;
 }
 
-void R_LoadImage( const char *name, byte **pic, int *width, int *height ) {
+/* Returns which path produced the pixels: "orig", "jpg", "tga", "png", or NULL. */
+static const char *R_LoadImageWithSource( const char *name, byte **pic, int *width, int *height ) {
 	int len;
+	char altname[MAX_QPATH];
+	const char *ext;
 
 	*pic = NULL;
 	*width = 0;
@@ -1179,20 +1184,83 @@ void R_LoadImage( const char *name, byte **pic, int *width, int *height ) {
 
 	len = strlen( name );
 	if ( len < 5 ) {
-		return;
+		return NULL;
 	}
 
 	R_LoadImage_STB( name, pic, width, height );
+	if ( *pic ) {
+		return "orig";
+	}
+	if ( len < 4 ) {
+		return NULL;
+	}
 
-	// TGA fallback to JPG
-	if ( !*pic && !Q_stricmp( name + len - 4, ".tga" ) ) {
-		char altname[MAX_QPATH];
-		strcpy( altname, name );
+	Q_strncpyz( altname, name, sizeof( altname ) );
+	ext = name + len - 4;
+
+	/* Legacy fallback chain: prefer original naming, then adjacent formats. */
+	if ( !Q_stricmp( ext, ".tga" ) ) {
 		altname[len - 3] = 'j';
 		altname[len - 2] = 'p';
 		altname[len - 1] = 'g';
 		R_LoadImage_STB( altname, pic, width, height );
+		if ( *pic ) {
+			return "jpg";
+		}
+
+		Q_strncpyz( altname, name, sizeof( altname ) );
+		altname[len - 3] = 'p';
+		altname[len - 2] = 'n';
+		altname[len - 1] = 'g';
+		R_LoadImage_STB( altname, pic, width, height );
+		if ( *pic ) {
+			return "png";
+		}
+	} else if ( !Q_stricmp( ext, ".jpg" ) ) {
+		altname[len - 3] = 't';
+		altname[len - 2] = 'g';
+		altname[len - 1] = 'a';
+		R_LoadImage_STB( altname, pic, width, height );
+		if ( *pic ) {
+			return "tga";
+		}
+
+		Q_strncpyz( altname, name, sizeof( altname ) );
+		altname[len - 3] = 'p';
+		altname[len - 2] = 'n';
+		altname[len - 1] = 'g';
+		R_LoadImage_STB( altname, pic, width, height );
+		if ( *pic ) {
+			return "png";
+		}
+	} else if ( len >= 5 && !Q_stricmp( name + len - 5, ".jpeg" ) ) {
+		altname[len - 4] = 't';
+		altname[len - 3] = 'g';
+		altname[len - 2] = 'a';
+		altname[len - 1] = '\0';
+		R_LoadImage_STB( altname, pic, width, height );
+		if ( *pic ) {
+			return "tga";
+		}
+
+		Q_strncpyz( altname, name, sizeof( altname ) );
+		altname[len - 4] = 'p';
+		altname[len - 3] = 'n';
+		altname[len - 2] = 'g';
+		altname[len - 1] = '\0';
+		R_LoadImage_STB( altname, pic, width, height );
+		if ( *pic ) {
+			return "png";
+		}
+	} else if ( !Q_stricmp( ext, ".png" ) ) {
+		/* Already tried orig; no further fallback. */
 	}
+
+	return NULL;
+}
+
+void R_LoadImage( const char *name, byte **pic, int *width, int *height ) {
+	(void)R_LoadImageWithSource( name, pic, width, height );
 }
 
 
@@ -1221,7 +1289,6 @@ image_t *R_FindImageFileExt( const char *name, qboolean mipmap, qboolean allowPi
 	int width, height;
 	byte    *pic;
 	long hash;
-
 	if ( !name ) {
 		return NULL;
 	}
@@ -1317,7 +1384,7 @@ image_t *R_FindImageFileExt( const char *name, qboolean mipmap, qboolean allowPi
 	//
 	// load the pic from disk
 	//
-	R_LoadImage( name, &pic, &width, &height );
+	(void)R_LoadImageWithSource( name, &pic, &width, &height );
 
 	if ( pic == NULL ) {                                    // if we dont get a successful load
 // RF, no need to check uppercase on win32 systems
@@ -1330,16 +1397,20 @@ image_t *R_FindImageFileExt( const char *name, qboolean mipmap, qboolean allowPi
 		int len;                                          //
 		strcpy( altname, name );                          //
 		len = strlen( altname );                          //
-		altname[len - 3] = toupper( altname[len - 3] );   // and try upper case extension for unix systems
-		altname[len - 2] = toupper( altname[len - 2] );   //
-		altname[len - 1] = toupper( altname[len - 1] );   //
-		ri.Printf( PRINT_DEVELOPER, "trying %s...", altname );
-		R_LoadImage( altname, &pic, &width, &height );      //
-		if ( pic == NULL ) {                              // if that fails
-			ri.Printf( PRINT_DEVELOPER, "no\n" );
-			return NULL;                                  // bail
+		if ( len >= 4 ) {
+			altname[len - 3] = toupper( altname[len - 3] );   // and try upper case extension for unix systems
+			altname[len - 2] = toupper( altname[len - 2] );   //
+			altname[len - 1] = toupper( altname[len - 1] );   //
+			ri.Printf( PRINT_DEVELOPER, "trying %s...", altname );
+			(void)R_LoadImageWithSource( altname, &pic, &width, &height );      //
+			if ( pic == NULL ) {                              // if that fails
+				ri.Printf( PRINT_DEVELOPER, "no\n" );
+				return NULL;                                  // bail
+			}
+			ri.Printf( PRINT_DEVELOPER, "yes\n" );
+		} else {
+			return NULL;
 		}
-		ri.Printf( PRINT_DEVELOPER, "yes\n" );
 #else
 		return NULL;
 #endif

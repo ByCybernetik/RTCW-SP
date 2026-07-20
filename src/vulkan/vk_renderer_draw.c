@@ -149,6 +149,44 @@ static void VK_FogPass(drawSurf_t *drawSurf, surfaceType_t type, VkCommandBuffer
 
 static qboolean vk_depthRange = qfalse;
 
+/* Vulkan scissor must lie inside the framebuffer; OpenGL allowed oversized /
+ * negative UI viewports (menu models with rect < 0). Clamp scissor only —
+ * viewport may still extend outside (valid in VK). */
+static void VK_ClampScissorToSwapchain(VkRect2D *sc) {
+    int x0, y0, x1, y1;
+    int sw = (int)vk_state.swapExtent.width;
+    int sh = (int)vk_state.swapExtent.height;
+
+    x0 = sc->offset.x;
+    y0 = sc->offset.y;
+    x1 = x0 + (int)sc->extent.width;
+    y1 = y0 + (int)sc->extent.height;
+
+    if (x0 < 0) {
+        x0 = 0;
+    }
+    if (y0 < 0) {
+        y0 = 0;
+    }
+    if (x1 > sw) {
+        x1 = sw;
+    }
+    if (y1 > sh) {
+        y1 = sh;
+    }
+    if (x0 >= x1 || y0 >= y1) {
+        sc->offset.x = 0;
+        sc->offset.y = 0;
+        sc->extent.width = 0;
+        sc->extent.height = 0;
+        return;
+    }
+    sc->offset.x = x0;
+    sc->offset.y = y0;
+    sc->extent.width = (uint32_t)(x1 - x0);
+    sc->extent.height = (uint32_t)(y1 - y0);
+}
+
 static void VK_SetViewViewport(void) {
     VkCommandBuffer cmd;
     VkViewport vp;
@@ -181,6 +219,8 @@ static void VK_SetViewViewport(void) {
         sc.extent.width = (uint32_t)backEnd.viewParms.viewportWidth;
         sc.extent.height = (uint32_t)backEnd.viewParms.viewportHeight;
     }
+
+    VK_ClampScissorToSwapchain(&sc);
 
     vp.minDepth = 0.0f;
     vp.maxDepth = vk_depthRange ? 0.3f : 1.0f;
@@ -879,6 +919,7 @@ void VK_RenderFlares(VkCommandBuffer cmd) {
         sc.extent.width = (uint32_t)vpW;
         sc.extent.height = (uint32_t)vpH;
     }
+    VK_ClampScissorToSwapchain(&sc);
     vp.minDepth = 0.0f;
     vp.maxDepth = 1.0f;
     vkCmdSetViewport(cmd, 0, 1, &vp);

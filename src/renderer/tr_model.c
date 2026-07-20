@@ -32,6 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #define LL( x ) x = LittleLong( x )
 
+
 // Ridah
 static qboolean R_LoadMDC( model_t *mod, int lod, void *buffer, const char *mod_name );
 // done.
